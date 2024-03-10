@@ -1,0 +1,11 @@
+/react/node_modules/
+/react/.env
+/react/build/
+
+/server/.env
+/server/node_modules/
+/server/dist/
+/server/logs/
+
+
+

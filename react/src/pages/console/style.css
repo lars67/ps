@@ -1,0 +1,90 @@
+.playground-container {
+    padding: 0;
+    margin: 0;
+    height: 100vh;
+    background-color: #efefef;
+}
+
+.playground-container {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 164px - 64px );
+}
+
+.playground-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+
+}
+
+.playground-panel2 {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+
+}
+
+.cm-outer-container {
+    flex: 1;
+}
+
+.cm-editor {
+    flex: 1;
+    height: 100%;
+    position: relative; /* <-- .cm-scroller absolute positioning depends on this*/
+}
+
+.cm-scroller {
+    position: absolute !important;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    overflow-y: auto;
+}
+
+.cm-content {
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    word-break: normal;
+}
+
+
+.cm-header {
+    display: flex;
+    flex-direction: row;
+    padding: 5px 10px 5px 20px;
+    align-items: center;
+}
+
+.cm-header-result {
+    display: flex;
+    flex-direction: row;
+    justify-content: right;
+    padding: 5px 10px;
+}
+.spacer {
+    flex-grow: 1;
+}
+.connection-badge {
+    margin-right: 10px;
+}
+.row-item {
+    padding: 0px 5px;
+    min-width: 200px;
+}
+.row-item-mar {
+    margin: 0px 10px 0px 5px;
+}
+
+
+.custom-tab-bar {
+    background-color: #d0d0d0; /* Set your desired background color */
+}
+
+.custom-tab-bar .ant-tabs-tab-active {
+    background-color: #fff; /* Set your desired active tab background color */
+}

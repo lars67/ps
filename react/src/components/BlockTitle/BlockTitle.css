@@ -1,0 +1,62 @@
+.trapezoid-small {
+  border-bottom: 16px solid #008;
+  border-right: 16px solid transparent;
+  height: 0;
+  color: #008;
+  width: 100px;
+  line-height: 16px;
+  font-size: 12px;
+  padding-left: 5px;
+  margin-bottom: 1px; }
+  .trapezoid-small:after {
+    content: '';
+    height: 1px;
+    background-color: #008;
+    width: 100%;
+    position: absolute;
+    left: 0px;
+    z-index: 1;
+    top: 16px; }
+
+.trapezoid-normal {
+  border-bottom: 24px solid #008;
+  border-right: 24px solid transparent;
+  height: 0;
+  color: #008;
+  width: 100px;
+  line-height: 24px;
+  font-size: 18px;
+  padding-left: 5px;
+  margin-bottom: 2px; }
+  .trapezoid-normal:after {
+    content: '';
+    height: 2px;
+    background-color: #008;
+    width: 100%;
+    position: absolute;
+    left: 0px;
+    z-index: 1;
+    top: 24px; }
+
+.trapezoid-large {
+  border-bottom: 32px solid #008;
+  border-right: 32px solid transparent;
+  height: 0;
+  color: #008;
+  width: 100px;
+  line-height: 32px;
+  font-size: 24px;
+  padding-left: 5px;
+  margin-bottom: 3px; }
+  .trapezoid-large:after {
+    content: '';
+    height: 3px;
+    background-color: #008;
+    width: 100%;
+    position: absolute;
+    left: 0px;
+    z-index: 1;
+    top: 32px; }
+
+.block-title-holder {
+  position: relative; }
