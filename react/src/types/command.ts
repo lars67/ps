@@ -1,7 +1,7 @@
 
 
 export type Command = {
-    id?: string | null;
+    _id?: string | null;
     label?: string | null;
     value: string | null;
     description?: string | null;

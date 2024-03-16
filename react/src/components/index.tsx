@@ -5,6 +5,7 @@ import NotificationsItem from "./NotificationsItem/NotificationsItem";
 import BackBtn from "./BackBtn/BackBtn";
 import PageHeader from "./PageHeader/PageHeader";
 import RefreshBtn from "./RefreshBtn/RefreshBtn";
+import HistoryCommands from "./HistoryCommands";
 export {
   Card,
   Loader,
@@ -13,4 +14,5 @@ export {
   PageHeader,
   BackBtn,
   RefreshBtn,
+  HistoryCommands,
 };

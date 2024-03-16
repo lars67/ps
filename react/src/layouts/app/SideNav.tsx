@@ -230,9 +230,9 @@ const SideNav = ({ ...others }: SideNavProps) => {
     setOpenKeys(paths);
     setCurrent(paths[paths.length - 1]);
   }, [pathname]);
-
+  return null;
   return (
-    <Sider ref={nodeRef} breakpoint="lg" collapsedWidth="0" {...others}>
+    <Sider ref={nodeRef} breakpoint="lg" collapsedWidth="0" {...others} defaultCollapsed={true} width={0}>
       <Logo
         color="black"
         asLink

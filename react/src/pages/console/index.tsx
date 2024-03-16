@@ -3,6 +3,7 @@ import React, {memo, useRef, useState} from 'react';
 import { Tabs } from 'antd';
 import type { TabsProps } from 'antd';
 import ConsoleTab from "./ConsoleTab";
+import {LabelValue} from "../../types/LabelValue";
 
 
 
@@ -13,15 +14,17 @@ const initialItems: TabsProps['items'] = [
     children: <ConsoleTab/>,
   },
  ];
+export const historyCommands:LabelValue[] =[];
 
 type TargetKey = React.MouseEvent | React.KeyboardEvent | string;
 export default memo(() => {
   const [activeKey, setActiveKey] = useState(initialItems[0].key);
 
   const [items, setItems] = useState(initialItems);
+  //const historyCommands= useRef<LabelValue[]>([])
   const newTabIndex = useRef(0);
   const add = () => {
-    const newActiveKey = `newTab${newTabIndex.current++}`;
+    const newActiveKey = `newTab${++newTabIndex.current}`;
     const newPanes = [...items];
     newPanes.push({label: `Tab ${1+newTabIndex.current}`, children: <ConsoleTab/>, key: newActiveKey});
     setItems(newPanes);

@@ -1,51 +1,46 @@
-import {CommandDescription} from "@/types/custom";
+import { CommandDescription } from "@/types/custom";
 
-const fs = require('fs');
-const path = require('path');
-const chokidar = require('chokidar');
+const fs = require("fs");
+const path = require("path");
+const chokidar = require("chokidar");
 
-const logFolder = path.join(process.cwd(), 'logs');
+const logFolder = path.join(process.cwd(), "logs");
 export function files() {
-    return fs.readdirSync(logFolder)
+  return fs.readdirSync(logFolder);
 }
 
 async function readFile(filePath: string): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
-        fs.readFile(filePath, (err:any, data:any) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(data);
-            }
-        });
+  return new Promise((resolve, reject) => {
+    fs.readFile(filePath, (err: any, data: any) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(data);
+      }
     });
+  });
 }
-export async function file({fileName}:{fileName:string}) {
-    try {
-        // Read the file asynchronously
-        return  (await readFile(path.join(logFolder, fileName)) as Buffer).toString('utf-8');
-
-
-    } catch (err) {
-
-        return {error:`Error reading file:${fileName}`};
-    }
+export async function file({ fileName }: { fileName: string }) {
+  try {
+    // Read the file asynchronously
+    return (
+      (await readFile(path.join(logFolder, fileName))) as Buffer
+    ).toString("utf-8");
+  } catch (err) {
+    return { error: `Error reading file:${fileName}` };
+  }
 }
 
-
-export const description:CommandDescription ={
-
-    files: {
-        label: 'Logs',
-        value: JSON.stringify({command:'logs.files'})
-
-    },
-    file: {
-        label: 'Log file',
-        value: JSON.stringify({command:'logs.file', fileName:'?'})
-    }
-
-}
+export const description: CommandDescription = {
+  files: {
+    label: "Logs",
+    value: JSON.stringify({ command: "logs.files" }),
+  },
+  file: {
+    label: "Log file",
+    value: JSON.stringify({ command: "logs.file", fileName: "?" }),
+  },
+};
 
 /*
 export function watch(fileName:string) {

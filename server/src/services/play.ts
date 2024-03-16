@@ -1,12 +1,12 @@
 import { Play, PlayWithID } from "../types/play";
 import { PlayModel } from "../models/play";
-import {FilterQuery} from "mongoose";
+import { FilterQuery } from "mongoose";
 
 export async function list(
   filter: FilterQuery<Play> = {},
 ): Promise<Play[] | null> {
   try {
-    console.log('filter', filter)
+    console.log("filter", filter);
     const plays = await PlayModel.find(filter?.filter).lean();
     return plays;
   } catch (err) {}
@@ -19,16 +19,11 @@ export async function add(play: Play): Promise<Play | null> {
   return added;
 }
 
-export async function update(
-  play: Partial<PlayWithID>,
-): Promise<Play | null> {
+export async function update(play: Partial<PlayWithID>): Promise<Play | null> {
   const { _id, ...other } = play;
   return await PlayModel.findByIdAndUpdate(_id, other);
 }
 
-
-
-export async function remove({_id}:{_id: string}): Promise<Play | null> {
+export async function remove({ _id }: { _id: string }): Promise<Play | null> {
   return await PlayModel.findByIdAndDelete(_id);
 }
-

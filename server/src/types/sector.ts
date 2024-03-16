@@ -1,9 +1,9 @@
-import {ObjectId} from "mongodb";
+import { ObjectId } from "mongodb";
 
 export type Sector = {
-    industry_sector_id: string;
-    symbol: string;
-    name: string;
-}
+  industry_sector_id: string;
+  symbol: string;
+  name: string;
+};
 
-export type SectorWithID = Sector & {_id: string | ObjectId}
+export type SectorWithID = Sector & { _id: string | ObjectId };

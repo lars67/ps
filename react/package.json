@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@ant-design/icons": "^5.3.3",
     "@codemirror/lang-json": "^6.0.1",
     "@reduxjs/toolkit": "^2.2.1",
     "@tanem/react-nprogress": "^5.0.51",

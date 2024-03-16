@@ -139,7 +139,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         >
           <HeaderNav
             style={{
-              marginLeft: collapsed ? 0 : '200px',
+              marginLeft: 0,// collapsed ? 0 : '200px',
               padding: '0 2rem 0 0',
               background: navFill ? '#eaf5fc' : 'none',
               backdropFilter: navFill ? 'blur(8px)' : 'none',
@@ -153,7 +153,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               transition: 'all .25s',
             }}
           >
-            <Flex align="center">
+              {/*     <Flex align="center">
               <Tooltip title={`${collapsed ? 'Expand' : 'Collapse'} Sidebar`}>
                 <Button
                   type="text"
@@ -183,7 +183,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               </Tooltip>
               <Tooltip title="Messages">
                 <Button icon={<MessageOutlined />} type="text" size="large" />
-              </Tooltip>
+              </Tooltip>*/}
                 {/*   <Dropdown menu={{ items }} trigger={['click']}>
                 <Flex>
                   <img
@@ -194,16 +194,16 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                     style={{ borderRadius, objectFit: 'cover' }}
                   />
                 </Flex>
-              </Dropdown>*/}
-            </Flex>
+              </Dropdown>
+            </Flex>*/}
           </HeaderNav>
           <Content
             style={{
-              margin: `0 0 0 ${collapsed ? 0 : '200px'}`,
+              margin: `0 0 0 0`,//${collapsed ? 0 : '200px'}`,
               background: 'rgba(52, 152, 219, 0.35)',
               borderRadius: collapsed ? 0 : borderRadius,
               transition: 'all .25s',
-              padding: '24px 32px',
+              padding: '4px',
               minHeight: 360,
             }}
           >
@@ -237,7 +237,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
           <FooterNav
             style={{
               textAlign: 'center',
-              marginLeft: collapsed ? 0 : '200px',
+              marginLeft: 0,//collapsed ? 0 : '200px',
               background: 'none',
             }}
           />
