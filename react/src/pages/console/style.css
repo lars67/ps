@@ -106,3 +106,6 @@ li:hover {
     background-color: lightgray;
 }
 
+.button-margin {
+    margin: 0 5px;
+}

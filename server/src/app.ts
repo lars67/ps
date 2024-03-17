@@ -4,8 +4,9 @@ import { connect } from "mongoose";
 
 let mongoose: typeof import("mongoose");
 const startServer = async () => {
-  console.log(process.cwd(), process.env.TEST, process.env.MONGODB_URI);
+  console.log(process.cwd(), process.env.MONGODB_URI);
   mongoose = await connect(dbConnection.url);
+
   await initWS();
 };
 

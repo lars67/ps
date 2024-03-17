@@ -3,7 +3,7 @@ import { useState } from "react";
 import { CloseOutlined, MoreOutlined } from "@ant-design/icons";
 
 import { useAppDispatch } from "../../store/useAppDispatch";
-import { changeOption } from "../../store/slices/options";
+import {changeOption, OptionsState} from "../../store/slices/options";
 import { useAppSelector } from "../../store/useAppSelector";
 
 type Props = {};
@@ -11,7 +11,7 @@ type Props = {};
 const OptionsPopup = () => {
   const [open, setOpen] = useState(false);
   const dispatch = useAppDispatch();
-  const { clearAlwaysResult } = useAppSelector((state) => state.options);
+  const { clearAlwaysResult, clearAlwaysCommand } = useAppSelector((state) => state.options);
   const onHide = () => {
     setOpen(false);
   };
@@ -21,18 +21,22 @@ const OptionsPopup = () => {
   };
 
   const handleCheck: CheckboxProps["onChange"] = (e) => {
-    console.log(`checked = ${e.target.checked}`);
+    const name = e.target.name as keyof OptionsState
+    console.log(`checked ${name} = ${e.target.checked}`);
     dispatch(
-      changeOption({ option: "clearAlwaysResult", value: e.target.checked }),
+      changeOption({ option: name, value: e.target.checked }),
     );
   };
 
   return (
     <Popover
       content={
-        <Flex>
-          <Checkbox onChange={handleCheck} checked={clearAlwaysResult}>
-            Clear output for each commandl
+        <Flex vertical={true}>
+          <Checkbox onChange={handleCheck} name={"clearAlwaysCommand"} checked={clearAlwaysCommand}>
+            Clear input pane for each added command
+          </Checkbox>
+          <Checkbox onChange={handleCheck} name="clearAlwaysResult" checked={clearAlwaysResult}>
+            Clear output pane  for each command execution
           </Checkbox>
         </Flex>
       }

@@ -1,6 +1,10 @@
 import { Play, PlayWithID } from "../types/play";
 import { PlayModel } from "../models/play";
 import { FilterQuery } from "mongoose";
+import {runWatcher} from "../utils/dbWatcher";
+
+//setTimeout(()=>
+//runWatcher('plays'), 3000);
 
 export async function list(
   filter: FilterQuery<Play> = {},

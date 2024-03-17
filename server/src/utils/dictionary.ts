@@ -20,11 +20,9 @@ export const tradeType = {
 };
 
 const tradeTypeKeys = Object.keys(tradeType) as string[];
-console.log("tradeTypeKeys", tradeTypeKeys, typeof tradeTypeKeys[0]);
-export const isTradeType = (t: string) => {
-  console.log("TTTT", t, tradeTypeKeys);
-  return tradeTypeKeys.includes(t);
-};
+
+export const isTradeType = (t: string) => tradeTypeKeys.includes(t);
+
 
 export const tradeState = {
   1: "Active trade",

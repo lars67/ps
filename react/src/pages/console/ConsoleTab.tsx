@@ -30,6 +30,7 @@ import { historyCommands } from "./index";
 
 import HistoryCommands from "../../components/HistoryCommands";
 import OptionsPopup from "../../components/OptionsPopup";
+import ButtonRemoveUserCommand from "../../components/ButtonRemoveUserCommand";
 
 type WSMsg = {
   data: string;
@@ -60,8 +61,8 @@ const Console = () => {
   const [actualCommandsFiltered, setActualCommandsFiltered] = useState<
     Command[]
   >([]);
-  const { clearAlwaysResult } = useAppSelector((state) => state.options);
-  const [commandOption, setCommandOption] = useState<Command| Command[]>()
+  const { clearAlwaysResult, clearAlwaysCommand } = useAppSelector((state) => state.options);
+  const [commandOption, setCommandOption] = useState<Command | Command[]>();
   const onMessageCallback = (event: MessageEvent<string>) => {
     if (event.data !== "undefined") {
       const message = JSON.parse(event.data) as WSMsg;
@@ -129,21 +130,22 @@ const Console = () => {
         });
         return;
       }
-      commands.map((parsedValue) => {
+      for (const parsedValue of commands) {
         setLoading(true);
         //fragments.current = [];
 
         msgId.current++;
         const cmd = { ...parsedValue, msgId: msgId.current };
-        if (clearAlwaysResult){
-          setResult("")
+        if (clearAlwaysResult) {
+          setResult("");
         }
-        sendJsonMessage(cmd);
-      });
+        await sendJsonMessageSync(cmd);
+      };
       historyCommands.unshift({ value, label: commandLabel });
       if (historyCommands.length > 12) {
         historyCommands.pop();
       }
+      setHistoryMsgId('');
     } catch (err) {
       message.open({
         type: "error",
@@ -152,7 +154,7 @@ const Console = () => {
       setLoading(false);
       return;
     }
-  }, [value, commandLabel, clearAlwaysResult]);
+  }, [value, commandLabel, clearAlwaysResult,  setHistoryMsgId]);
   /*
   useEffect(() => {
     if (newMsg) {
@@ -185,7 +187,7 @@ const Console = () => {
     };
     return statusMap[readyState] || ["Unknown", undefined]; // Handle undefined case
   }, [readyState]);
-  const canWork = connectionStatus === "success";
+  const canWork = connectionStatus === "success"  && value!=='';
 
   const onChange = useCallback((val: string) => {
     setValue(val);
@@ -196,18 +198,22 @@ const Console = () => {
   const handleClear = useCallback(() => setValue(""), []);
 
   const handleChangeCommandType = useCallback(
-    (value: string) => setCommandTypeFilter(value),
-    [],
+    (value: string) => {
+      setCommandTypeFilter(value);
+      setCommand('');
+      setValue('')
+      setCommandOption(undefined)
+    },[],
   );
   const handleChangeCommand = useCallback(
-    (value: string,option:Command| Command[]) => {
+    (value: string, option: Command | Command[]) => {
       setCommand(value);
-      setValue(value);
+      setValue(oldValue=> clearAlwaysCommand ? value : oldValue+'\n'+ value);
       setCommandOption(option);
-      setCommandLabel((option as Command).label || '');
+      setCommandLabel((option as Command).label || "");
       //setShowHelpForm(true);
     },
-    [actualCommands],
+    [actualCommands, clearAlwaysCommand],
   );
 
   const [showTable, setShowTable] = useState(false);
@@ -338,21 +344,35 @@ const Console = () => {
     [actualCommands],
   );
 
-  const handleCloseUserCommand = useCallback((cmd: Command | undefined, isAdd?:boolean) => {
-    if (cmd) {
-      if (isAdd) {
-       // cmd.value= JSON.parse(cmd.value ?? '');
-        setCommands(commands=> [...commands, cmd]);
-      } else {
-        const trg = commands.find(c=> c._id === cmd._id)
-        console.log(cmd, trg )
-        setCommands(commands=> commands.map(c=> c._id=== cmd._id ? cmd : c));
-
+  const handleCloseUserCommand = useCallback(
+    (cmd: Command | undefined, isAdd?: boolean) => {
+      if (cmd) {
+        if (isAdd) {
+          // cmd.value= JSON.parse(cmd.value ?? '');
+          setCommands((commands) => [...commands, cmd]);
+        } else {
+          const trg = commands.find((c) => c._id === cmd._id);
+          console.log(cmd, trg);
+          setCommands((commands) =>
+            commands.map((c) => (c._id === cmd._id ? cmd : c)),
+          );
+        }
+        //   setValueCommands((commands) => [...commands, c]);
       }
-   //   setValueCommands((commands) => [...commands, c]);
-    }
-    setOpenUserCommand(false);
-  }, [commands]);
+      setOpenUserCommand(false);
+    },
+    [commands],
+  );
+
+  const handleRemove = useCallback(
+    (cmd: Command) => {
+      setCommands((commands) => commands.filter((c) => c._id !== cmd._id));
+      setCommand('');
+      setValue('')
+      setCommandOption(undefined)
+    },
+    [commands],
+  );
 
   const handleGetFromHistory = useCallback(
     ({ value = "", label = "" }: LabelValue) => {
@@ -390,11 +410,14 @@ const Console = () => {
             filterOption={false}
           >
             {actualCommandsFiltered.map((option, index) => (
-              <Select.Option key={`opt-${index}`} value={option.value}
-                             commandType={option.commandType}
-                             description={option.description}
-                             _id={option._id}
-                             label={option.label}>
+              <Select.Option
+                key={`opt-${index}`}
+                value={option.value}
+                commandType={option.commandType}
+                description={option.description}
+                _id={option._id}
+                label={option.label}
+              >
                 {option.label}
               </Select.Option>
             ))}
@@ -409,17 +432,25 @@ const Console = () => {
         >
           Send
         </Button>
-        <Button size="middle" onClick={handleSave}>
+        <Button size="middle" disabled={!canWork} onClick={handleSave} className="button-margin">
           Save
         </Button>
+        <ButtonRemoveUserCommand
+          commandOption={commandOption as Command}
+          onRemove={handleRemove}
+        />
         <OptionsPopup />
         <div className="spacer" />
-        Server:
-        <Badge
-          className="connection-badge"
-          status={connectionStatus}
-          text={connectionStatusText}
-        />
+        <Tooltip title={connectionStatusText}>
+          <>
+            Server:
+            <Badge
+                className="connection-badge"
+                status={connectionStatus}
+                text={''}
+            />
+          </>
+        </Tooltip>
         <Button type="default" size="middle" onClick={handleClear}>
           Clear
         </Button>

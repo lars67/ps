@@ -4,8 +4,8 @@ import { login } from "./auth";
 import controller from "../controllers/websocket";
 import logger from "../utils/logger";
 
-const loginPort = 3001;
-const mainServerPort = 3002;
+const loginPort = (process.env.LOGIN_PORT || 3001) as number;
+const mainServerPort = (process.env.APP_PORT || 3002) as number;
 
 const secretKey = "ps2-secret-key";
 

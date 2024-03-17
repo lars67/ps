@@ -27,6 +27,7 @@ export type Trade = {
 
 export type TradeWithID = Trade & { _id: string | ObjectId };
 
+export type TradeOp = Trade & {_op: string, _id:string}
 export enum TradeSide {
   Buy = "B",
   Sell = "S",

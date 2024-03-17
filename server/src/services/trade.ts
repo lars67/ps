@@ -1,4 +1,4 @@
-import { isTradeSide, Trade, TradeSide, TradeWithID } from "../types/trade";
+import {isTradeSide, Trade, TradeOp, TradeSide, TradeWithID} from "../types/trade";
 import { TradeModel } from "../models/trade";
 import { FilterQuery } from "mongoose";
 
@@ -10,12 +10,16 @@ import {isISODate, validateRequired} from "../utils";
 import { CurrencyModel } from "../models/currency";
 import {ErrorType} from "../types/other";
 import {errorMsgs} from "../constants";
+import {DeleteResult} from "mongodb";
 
 interface Subscribers {
   [msgId: string]: (data: any) => void;
 }
 
 const subscribers: Subscribers = {};
+
+
+
 export async function list(
   filter: FilterQuery<Trade> = {},
 ): Promise<Trade[] | null> {
@@ -66,8 +70,9 @@ export async function add(
   trade.state = "1";
   const newTrade = new TradeModel(trade);
   const added = await newTrade.save();
-  sendEvent("trade.add", added);
-  return added;
+  const addData = added.toObject();
+  sendEvent("trade.change", {...addData, _op:0});
+  return addData;
 }
 
 export async function update(
@@ -77,6 +82,7 @@ export async function update(
   if (!_id) {
    return errorMsgs.required1('_id')
   }
+  sendEvent("trade.change", {_op:1,...trade});
   return await TradeModel.findByIdAndUpdate(_id, other, {new: true});
 }
 
@@ -88,6 +94,7 @@ export async function remove({
   if (!_id) {
     return errorMsgs.required1('_id')
   }
+  sendEvent("trade.change", {_id, _op:2});
   return await TradeModel.findByIdAndDelete(_id);
 }
 
@@ -130,9 +137,9 @@ export async function subscribe(
     msgId: string,
 ): Promise<Trade[]> {
   const filter: FilterQuery<Trade> = await buildFilterTrades(tradesFilter);
-  subscribers[msgId] = (ev: Trade) => sendResponse(ev);
-  eventEmitter.on("trade.add", subscribers[msgId]);
-  return await TradeModel.find(filter);
+  subscribers[msgId] = (ev: TradeOp) => sendResponse(ev);
+  eventEmitter.on("trade.change", subscribers[msgId]);
+   return await TradeModel.find(filter);
 }
 
 export async function unsubscribe(
@@ -140,7 +147,7 @@ export async function unsubscribe(
     sendResponse: (data: any) => void,
     msgId: string,
 ): Promise<boolean> {
-  eventEmitter.removeListener("trade.add", subscribers[subscribeId.subscribeId as keyof Subscribers]);
+  eventEmitter.removeListener("trade.change", subscribers[subscribeId.subscribeId as keyof Subscribers]);
   return true
 }
 /*
@@ -210,7 +217,7 @@ export async function putCash(
   } else if (!isISODate(par.tradeTime)) {
     return { error: `Wrong tradeTime format` };
   }
-
+console.log('PAR',par);
   const newTrade = new TradeModel({
     portfolioId: par.portfolioId,
     price: Number(par.amount),
@@ -224,8 +231,21 @@ export async function putCash(
     fee: 0,
     contract: "CASH",
   });
+
   const added = await newTrade.save();
   sendEvent("trade.add", added);
+  return added;
+}
+
+export async function removeAll({
+                               portfolioId,
+                             }: {
+  portfolioId: string;
+}): Promise<DeleteResult | ErrorType | null> {
+  if (!portfolioId) {
+    return errorMsgs.required1("portfolioId");
+  }
+  return await TradeModel.deleteMany({portfolioId});
 }
 
 export const description: CommandDescription = {
@@ -261,4 +281,14 @@ export const description: CommandDescription = {
       userId: "",
     }),
   },
+  removeAll: {
+    label: "removeAll  Trades for portfolio",
+    value: JSON.stringify({
+      command: "trades.removeAll",
+      portfolioId: "?",
+
+    }),
+  },
 };
+
+

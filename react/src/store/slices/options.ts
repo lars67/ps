@@ -1,6 +1,6 @@
 import {createSlice, PayloadAction} from "@reduxjs/toolkit";
 
-interface OptionsState {
+export interface OptionsState {
     clearAlwaysResult: boolean;
     clearAlwaysCommand: boolean;
 }

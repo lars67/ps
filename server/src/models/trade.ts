@@ -2,7 +2,7 @@ import { Model, Schema, model, models } from "mongoose";
 import { Trade } from "@/types/trade";
 
 const TradeSchema = new Schema<Trade>({
-  tradeId: { type: String, required: true },
+  tradeId: { type: String },
   side: { type: String }, //B.S,P,W
   tradeType: { type: String },
   portfolioId: { type: String, required: true },
