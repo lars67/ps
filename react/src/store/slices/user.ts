@@ -15,7 +15,8 @@ export const authLoginThunk = createAsyncThunk(
   "authLogin",
   async (loginPayload: UserState) => {
     return new Promise<UserState>((resolve, reject) => {
-      const ws = new WebSocket(process.env.REACT_APP_LOGIN_WS || "ws://localhost:3001");
+      console.log('process.env.REACT_APP_LOGIN_WS ||', process.env.REACT_APP_LOGIN_WS)
+      const ws = new WebSocket( process.env.REACT_APP_LOGIN_WS || 'wss://localhost:3331');
       ws.onopen = () => {
         // Send login command when WebSocket connection is opened
         ws.send(

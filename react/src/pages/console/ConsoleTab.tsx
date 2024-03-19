@@ -40,6 +40,7 @@ type WSMsg = {
 };
 
 const Console = () => {
+  console.log('process.env', process.env)
   const [loading, setLoading] = useState(false);
   const token = useAppSelector((state) => state.user.token);
   const modif = useRef(Math.round(10000 * Math.random()));

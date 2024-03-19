@@ -3,9 +3,8 @@ import jwt, { JwtPayload } from "jsonwebtoken";
 import { login } from "./auth";
 import controller from "../controllers/websocket";
 import logger from "../utils/logger";
+import * as https from "https";
 
-const loginPort = (process.env.LOGIN_PORT || 3001) as number;
-const mainServerPort = (process.env.APP_PORT || 3002) as number;
 
 const secretKey = "ps2-secret-key";
 
@@ -15,8 +14,8 @@ interface ClientType {
   token: string | JwtPayload | undefined; //wtPayload//{userId: string, username: string}
 }
 
-export const initWS = () => {
-  const loginServer = new WebSocketServer({ port: loginPort });
+export const initWS = (serverLogin: https.Server, serverApp: https.Server) => {
+  const loginServer = new WebSocketServer({ server:serverLogin });
 
   console.log("-------------------- SOCKET SERVER -------------");
   loginServer.on("connection", (socket) => {
@@ -36,8 +35,9 @@ export const initWS = () => {
   });
   //maxPayload {Number} The maximum allowed message size in bytes. Defaults to 100 MiB (104857600 bytes).
   const mainServer = new WebSocketServer({
-    port: mainServerPort,
-    maxPayload: 204857600,
+    //port: mainServerPort,
+  //  maxPayload: 204857600,
+    server: serverApp
   });
 
   let clients: ClientType[] = [];
@@ -83,8 +83,8 @@ export const initWS = () => {
       position >= 0 && clients.splice(position, 1);
     });
   });
-  console.log(`Login server running on port ${loginPort}`);
-  console.log(`Main server running on port ${mainServerPort}`);
+//  console.log(`Login server running on port ${loginPort}`);
+//  console.log(`Main server running on port ${mainServerPort}`);
 };
 
 function chunkString(str: string, size: number) {

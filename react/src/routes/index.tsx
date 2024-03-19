@@ -69,6 +69,6 @@ const router = createBrowserRouter([
       },
     ],
   },
-]);
+], { basename: "/ps2console" });
 
 export default router;
