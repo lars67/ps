@@ -7,6 +7,7 @@ export type Command = {
   description?: string | null;
   ownerId?: string | null;
   commandType?: string;
+  extended?: object[];
 };
 
 //export type CommandWithID = Command & { _id: string | ObjectId };

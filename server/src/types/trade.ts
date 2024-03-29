@@ -10,7 +10,7 @@ export type Trade = {
   name: string;
   volume: number;
   price: number;
-  currency: symbol;
+  currency: string;
   fee: number;
   feeSymbol: number;
   rate: number;
@@ -23,6 +23,8 @@ export type Trade = {
   orderId: string;
   comment: string;
   state: string;
+  invested?: number;
+
 };
 
 export type TradeWithID = Trade & { _id: string | ObjectId };

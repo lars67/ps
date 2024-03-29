@@ -16,7 +16,7 @@ import {
 import useWebSocket, { ReadyState } from "react-use-websocket";
 import { useAppSelector } from "../../store/useAppSelector";
 
-import CodeMirror from "@uiw/react-codemirror";
+import CodeMirror, {EditorView, ReactCodeMirrorRef} from "@uiw/react-codemirror";
 import { json } from "@codemirror/lang-json";
 import "./style.css";
 import { commandTypes } from "./helper";
@@ -25,12 +25,14 @@ import { JsonToTable } from "react-json-to-table";
 import { LabelValue } from "../../types/LabelValue";
 import UserCommand from "./UserCommand";
 import Forms from "./forms";
-import { getCommands } from "../../utils";
+import {getCommands, isUserCommand} from "../../utils";
 import { historyCommands } from "./index";
 
 import HistoryCommands from "../../components/HistoryCommands";
 import OptionsPopup from "../../components/OptionsPopup";
 import ButtonRemoveUserCommand from "../../components/ButtonRemoveUserCommand";
+import CommandBar from "../../components/CommandBar";
+import WindowExtend from "../../components/WindowExtend";
 
 type WSMsg = {
   data: string;
@@ -39,8 +41,10 @@ type WSMsg = {
   index: number;
 };
 
+
+
+
 const Console = () => {
-  console.log('process.env', process.env)
   const [loading, setLoading] = useState(false);
   const token = useAppSelector((state) => state.user.token);
   const modif = useRef(Math.round(10000 * Math.random()));
@@ -64,6 +68,10 @@ const Console = () => {
   >([]);
   const { clearAlwaysResult, clearAlwaysCommand } = useAppSelector((state) => state.options);
   const [commandOption, setCommandOption] = useState<Command | Command[]>();
+  const [commandBar, setCommandBar] = useState<Command>()
+  const [showWindow, setShowWindow] = useState(false)
+
+
   const onMessageCallback = (event: MessageEvent<string>) => {
     if (event.data !== "undefined") {
       const message = JSON.parse(event.data) as WSMsg;
@@ -73,7 +81,7 @@ const Console = () => {
         console.log("Wrong command absent msgId");
         return "";
       }
-      console.log(`msg > ${msgId}, ${total}, ${index}`);
+    //  console.log(`msg > ${msgId}, ${total}, ${index}`);
       if (!fragments.current[msgId]) {
         fragments.current[msgId] = [];
       }
@@ -124,6 +132,7 @@ const Console = () => {
     let parsedValue: any = {};
     try {
       const commands = getCommands(value);
+      console.log('VVV', value)
       if (commands.length <= 0) {
         message.open({
           type: "error",
@@ -133,6 +142,9 @@ const Console = () => {
       }
       for (const parsedValue of commands) {
         setLoading(true);
+        if(parsedValue.emulator === '1') {
+          setShowWindow(true)
+        }
         //fragments.current = [];
 
         msgId.current++;
@@ -155,20 +167,9 @@ const Console = () => {
       setLoading(false);
       return;
     }
+
   }, [value, commandLabel, clearAlwaysResult,  setHistoryMsgId]);
-  /*
-  useEffect(() => {
-    if (newMsg) {
-      const s = JSON.stringify(JSON.parse(newMsg), null, 2)
-        setResult(result=> result.concat(s+'\n\n'));
 
-        setNewMsg('');
-    }
-
-  }, [newMsg]);
-
-
-*/
 
   const [connectionStatusText, connectionStatus]: [
     string,
@@ -213,6 +214,9 @@ const Console = () => {
       setCommandOption(option);
       setCommandLabel((option as Command).label || "");
       //setShowHelpForm(true);
+      if((option as Command ).extended) {
+        setCommandBar(option as Command)
+      }
     },
     [actualCommands, clearAlwaysCommand],
   );
@@ -383,6 +387,26 @@ const Console = () => {
     [setValue],
   );
 
+  const resultPaneScroll = useCallback((editor: ReactCodeMirrorRef) => {
+    if (!editor || !editor.state?.doc) {
+      console.log(`scrollDocToView return`)
+      return
+    }
+
+    const lastLine = editor.state.doc.lines;
+    const lastLineLength = editor.state.doc.line(lastLine).length;
+
+    editor!!.view?.dispatch({
+      selection: { anchor: editor.state.doc.line(lastLine).to },
+      scrollIntoView: true,
+    });
+
+    editor!!.view?.focus();
+    // ... calc selection
+
+
+  }, [])
+
   return (
     <div className="playground-container">
       <div className="cm-header">
@@ -416,6 +440,7 @@ const Console = () => {
                 value={option.value}
                 commandType={option.commandType}
                 description={option.description}
+                extended={option.extended}
                 _id={option._id}
                 label={option.label}
               >
@@ -441,6 +466,7 @@ const Console = () => {
           onRemove={handleRemove}
         />
         <OptionsPopup />
+        {commandBar && <CommandBar commandbar={commandBar}/>}
         <div className="spacer" />
         <Tooltip title={connectionStatusText}>
           <>
@@ -504,6 +530,7 @@ const Console = () => {
           <CodeMirror
             className="cm-outer-container"
             readOnly={true}
+            ref={resultPaneScroll}
             value={
               historyMsgId
                 ? JSON.stringify(
@@ -535,6 +562,7 @@ const Console = () => {
           sendMsg={sendMsg}
         />
       )}
+      {showWindow && <WindowExtend visible={showWindow} title={'aaa'} onClose={()=> setShowWindow(false)}><h3>HI</h3></WindowExtend>}
       {/*  {showTestsForm &&   <Forms open={showTestsForm} onClose={h()=> setShowTestsForm(false)} sendMsg={sendMsg}/>} */}
     </div>
   );

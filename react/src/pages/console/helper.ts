@@ -14,4 +14,5 @@ export const commandTypes: LabelValue[]= [
     {label:'User', value:'user'},
     {label: 'Custom', value: 'custom'},
     {label: 'Collection', value: 'collection'},
+    {label: 'Tests', value: 'tests'}
 ];

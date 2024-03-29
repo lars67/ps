@@ -1,2 +1,5 @@
-import { dbConnection } from "./db";
-import { connect } from "mongoose";
+
+import {StringRecord} from "./types/other";
+require('dotenv').config();
+const getHistory = async (p:StringRecord) => {
+}

@@ -66,6 +66,11 @@
     justify-content: right;
     padding: 5px 10px;
 }
+
+.cm-outside-json {
+    color: gray;
+}
+
 .spacer {
     flex-grow: 1;
 }

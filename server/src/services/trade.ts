@@ -11,6 +11,8 @@ import { CurrencyModel } from "../models/currency";
 import {ErrorType} from "../types/other";
 import {errorMsgs} from "../constants";
 import {DeleteResult} from "mongodb";
+import {checkPriceCurrency, getDateSymbolPrice} from "../services/app/priceCashe";
+import {Portfolio} from "../types/portfolio";
 
 interface Subscribers {
   [msgId: string]: (data: any) => void;
@@ -66,6 +68,25 @@ export async function add(
   } else if (!isISODate(trade.tradeTime)) {
     return { error: `Wrong tradeTime format` };
   }
+  const {currency: portfolioCurrency} = await  PortfolioModel.findById(trade.portfolioId, {currency:1}) as Portfolio;
+
+  if (!trade.rate) {
+
+    let rate = getDateSymbolPrice(trade.tradeTime, trade.symbol);
+    if (!rate) {
+      await checkPriceCurrency(
+          trade.currency,
+          portfolioCurrency,
+          trade.tradeTime);
+      rate = getDateSymbolPrice(trade.tradeTime, trade.symbol);
+    }
+    if (rate) {
+      trade.rate = rate;
+    }else {
+      throw `RATE unknown ${trade.symbol}`
+    }
+  }
+
 
   trade.state = "1";
   const newTrade = new TradeModel(trade);
@@ -121,7 +142,7 @@ const buildFilterTrades = (tradesFilter: Partial<TradeFilter>) => {
   return filter;
 }
 
-
+/*
 export async function snapshot(
     tradesFilter: Partial<TradeFilter>,
     sendResponse: (data: any) => void,
@@ -130,7 +151,7 @@ export async function snapshot(
   const filter: FilterQuery<Trade> = await buildFilterTrades(tradesFilter);
   return await TradeModel.find(filter);
 }
-
+*/
 export async function subscribe(
     tradesFilter: Partial<TradeFilter>,
     sendResponse: (data: any) => void,
@@ -186,22 +207,24 @@ type PutCash = {
   currency: string;
   userId?: string;
   tradeTime?: string;
+  tradeType: string
 };
-export async function putCash(
-  par: PutCash,
-  sendResponse: (data: any) => void,
-  msgId: string,
-  userModif: string,
-  userId: string,
+
+export async function putSpecialTrade(
+    par: PutCash,
+    sendResponse: (data: any) => void,
+    msgId: string,
+    userModif: string,
+    userId: string,
 ): Promise<Trade | ErrorType | undefined> {
   let err_required = ["currency", "amount", "portfolioId"].reduce(
-    (err, fld) => {
-      if (!par[fld as keyof PutCash]) {
-        err += `${fld}, `;
-      }
-      return err;
-    },
-    "",
+      (err, fld) => {
+        if (!par[fld as keyof PutCash]) {
+          err += `${fld}, `;
+        }
+        return err;
+      },
+      "",
   );
   if (!(await PortfolioModel.findById(par.portfolioId))) {
     return { error: `Unknown portfolioId` };
@@ -217,14 +240,13 @@ export async function putCash(
   } else if (!isISODate(par.tradeTime)) {
     return { error: `Wrong tradeTime format` };
   }
-console.log('PAR',par);
   const newTrade = new TradeModel({
     portfolioId: par.portfolioId,
     price: Number(par.amount),
     currency: par.currency,
     userId: par.userId,
     tradeTime: par.tradeTime,
-    tradeType: "31",
+    tradeType: par.tradeType,
     state: 1,
     side: TradeSide.PUT,
     volume: 0,
@@ -235,6 +257,39 @@ console.log('PAR',par);
   const added = await newTrade.save();
   sendEvent("trade.add", added);
   return added;
+}
+export async function putCash(
+  par: PutCash,
+  sendResponse: (data: any) => void,
+  msgId: string,
+  userModif: string,
+  userId: string,
+): Promise<Trade | ErrorType | undefined> {
+
+  return await putSpecialTrade(
+      {...par, tradeType:'31'},
+      sendResponse,
+      msgId,
+      userModif,
+      userId);
+
+}
+
+export async function putDividends(
+    par: PutCash,
+    sendResponse: (data: any) => void,
+    msgId: string,
+    userModif: string,
+    userId: string,
+): Promise<Trade | ErrorType | undefined> {
+
+  return await putSpecialTrade(
+      {...par, tradeType:'20'},
+      sendResponse,
+      msgId,
+      userModif,
+      userId);
+
 }
 
 export async function removeAll({
@@ -272,9 +327,19 @@ export const description: CommandDescription = {
     value: JSON.stringify({ command: "trades.unsubscribe", subscribeId: "?" }),
   },
   addCash: {
-    label: "Add CASH",
+    label: "Put Cash",
     value: JSON.stringify({
       command: "trades.putCash",
+      portfolioId: "?",
+      amount: "?",
+      currency: "?",
+      userId: "",
+    }),
+  },
+  addDividends: {
+    label: "Put Dividends",
+    value: JSON.stringify({
+      command: "trades.putDividends",
       portfolioId: "?",
       amount: "?",
       currency: "?",

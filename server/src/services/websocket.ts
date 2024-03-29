@@ -97,13 +97,15 @@ function chunkString(str: string, size: number) {
 
 const sendResponse = (socket: WebSocket, msg: any) => async (response: any) => {
   //console.log('sendResponse===>',msg, response);
-  const cmd = JSON.stringify({
-    command: msg.command,
-    msgId: msg.msgId,
-    ...(response.error ? { error: response.error } : { data: response }),
-  });
-  logger.log(`< ${cmd}`);
-  sendFragmented(socket, cmd, msg.msgId);
+  if (response) {
+    const cmd = JSON.stringify({
+      command: msg.command,
+      msgId: msg.msgId,
+      ...(response.error ? {error: response.error} : {data: response}),
+    });
+    logger.log(`< ${cmd}`);
+    sendFragmented(socket, cmd, msg.msgId);
+  }
 };
 function sendFragmented(socket: WebSocket, msg: string, msgId: string) {
   const fragments = chunkString(msg, 1024);

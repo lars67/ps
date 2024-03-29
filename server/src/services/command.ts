@@ -8,6 +8,7 @@ import {
   validateRequired,
 } from "../utils";
 import customCommands from "./custom";
+import testsCommands from "./tests"
 import { ErrorType } from "../types/other";
 import { errorMsgs } from "../constants";
 //standart collection with standart handlers
@@ -59,7 +60,7 @@ export async function list(
 
     const userCommands = await CommandModel.find().lean();
 
-    const commands: { label: string; value: string; commandType: string }[] =
+    const commands: { label: string; value: string; commandType: string; extended?:object[] }[] =
       [];
 
     collections.forEach((col) => {
@@ -75,6 +76,7 @@ export async function list(
               label: description[c].label,
               value: description[c].value || `{"command": "${col}.${c}"}`,
               commandType: "custom",
+              extended: description[c].extended,
             });
           });
         }
@@ -84,8 +86,7 @@ export async function list(
     Object.keys(customCommands).map((g) => {
       // @ts-ignore
       const { description, ...rest } = customCommands[g];
-      // console.log('description, value', description,  Object.keys(rest));
-      if (description) {
+       if (description) {
         Object.keys(description).map((c) => {
           commands.push({
             label: description[c].label,
@@ -95,12 +96,32 @@ export async function list(
         });
       }
     });
-    //console.log('user commands', userCommands);
+
+    Object.keys(testsCommands).map((g) => {
+      // @ts-ignore
+      const { description, ...rest } = testsCommands[g];
+      if (description) {
+        Object.keys(description).map((c) => {
+          commands.push({
+            label: description[c].label,
+            value: description[c].value || `{"command": "${g}.${c}"}`,
+            commandType: "tests",
+          });
+        });
+      }
+    });
+
+  /*  console.log('COMMANDS',
+       [ ...userCommands,
+        ...commands,
+        ...tableCommands,]
+    );*/
 
     return [
       ...userCommands,
       ...commands,
       ...tableCommands,
+
     ];
   } catch (err) {
     console.log("ERR", err);

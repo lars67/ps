@@ -6,6 +6,7 @@ import * as symbols from "../services/custom/symbols";
 import * as logs from "../services/custom/logs";
 import * as portfolios from "../services/portfolio";
 import * as trades from "../services/trade";
+import * as tests from "../services/tests/prices";
 //import customServises from '../services/custom';
 //const  { logs, symbols } = customServises;
 
@@ -18,6 +19,7 @@ const handlers: { [key: string]: any } = {
   plays,
   logs,
 
+  tests,
   symbols, //...Object.keys(customServises).reduce((all,s)=>s,{})
 };
 
@@ -37,15 +39,14 @@ export default async function handler(data, sendResponse, userModif, userId) {
     try {
       if (handlers[parts[0]] && isFunction(handlers[parts[0]][parts[1]])) {
         //console.log('handler:', handlers[parts[0]], params, handlers[parts[0]][parts[1]]);
-        return sendResponse(
-          await handlers[parts[0]][parts[1]](
-            params,
-            sendResponse,
-            msgId,
-            userModif,
-            userId,
-          ),
+        const resp = await handlers[parts[0]][parts[1]](
+          params,
+          sendResponse,
+          msgId,
+          userModif,
+          userId,
         );
+        return sendResponse(resp);
       } else {
         console.error(`Handler group "${parts[0]}" not found.`);
         return sendResponse({ error: `Command "${command}" unknown`, msgId });

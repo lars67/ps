@@ -11,12 +11,14 @@ export const tradeType = {
   10: "Prior Reference Price Trade",
   11: "OTC Trade",
   20: "Dividend",
-  21: "Cash flow",
+  21: "Underlaying Cash flow",
   22: "Portfolio correction",
   23: "Underlying correction",
   24: "Contract correction",
   25: "Stock loan",
+  26: "Close trade",
   27: "Booked dividend",
+  31: "Portfolio cash flow"
 };
 
 const tradeTypeKeys = Object.keys(tradeType) as string[];
@@ -29,3 +31,7 @@ export const tradeState = {
   2: "Deleted trade",
   4: "Closed trade",
 };
+
+export const symbolSynonims = {
+  FB: 'META'
+}
