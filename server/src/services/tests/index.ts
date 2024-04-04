@@ -1,4 +1,10 @@
-import * as prices from "./prices";
+//import * as prices from "./prices";
+//import *  as check from "./check";
+
+
+
 export default {
-  prices,
+  //prices,
+  //check
 };
+

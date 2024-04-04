@@ -7,6 +7,8 @@ import * as logs from "../services/custom/logs";
 import * as portfolios from "../services/portfolio";
 import * as trades from "../services/trade";
 import * as tests from "../services/tests/prices";
+
+import * as prices from "../services/custom/prices"
 //import customServises from '../services/custom';
 //const  { logs, symbols } = customServises;
 
@@ -17,9 +19,13 @@ const handlers: { [key: string]: any } = {
   currencies,
   commands,
   plays,
-  logs,
-
+//tests commands
   tests,
+
+//custom full
+  logs, //...Object.keys(customServises).reduce((all,s)=>s,{})
+  prices,
+
   symbols, //...Object.keys(customServises).reduce((all,s)=>s,{})
 };
 

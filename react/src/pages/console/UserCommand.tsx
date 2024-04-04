@@ -1,8 +1,9 @@
 import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button, Card, Modal, Col, Form, Input, Row, message } from "antd";
-import { getCommands } from "../../utils";
+
 import { Command } from "../../types/command";
+import {getCommands} from "../../utils/command";
 
 const { TextArea } = Input;
 
@@ -47,7 +48,7 @@ const UserCommand = ({
 
   const handleOk = useCallback(async () => {
     try {
-      const parsedValue = getCommands(value);
+      const parsedValue = getCommands(value, );
     } catch (err) {
       message.error("JSON format is wrong");
       return;

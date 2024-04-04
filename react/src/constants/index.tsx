@@ -28,6 +28,7 @@ import {
   PATH_LANDING,
   PATH_SITEMAP,
   PATH_SOCIALS,
+    PATH_TEST
 } from './routes';
 
 export const COLOR = {
@@ -134,4 +135,5 @@ export {
   PATH_SOCIALS,
   AUTHENTICATION_ITEMS,
   ERROR_ITEMS,
+    PATH_TEST
 };

@@ -20,6 +20,7 @@ export default class SSEService implements SSEServiceInst {
     eventName: string,
     onData?: (data: any) => void,
     onOpen?: () => void,
+
   ) {
     this.stopped = true;
     this.url = `${process.env.DATA_PROXY}/${endPoint}?${query}`;

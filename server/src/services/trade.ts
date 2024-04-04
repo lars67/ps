@@ -201,96 +201,6 @@ export async function trades(
   return await TradeModel.find(filter);
 }
 */
-type PutCash = {
-  portfolioId: string;
-  amount: string;
-  currency: string;
-  userId?: string;
-  tradeTime?: string;
-  tradeType: string
-};
-
-export async function putSpecialTrade(
-    par: PutCash,
-    sendResponse: (data: any) => void,
-    msgId: string,
-    userModif: string,
-    userId: string,
-): Promise<Trade | ErrorType | undefined> {
-  let err_required = ["currency", "amount", "portfolioId"].reduce(
-      (err, fld) => {
-        if (!par[fld as keyof PutCash]) {
-          err += `${fld}, `;
-        }
-        return err;
-      },
-      "",
-  );
-  if (!(await PortfolioModel.findById(par.portfolioId))) {
-    return { error: `Unknown portfolioId` };
-  }
-  if (!(await CurrencyModel.find({ symbol: par.currency }))) {
-    return { error: `Unknown currency` };
-  }
-  if (!par.userId) {
-    par.userId = userId;
-  }
-  if (!par.tradeTime) {
-    par.tradeTime = new Date().toISOString();
-  } else if (!isISODate(par.tradeTime)) {
-    return { error: `Wrong tradeTime format` };
-  }
-  const newTrade = new TradeModel({
-    portfolioId: par.portfolioId,
-    price: Number(par.amount),
-    currency: par.currency,
-    userId: par.userId,
-    tradeTime: par.tradeTime,
-    tradeType: par.tradeType,
-    state: 1,
-    side: TradeSide.PUT,
-    volume: 0,
-    fee: 0,
-    contract: "CASH",
-  });
-
-  const added = await newTrade.save();
-  sendEvent("trade.add", added);
-  return added;
-}
-export async function putCash(
-  par: PutCash,
-  sendResponse: (data: any) => void,
-  msgId: string,
-  userModif: string,
-  userId: string,
-): Promise<Trade | ErrorType | undefined> {
-
-  return await putSpecialTrade(
-      {...par, tradeType:'31'},
-      sendResponse,
-      msgId,
-      userModif,
-      userId);
-
-}
-
-export async function putDividends(
-    par: PutCash,
-    sendResponse: (data: any) => void,
-    msgId: string,
-    userModif: string,
-    userId: string,
-): Promise<Trade | ErrorType | undefined> {
-
-  return await putSpecialTrade(
-      {...par, tradeType:'20'},
-      sendResponse,
-      msgId,
-      userModif,
-      userId);
-
-}
 
 export async function removeAll({
                                portfolioId,
@@ -326,26 +236,7 @@ export const description: CommandDescription = {
     label: "UnSubscribe Portfolio Trades",
     value: JSON.stringify({ command: "trades.unsubscribe", subscribeId: "?" }),
   },
-  addCash: {
-    label: "Put Cash",
-    value: JSON.stringify({
-      command: "trades.putCash",
-      portfolioId: "?",
-      amount: "?",
-      currency: "?",
-      userId: "",
-    }),
-  },
-  addDividends: {
-    label: "Put Dividends",
-    value: JSON.stringify({
-      command: "trades.putDividends",
-      portfolioId: "?",
-      amount: "?",
-      currency: "?",
-      userId: "",
-    }),
-  },
+
   removeAll: {
     label: "removeAll  Trades for portfolio",
     value: JSON.stringify({

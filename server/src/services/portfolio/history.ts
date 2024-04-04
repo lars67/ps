@@ -15,39 +15,50 @@ import { Portfolio } from "../../types/portfolio";
 
 import moment, { Moment } from "moment";
 import { formatYMD } from "../../constants";
-import {isValidDateFormat, toNum} from "../../utils";
+import {getModelInstanceByIDorName, isValidDateFormat, toNum} from "../../utils";
 
 type Params = {
   _id: string;
-  onDate: string;
-  history: string;
+  from: string;
+  till: string;
+  detail: string; //0|1
 };
-export async function snapshot(
-  { _id, onDate, history }: Params,
+export async function history(
+  { _id, from, till, detail }: Params,
   sendResponse: (data: any) => void,
   msgId: string,
 ): Promise<{}> {
   if (!_id) {
     return { error: "Portolio _id is required" };
   }
-  if (onDate) {
-    if (!isValidDateFormat(onDate)) {
-      return { error: "Wrong onDate" };
+
+
+  const {_id:realId,error, instance:portfolio} = await  getModelInstanceByIDorName<Portfolio>(_id, PortfolioModel);
+  if (error) {
+    return error;
+  }
+  if (from) {
+    if (!isValidDateFormat(from)) {
+      return { error: "Wrong 'from'" };
     }
-    onDate = `${onDate.split("T")[0]}T23:59:59`;
+    from = `${from.split("T")[0]}T00:00:00`;
+  }
+  if (till) {
+    if (!isValidDateFormat(till)) {
+      return { error: "Wrong 'till'" };
+    }
+    till = `${till.split("T")[0]}T23:59:59`;
   } else {
-    onDate = moment().format(`${formatYMD}T23:59:59`);
+    till = moment().format(`${formatYMD}T23:59:59`);
   }
 
   const allTrades = await TradeModel.find({
-    portfolioId: _id,
-    state: { $in: [1, 21] },
-    ...(onDate && { tradeTime: { $lt: onDate } }),
+    portfolioId: realId,
+    state: { $in: [1] },
+    ...(till && { tradeTime: { $lt: till } }),
   })
     .sort({ tradeTime: 1 })
     .lean();
-
-  const portfolio = (await PortfolioModel.findById(_id)) as Portfolio;
   const { startDate, endDate, uniqueSymbols, uniqueCurrencies } =
     await checkPortfolioPricesCurrencies(allTrades, portfolio.currency);
   console.log("P", startDate, uniqueSymbols, uniqueCurrencies);
@@ -59,18 +70,17 @@ export async function snapshot(
   let invested = 0;
   let tradedSymbols: string[] = [];
   let days = [];
-  const rows = [{}];
+  const rows = [];
   let nav = 0;
   for (const trade of allTrades) {
-
     if (!trade.tradeTime.includes(currentDay)) {
-      let {inv, notTradeChanges} = addNotTradesItems(
+      let { inv, notTradeChanges } = addNotTradesItems(
         currentDay,
         portfolio.currency,
         tradedSymbols,
         oldPortfolio,
       );
-      notTradeChanges.forEach(t=> rows.push(t))
+      notTradeChanges.forEach((t) => rows.push(t));
       days.push({
         date: currentDay,
         invested: invested + inv,
@@ -105,14 +115,14 @@ export async function snapshot(
         const dir = trade.side === "B" ? -1 : 1;
         let newVolume =
           (oldPortfolio[symbol] as Trade).volume - dir * trade.volume;
-        const priceN = toNum(trade.price)
+        const priceN = toNum(trade.price);
         const cashChange =
-          dir * priceN * trade.rate * trade.volume - trade.fee* trade.rate;
+          dir * priceN * trade.rate * trade.volume - trade.fee * trade.rate;
         (oldPortfolio[symbol] as Trade).volume = newVolume;
         (oldPortfolio[symbol] as Trade).price = trade.price;
         (oldPortfolio[symbol] as Trade).rate = trade.rate;
         cash += cashChange;
-        const investedSymbol=newVolume * priceN * trade.rate
+        const investedSymbol = newVolume * priceN * trade.rate;
         invested += investedSymbol; //investedTrade+investedBefore
         nav = invested + cash;
         rows.push({
@@ -129,19 +139,20 @@ export async function snapshot(
           nav,
           invested,
           investedSymbol,
-          cashChangeSymbol:cashChange
+          cashChangeSymbol: cashChange,
         });
         break;
       case "31":
       case "20":
-        cash +=
-          priceToBaseCurrency(
+        const cashPut =  trade.price* trade.rate
+        cash += cashPut
+      /*    priceToBaseCurrency(
             trade.price,
             trade.tradeTime,
             trade.currency,
             portfolio.currency,
-          ) || 0;
-        nav += cash;
+          ) || 0;*/
+        nav += cashPut;
         rows.push({
           operation: "PUT",
           tradeTime: trade.tradeTime,
@@ -153,17 +164,17 @@ export async function snapshot(
         });
     }
   }
-  let {inv, notTradeChanges} = addNotTradesItems(
+  let { inv, notTradeChanges } = addNotTradesItems(
     currentDay,
     portfolio.currency,
     tradedSymbols,
     oldPortfolio,
   );
-  notTradeChanges.forEach(t=> rows.push(t))
+  notTradeChanges.forEach((t) => rows.push(t));
   days.push({
     date: currentDay,
     invested: invested + inv,
-    investedWithoutTrades:inv,
+    investedWithoutTrades: inv,
     cash,
     nav: nav + inv,
   });
@@ -173,28 +184,37 @@ export async function snapshot(
       delete oldPortfolio[p];
     }
   });
-  const lastDay = onDate.split("T")[0];
-  if (lastDay > currentDay && !history) {
-    let {inv, notTradeChanges} = addNotTradesItems(
-      onDate.split("T")[0],
+  const lastDay = till.split("T")[0];
+  if (lastDay > currentDay) {
+    let { inv, notTradeChanges } = addNotTradesItems(
+      till.split("T")[0],
       portfolio.currency,
       [],
       oldPortfolio,
     );
-    notTradeChanges.forEach(t=> rows.push(t))
+    notTradeChanges.forEach((t) => rows.push(t));
     days.push({
       date: lastDay,
       invested: inv,
       cash,
-      nav: inv+cash,
+      nav: inv + cash,
     });
-
   }
 
-  if (!history) {
-    days.splice(-0, days.length - 1);
+  const result = {};
+  const withDetail = Number(detail) !== 0;
+  if (from) {
+    const fromDate  = from.split('T').shift() as string;
+    return {
+      days: days.filter((d) => d.date >= fromDate),
+      ...(withDetail && {
+        rows: rows.filter(
+          (d: { tradeTime?: string }) => (d.tradeTime as string) >= from,
+        ),
+      }),
+    };
   }
-  return { days , rows };
+  return { days, ...(withDetail && { rows }) };
 }
 
 function addNotTradesItems(
@@ -204,7 +224,7 @@ function addNotTradesItems(
   oldPortfolio: Record<string, Partial<Trade>>,
 ) {
   let inv = 0;
-  const changes: object[]=[];
+  const changes: object[] = [];
   if (tradedSymbols.length < Object.keys(oldPortfolio).length) {
     inv = Object.keys(oldPortfolio)
       .filter((k) => !tradedSymbols.includes(k))
@@ -217,10 +237,18 @@ function addNotTradesItems(
           return 0;
         }
         const investedSymbol = rate * pi.volume * price;
-        changes.push({currentDay, symbol, currency:pi.currency, price, rate, volume:pi.volume,investedSymbol })
+        changes.push({
+          currentDay,
+          symbol,
+          currency: pi.currency,
+          price,
+          rate,
+          volume: pi.volume,
+          investedSymbol,
+        });
 
         return sum + rate * pi.volume * price;
       }, 0);
   }
-  return {inv, notTradeChanges:changes};
+  return { inv, notTradeChanges: changes };
 }

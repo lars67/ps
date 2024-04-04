@@ -24,6 +24,7 @@ export type Trade = {
   comment: string;
   state: string;
   invested?: number;
+  closed?: boolean
 
 };
 

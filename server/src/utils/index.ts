@@ -4,11 +4,14 @@ import mongoose, {
   Schema,
   model,
   models,
-  connect,
+  connect, FilterQuery,
 } from "mongoose";
-import { dbConnection } from "@/db";
-import { Trade } from "@/types/trade";
-import { validationsAddRequired } from "@/services/portfolio";
+;
+import {errorMsgs} from "../constants";
+import {ErrorType} from "@/types/other";
+const { ObjectId } = require('mongodb');
+
+
 const fs = require("fs");
 const path = require("path");
 
@@ -133,6 +136,63 @@ export const isValidDateFormat = (inputString: string) => {
   return regex.test(inputString);
 };
 
+export const isValidObjectId = (str:string) => {
+  return ObjectId.isValid(str);
+}
+export const getModelInstanceByIDorName = async <T >(_id: string, model:Model<T>) => {
+  let  instance = null;
+  let error = null;
+  try {
+    if (isValidObjectId(_id)) {
+      instance = (await model.findById(_id)) as T;
+    }
+    if (!instance) {
+      instance = (await model.findOne({name: _id})) as T;
+      if (instance) {
+        _id = (instance as T & {_id: string})._id;
+      }
+    }
+    if (!instance) {
+      error = {error: "Can't find record with this _id or name"}
+    }
+  } catch(err) {
+    error = {error: "Error during find by _id or name"}
+  }
+
+  return {_id, error, instance: instance as T}
+}
+
+
+
+export const getRealId = async <T>(_id: string, model: Model<T>, nameField: string = 'name') => {
+  let error = null;
+  try {
+    if (isValidObjectId(_id)) {
+      const instance = (await model.findById(_id)) as T;
+      if (instance) {
+        return _id;
+      }
+    }
+    const filter = {[nameField]:_id} as  FilterQuery<T>
+    const instance = (await model.findOne(filter)) as T;
+    if (instance) {
+      return (instance as T & {_id: string})._id;
+    }
+    return { error: "Can't find record with this _id or name" };
+  } catch (err) {
+    return { error: "Error during find by _id or name" };
+  }
+};
+
+export const checkUnique= async <T>( model: Model<T>,value: string, field: string= 'name')=> {
+  const filter = {[field]:value} as  FilterQuery<T>
+  const instance = (await model.findOne(filter)) as T;
+  if (instance) {
+     return errorMsgs.unique(value, field)
+  }
+  return null;
+}
+
 export const toNum = (n: number) => n;
 
 export const extractUniqueFields = <T>(data: T[], field: keyof T) => {
@@ -163,3 +223,7 @@ export const divideArray = <T>(
   }
   return [subarray1, subarray2];
 };
+
+export function isErrorType(variable: any): variable is ErrorType {
+  return typeof variable === 'object' && typeof variable.error === 'string';
+}

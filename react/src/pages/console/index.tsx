@@ -11,7 +11,7 @@ const initialItems: TabsProps['items'] = [
   {
     key: 'default-tab',
     label: 'Tab 1',
-    children: <ConsoleTab/>,
+    children: <ConsoleTab tabIndex={1}/>,
   },
  ];
 export const historyCommands:LabelValue[] =[];
@@ -26,7 +26,8 @@ export default memo(() => {
   const add = () => {
     const newActiveKey = `newTab${++newTabIndex.current}`;
     const newPanes = [...items];
-    newPanes.push({label: `Tab ${1+newTabIndex.current}`, children: <ConsoleTab/>, key: newActiveKey});
+    const tabIndex= 1+newTabIndex.current
+    newPanes.push({label: `Tab ${tabIndex}`, children: <ConsoleTab tabIndex={tabIndex}/>, key: newActiveKey});
     setItems(newPanes);
     setActiveKey(newActiveKey);
 

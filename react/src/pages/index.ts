@@ -1,5 +1,6 @@
 import Console from './console';
 import Home from './Home';
+import Test from './test'
 import {
 
   SignInPage,
@@ -14,4 +15,5 @@ export {
   Home,
    SignInPage,
     ErrorPage,
+    Test
 };

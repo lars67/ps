@@ -1,13 +1,16 @@
-import { Portfolio, PortfolioWithID } from "../types/portfolio";
+import { Portfolio, PortfolioWithID } from "@/types/portfolio";
 import { PortfolioModel } from "../models/portfolio";
 import { FilterQuery } from "mongoose";
 import { CommandDescription } from "@/types/custom";
-import {validateRequired} from "../utils";
+import {checkUnique, getRealId, isErrorType, validateRequired} from "../utils";
 
 import {errorMsgs} from "../constants";
-import {ErrorType} from "../types/other";
+import {ErrorType} from "@/types/other";
+import {Trade} from "@/types/trade";
 
-export  {snapshot} from './portfolio/snapshot';
+import {PutCash, putSpecialTrade} from "../services/portfolio/helper";
+
+export  {history} from './portfolio/history';
 export  {positions} from './portfolio/positions';
 
 export const validationsAddRequired:string[] = ['name','currency', 'baseInstrument'];
@@ -34,6 +37,8 @@ export async function add(
   if (err_required) {
     return errorMsgs.required(err_required);
   }
+  const error  = await checkUnique<Portfolio>(PortfolioModel, portfolio.name, 'name');
+  if (error) return error
 
   if (!portfolio.userId) {
     portfolio.userId = userId;
@@ -50,7 +55,11 @@ export async function update(
   if (!_id) {
     return errorMsgs.required1('_id')
   }
-  return await PortfolioModel.findByIdAndUpdate(_id, other,{new: true});
+  const realId = await getRealId<Portfolio>(_id as string,PortfolioModel);
+  if (  isErrorType(realId)){
+    return realId;
+  }
+  return await PortfolioModel.findByIdAndUpdate(realId, other,{new: true});
 }
 
 export async function remove({
@@ -61,28 +70,62 @@ export async function remove({
   if (!_id) {
     return errorMsgs.required1('_id')
   }
-  return await PortfolioModel.findByIdAndDelete(_id);
+  const realId = await getRealId<Portfolio>(_id as string,PortfolioModel);
+  console.log('realId',realId, typeof realId );
+  if (  isErrorType(realId)){
+    return realId;//error mean
+  }
+  const result = await PortfolioModel.findByIdAndDelete(realId);
+  if (result) {
+    return result
+  } else {
+    return errorMsgs.notExists(realId)
+  }
 }
 
-export async function clear10({
-  _id,
-}: {
-  _id: string;
-}): Promise<Portfolio | null> {
-  console.log("from collection");
-  //remove all trades
-  return await PortfolioModel.findById(_id);
+
+
+export async function putCash(
+    par: PutCash,
+    sendResponse: (data: any) => void,
+    msgId: string,
+    userModif: string,
+    userId: string,
+): Promise<Trade | ErrorType | undefined> {
+
+  return await putSpecialTrade(
+      {...par, tradeType:'31'},
+      sendResponse,
+      msgId,
+      userModif,
+      userId);
+
 }
+
+export async function putDividends(
+    par: PutCash,
+    sendResponse: (data: any) => void,
+    msgId: string,
+    userModif: string,
+    userId: string,
+): Promise<Trade | ErrorType | undefined> {
+
+  return await putSpecialTrade(
+      {...par, tradeType:'20'},
+      sendResponse,
+      msgId,
+      userModif,
+      userId);
+
+}
+
 
 export const description: CommandDescription = {
-  clear10: {
-    label: "Clear portfolio",
-    value: JSON.stringify({ command: "portfolios.clear10", _id: "?" }),
-  },
-  snapshot: {
-    label: "Snapshot portfolio",
-    value: `${JSON.stringify({ command: "portfolios.snapshot", _id: "?", onDate:"", history:"" })}
-  Get portfolio for  portfolio by _id till onDate
+
+  history: {
+    label: "Portfolio History",
+    value: `${JSON.stringify({ command: "portfolios.history", _id: "?", from:"", till:"", detail:0 })}
+  Get portfolio history 
   onDate = '': last trade date, or 'YYYY-MM-DD' 
   history: '' only for onDate
            'trade'  trade dates
@@ -91,11 +134,30 @@ export const description: CommandDescription = {
     `,
   },
   positions: {
-    label: "Portfolio positions",
-    value: `${JSON.stringify({ command: "portfolios.positions", _id: "?" , requestType:"0", marketPrice:"4", basePrice:"4"})}`,
+    label: "Portfolio Positions",
+    value: `${JSON.stringify({ command: "portfolios.positions", _id: "?" , requestType:"0", marketPrice:"4", basePrice:"4", emulator:true})}`,
     extended: [{button:'portfolioEmulator'}]
+  },
 
+  putCash: {
+    label: "Portfolio Put Cash",
+    value: JSON.stringify({
+      command: "portfolios.putCash",
+      portfolioId: "?",
+      amount: "?",
+      currency: "?",
+      userId: "",
+    }),
+  },
 
-
+  putDividends: {
+    label: "Portfolio Put Dividends",
+    value: JSON.stringify({
+      command: "portfolios.putDividends",
+      portfolioId: "?",
+      amount: "?",
+      currency: "?",
+      userId: "",
+    }),
   },
 };

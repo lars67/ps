@@ -1,6 +1,7 @@
 import { Model, Schema, model, models } from "mongoose";
 import { Trade } from "@/types/trade";
 
+
 const TradeSchema = new Schema<Trade>({
   tradeId: { type: String },
   side: { type: String }, //B.S,P,W
@@ -24,6 +25,7 @@ const TradeSchema = new Schema<Trade>({
   orderId: { type: String },
   comment: { type: String },
   state: { type: String },
+  closed: {type: Boolean}
 });
 
 export const TradeModel: Model<Trade> =

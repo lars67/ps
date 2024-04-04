@@ -13,7 +13,7 @@ import moment, { Moment } from "moment";
 import { formatYMD } from "../../constants";
 import {
   divideArray,
-  extractUniqueFields,
+  extractUniqueFields, getModelInstanceByIDorName,
   isValidDateFormat,
   toNum,
 } from "../../utils";
@@ -81,10 +81,12 @@ export async function positions(
   if (!_id) {
     return { error: "Portolio _id is required" };
   }
-
-  const portfolio = (await PortfolioModel.findById(_id)) as Portfolio;
+  const {_id:realId,error, instance:portfolio} = await  getModelInstanceByIDorName<Portfolio>(_id, PortfolioModel);
+  if (error) {
+    return error
+  }
   if (!portfolio) {
-    return { error: `Portfolio with _id=${_id} is not exists` };
+    return { error: `Portfolio with _id=${realId} is not exists` };
   }
   if (requestType === "2") {
     if (!subscribeId) {
@@ -106,7 +108,7 @@ export async function positions(
   }
 
   const allTrades = await TradeModel.find({
-    portfolioId: _id,
+    portfolioId: realId,
     state: { $in: [1, 21] },
   })
     .sort({ tradeTime: 1 })
@@ -194,13 +196,16 @@ async function getPositions(allTrades: Trade[], portfolio: Portfolio) {
         break;
       case "31":
       case "20":
+        const cashPut =  trade.price* trade.rate
+        cash += cashPut
+/*
         cash +=
           priceToBaseCurrency(
             trade.price,
             trade.tradeTime,
             trade.currency,
             portfolio.currency,
-          ) || 0;
+          ) || 0;*/
     }
   }
   let currentDay = endDate.split("T")[0];

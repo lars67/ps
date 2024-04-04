@@ -97,9 +97,10 @@ export async function list(
       }
     });
 
-    Object.keys(testsCommands).map((g) => {
+ /*   Object.keys(testsCommands).map((g) => {
       // @ts-ignore
       const { description, ...rest } = testsCommands[g];
+//      console.log(description, rest);
       if (description) {
         Object.keys(description).map((c) => {
           commands.push({
@@ -110,7 +111,7 @@ export async function list(
         });
       }
     });
-
+*/
   /*  console.log('COMMANDS',
        [ ...userCommands,
         ...commands,

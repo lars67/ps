@@ -5,6 +5,7 @@
   "homepage": "https://top.softcapital.com/ps2console",
   "dependencies": {
     "@ant-design/icons": "^5.3.3",
+    "@codemirror/lang-javascript": "^6.2.2",
     "@codemirror/lang-json": "^6.0.1",
     "@codemirror/legacy-modes": "^6.3.3",
     "@reduxjs/toolkit": "^2.2.1",
@@ -16,6 +17,7 @@
     "@types/node": "^16.18.86",
     "@types/react": "^18.2.61",
     "@types/react-dom": "^18.2.19",
+    "@uiw/codemirror-themes": "^4.21.25",
     "@uiw/react-codemirror": "^4.21.24",
     "antd": "^5.14.2",
     "prettier": "^3.2.5",

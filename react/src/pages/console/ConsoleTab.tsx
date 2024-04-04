@@ -16,7 +16,10 @@ import {
 import useWebSocket, { ReadyState } from "react-use-websocket";
 import { useAppSelector } from "../../store/useAppSelector";
 
-import CodeMirror, {EditorView, ReactCodeMirrorRef} from "@uiw/react-codemirror";
+import CodeMirror, {
+  EditorView,
+  ReactCodeMirrorRef,
+} from "@uiw/react-codemirror";
 import { json } from "@codemirror/lang-json";
 import "./style.css";
 import { commandTypes } from "./helper";
@@ -25,7 +28,7 @@ import { JsonToTable } from "react-json-to-table";
 import { LabelValue } from "../../types/LabelValue";
 import UserCommand from "./UserCommand";
 import Forms from "./forms";
-import {getCommands, isUserCommand} from "../../utils";
+import { isUserCommand } from "../../utils";
 import { historyCommands } from "./index";
 
 import HistoryCommands from "../../components/HistoryCommands";
@@ -33,6 +36,11 @@ import OptionsPopup from "../../components/OptionsPopup";
 import ButtonRemoveUserCommand from "../../components/ButtonRemoveUserCommand";
 import CommandBar from "../../components/CommandBar";
 import WindowExtend from "../../components/WindowExtend";
+import themeCodeMirror from "./themeCodeMirror";
+import UpDownBtn from "../../components/UpDownBtn";
+import { processTestCommand, testCommands } from "../../testCommands";
+import TestResults, {TestItem} from "../../components/TestResults";
+import {getCommands, preprocessCommand} from "../../utils/command";
 
 type WSMsg = {
   data: string;
@@ -41,10 +49,7 @@ type WSMsg = {
   index: number;
 };
 
-
-
-
-const Console = () => {
+const Console = ({tabIndex}:{tabIndex:number}) => {
   const [loading, setLoading] = useState(false);
   const token = useAppSelector((state) => state.user.token);
   const modif = useRef(Math.round(10000 * Math.random()));
@@ -66,12 +71,20 @@ const Console = () => {
   const [actualCommandsFiltered, setActualCommandsFiltered] = useState<
     Command[]
   >([]);
-  const { clearAlwaysResult, clearAlwaysCommand } = useAppSelector((state) => state.options);
+  const { clearAlwaysResult, clearAlwaysCommand } = useAppSelector(
+    (state) => state.options,
+  );
   const [commandOption, setCommandOption] = useState<Command | Command[]>();
-  const [commandBar, setCommandBar] = useState<Command>()
-  const [showWindow, setShowWindow] = useState(false)
-
-
+  const [commandBar, setCommandBar] = useState<Command>();
+  const [showWindow, setShowWindow] = useState(false);
+  const [displayPanes, setDisplayPanes] = useState<boolean[]>([true, true]);
+  const editorRef = useRef<EditorView | null>(null);
+  const [testObservers, setTestObservers] = useState<
+    Record<string, (value: string) => void>
+  >({});
+  const variables = useRef<Record<string, any>>({});
+  const ncom = useRef<number>(1);
+  const [testResultPopup, setTestResultPopup] = useState<TestItem[] | null >(null)
   const onMessageCallback = (event: MessageEvent<string>) => {
     if (event.data !== "undefined") {
       const message = JSON.parse(event.data) as WSMsg;
@@ -81,7 +94,7 @@ const Console = () => {
         console.log("Wrong command absent msgId");
         return "";
       }
-    //  console.log(`msg > ${msgId}, ${total}, ${index}`);
+      //  console.log(`msg > ${msgId}, ${total}, ${index}`);
       if (!fragments.current[msgId]) {
         fragments.current[msgId] = [];
       }
@@ -94,32 +107,35 @@ const Console = () => {
         delete fragments.current[msgId];
         if (msgId === "ws_commands") {
           const commands = JSON.parse(assembledMessage).data;
-          setCommands(commands);
+
+          setCommands([...commands, ...testCommands]);
 
           console.log("ws_commads");
           return;
         }
         const s = JSON.stringify(JSON.parse(assembledMessage), null, 2);
-        setResult((result) => result.concat(s + "\n\n"));
+        !variables.current?._mode?.hide && setResult((result) => result.concat(s + "\n\n"));
+
+        if (testObservers[msgId]) testObservers[msgId](result);
       }
     }
   };
 
   const { sendJsonMessage, readyState, getWebSocket } = useWebSocket(url, {
     onMessage: onMessageCallback,
-    retryOnError: true,
-    shouldReconnect: (event: WebSocketEventMap["close"]) => {
+   // retryOnError: true,
+   // shouldReconnect: (event: WebSocketEventMap["close"]) => {
       //console.log('REEEEEEEEEEEEEEEEEEE22EEEEEEEEEECONNECT', needReconnect.current)
-      return false; //needReconnect.current
-    },
-    reconnectInterval: 5000,
-    reconnectAttempts: 3,
+    //  return false; //needReconnect.current
+   // },
+    //reconnectInterval: 5000,
+    //reconnectAttempts: 3,
   });
 
   useEffect(() => {
     return () => {
-      needReconnect.current = false;
-      console.log("RECONNNECT TO FALS2222E");
+      //needReconnect.current = false;
+      //console.log("RECONNNECT TO FALS2222E");
     };
   }, []);
 
@@ -130,36 +146,75 @@ const Console = () => {
 
   const handleSend = useCallback(async () => {
     let parsedValue: any = {};
+    let answer;
+    const testResults:TestItem[] = []
+    variables.current = {};
     try {
-      const commands = getCommands(value);
-      console.log('VVV', value)
+      const commands = getCommands(value, false);
+      console.log("VVV", value);
       if (commands.length <= 0) {
         message.open({
           type: "error",
-          content: "Command json is wrong",
+          content: "Command json is wrong!!!!!",
         });
         return;
       }
-      for (const parsedValue of commands) {
-        setLoading(true);
-        if(parsedValue.emulator === '1') {
-          setShowWindow(true)
-        }
-        //fragments.current = [];
+      setLoading(true);
+      for (const notparsedValue of commands) {
 
-        msgId.current++;
-        const cmd = { ...parsedValue, msgId: msgId.current };
-        if (clearAlwaysResult) {
-          setResult("");
+  const parsedValue = JSON.parse(preprocessCommand(notparsedValue, variables.current))
+
+
+        if (parsedValue.command.startsWith("tests.")) {
+
+          const resp = await processTestCommand(
+            variables.current,
+            parsedValue,
+            (newVariables: Record<string, any>) => {
+              Object.keys(newVariables).forEach(
+                (p: string) => (variables.current[p] = newVariables[p]),
+              );
+            },
+          );
+          if (resp) {
+            setResult((result) =>
+              result.concat(JSON.stringify(resp, null, 2) + "\n\n"),
+            );
+            if (parsedValue.command === "tests.check" ) {
+              testResults.push({description: parsedValue.description || parsedValue.label, result: resp.data})
+            }
+            if (resp.data  as string === 'break') {
+              setLoading(false);
+              break;
+            }
+          }
+          setLoading(false);
+        } else {
+          //fragments.current = [];
+
+          msgId.current++;
+          const cmd = { ...parsedValue, msgId: msgId.current };
+
+          if (clearAlwaysResult) {
+            setResult("");
+          }
+          console.log('cmd sent', cmd);
+          const answer: string = (await sendJsonMessageSync(cmd)) as string;
+          console.log('answer recieved');
+          const parsedAnswer = JSON.parse(answer);
+          if (parsedValue._as) {
+            variables.current[parsedValue._as] = parsedAnswer.data || {error:parsedAnswer.error};
+          }
         }
-        await sendJsonMessageSync(cmd);
-      };
-      historyCommands.unshift({ value, label: commandLabel });
+      }
+      if (testResults.length > 0) setTestResultPopup(testResults)
+      historyCommands.unshift({ value, label: commandLabel|| `Command #${tabIndex}-${ncom.current++}` });
       if (historyCommands.length > 12) {
         historyCommands.pop();
       }
-      setHistoryMsgId('');
+      setHistoryMsgId("");
     } catch (err) {
+      console.log(err)
       message.open({
         type: "error",
         content: "Command json is wrong",
@@ -167,9 +222,7 @@ const Console = () => {
       setLoading(false);
       return;
     }
-
-  }, [value, commandLabel, clearAlwaysResult,  setHistoryMsgId]);
-
+  }, [value, commandLabel, clearAlwaysResult, setHistoryMsgId]);
 
   const [connectionStatusText, connectionStatus]: [
     string,
@@ -189,7 +242,7 @@ const Console = () => {
     };
     return statusMap[readyState] || ["Unknown", undefined]; // Handle undefined case
   }, [readyState]);
-  const canWork = connectionStatus === "success"  && value!=='';
+  const canWork = connectionStatus === "success" && value !== "";
 
   const onChange = useCallback((val: string) => {
     setValue(val);
@@ -202,20 +255,23 @@ const Console = () => {
   const handleChangeCommandType = useCallback(
     (value: string) => {
       setCommandTypeFilter(value);
-      setCommand('');
-      setValue('')
-      setCommandOption(undefined)
-    },[],
+      setCommand("");
+      clearAlwaysCommand && setValue("");
+      setCommandOption(undefined);
+    },
+    [clearAlwaysCommand],
   );
   const handleChangeCommand = useCallback(
     (value: string, option: Command | Command[]) => {
       setCommand(value);
-      setValue(oldValue=> clearAlwaysCommand ? value : oldValue+'\n'+ value);
+      setValue((oldValue) =>
+        clearAlwaysCommand ? value : oldValue + "\n" + value,
+      );
       setCommandOption(option);
       setCommandLabel((option as Command).label || "");
       //setShowHelpForm(true);
-      if((option as Command ).extended) {
-        setCommandBar(option as Command)
+      if ((option as Command).extended) {
+        setCommandBar(option as Command);
       }
     },
     [actualCommands, clearAlwaysCommand],
@@ -244,7 +300,7 @@ const Console = () => {
         ar.map((a) => {
           const json = JSON.parse(a);
           jsons.push(json);
-          history.push({ label: json.command, value: json.msgId });
+          history.push({ label: json.command , value: json.msgId });
         });
         return [jsons, history];
       } catch (er) {
@@ -261,7 +317,7 @@ const Console = () => {
   async function sendJsonMessageSync(o: object) {
     return new Promise((resolve, reject) => {
       const socket = getWebSocket();
-
+console.log('socket?.readyState', socket?.readyState);
       if (socket) {
         const handleMessageMsg = (event: MessageEvent) => {
           const message = JSON.parse(event.data) as WSMsg;
@@ -270,13 +326,13 @@ const Console = () => {
           if (!fragmentsMsg.current[msgId]) {
             fragmentsMsg.current[msgId] = [];
           }
-          console.log(
+          /* console.log(
             ">>>>>>>>>",
             msgId,
             total,
             index,
             fragmentsMsg.current[msgId].length,
-          );
+          );*/
           fragmentsMsg.current[msgId][index] = data;
           if (fragmentsMsg.current[msgId].length === Number(total)) {
             const assembledMessage = fragmentsMsg.current[msgId].join("");
@@ -291,6 +347,7 @@ const Console = () => {
         socket.addEventListener("message", handleMessageMsg);
 
         socket.onerror = (error: Event) => {
+
           reject(error);
         };
         sendJsonMessage(o);
@@ -302,10 +359,14 @@ const Console = () => {
 
   const sendMsg = useCallback(async (cmd: object) => {
     msgId.current++;
-    console.log("SendMSG", { ...cmd, msgId: msgId.current });
-    const r = await sendJsonMessageSync({ ...cmd, msgId: msgId.current });
-    console.log("SYYYYYYYYYYYYYYNC", r);
-    return r;
+    //console.log("SendMSG", { ...cmd, msgId: msgId.current });
+    try {
+      const r = await sendJsonMessageSync({...cmd, msgId: msgId.current});
+      //console.log("SYYYYYYYYYYYYYYNC", r);
+      return r;
+    } catch(er) {
+      console.log('SendMsg error', er);
+    }
   }, []);
 
   const handleSave = useCallback(async () => {
@@ -372,9 +433,9 @@ const Console = () => {
   const handleRemove = useCallback(
     (cmd: Command) => {
       setCommands((commands) => commands.filter((c) => c._id !== cmd._id));
-      setCommand('');
-      setValue('')
-      setCommandOption(undefined)
+      setCommand("");
+      setValue("");
+      setCommandOption(undefined);
     },
     [commands],
   );
@@ -387,6 +448,8 @@ const Console = () => {
     [setValue],
   );
 
+  /*
+    ref={resultPaneScroll}
   const resultPaneScroll = useCallback((editor: ReactCodeMirrorRef) => {
     if (!editor || !editor.state?.doc) {
       console.log(`scrollDocToView return`)
@@ -405,146 +468,240 @@ const Console = () => {
     // ... calc selection
 
 
-  }, [])
+  }, [])*/
+
+  const handleUpDown0 = useCallback(() => {
+    if (displayPanes[0] && displayPanes[1]) {
+      setDisplayPanes([true, false]);
+    } else {
+      setDisplayPanes([true, true]);
+    }
+  }, [displayPanes]);
+
+  const handleUpDown1 = useCallback(() => {
+    if (displayPanes[0] && displayPanes[1]) {
+      setDisplayPanes([false, true]);
+    } else {
+      setDisplayPanes([true, true]);
+    }
+  }, [displayPanes]);
+
+  const getCodeMirrorStyles = () => {
+    const codeMirrorStyles = Array.from(document.styleSheets).reduce(
+      (styles, styleSheet) => {
+        if (styleSheet.href && styleSheet.href.includes("codemirror")) {
+          const rules = Array.from(styleSheet.cssRules || []);
+          rules.forEach((rule) => (styles += rule.cssText));
+        }
+        return styles;
+      },
+      "",
+    );
+
+    return codeMirrorStyles;
+  };
+
+  const getStyledHTML = (): string => {
+    if (editorRef.current) {
+      //const styledHTML = editorRef.current.state.doc.toString();
+      const styledHTML = `
+        <html>
+          <head>
+            <style>
+              ${getCodeMirrorStyles()}
+            </style>
+          </head>
+          <body>
+            ${editorRef.current.dom.innerHTML}
+          </body>
+        </html>
+      `;
+      return styledHTML;
+    }
+    return "";
+  };
+
+  const saveStyledHTML = () => {
+    const styledHTML = getStyledHTML();
+    const blob = new Blob([styledHTML], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "styled-content.html";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="playground-container">
-      <div className="cm-header">
-        <HistoryCommands onGetFromHistory={handleGetFromHistory} />
-        <Select
-          value={commandTypeFilter}
-          onChange={handleChangeCommandType}
-          className="row-item"
-        >
-          {commandTypes.map((option, index) => (
-            <Select.Option key={`cmdt-${index}`} value={option.value}>
-              {option.label}
-            </Select.Option>
-          ))}
-        </Select>
-        <Tooltip arrow title={"Commands group filter"}>
-          <Select
-            value={command}
-            onChange={handleChangeCommand}
-            className="row-item"
-            showSearch
-            onSearch={handleFilter}
-            style={{ width: 200 }}
-            placeholder="Search to Select"
-            optionFilterProp="label"
-            filterOption={false}
-          >
-            {actualCommandsFiltered.map((option, index) => (
-              <Select.Option
-                key={`opt-${index}`}
-                value={option.value}
-                commandType={option.commandType}
-                description={option.description}
-                extended={option.extended}
-                _id={option._id}
-                label={option.label}
-              >
-                {option.label}
-              </Select.Option>
-            ))}
-          </Select>
-        </Tooltip>
-        <Button
-          type="primary"
-          size="middle"
-          loading={loading}
-          onClick={handleSend}
-          disabled={!canWork}
-        >
-          Send
-        </Button>
-        <Button size="middle" disabled={!canWork} onClick={handleSave} className="button-margin">
-          Save
-        </Button>
-        <ButtonRemoveUserCommand
-          commandOption={commandOption as Command}
-          onRemove={handleRemove}
-        />
-        <OptionsPopup />
-        {commandBar && <CommandBar commandbar={commandBar}/>}
-        <div className="spacer" />
-        <Tooltip title={connectionStatusText}>
-          <>
-            Server:
-            <Badge
-                className="connection-badge"
-                status={connectionStatus}
-                text={''}
-            />
-          </>
-        </Tooltip>
-        <Button type="default" size="middle" onClick={handleClear}>
-          Clear
-        </Button>
-      </div>
-
-      <div className="playground-panel">
-        <CodeMirror
-          className="cm-outer-container"
-          value={value}
-          extensions={[json()]}
-          onChange={onChange}
-        />
-      </div>
-      <div className="cm-header">
-        <h4>Results</h4>
-        <Tooltip title={"JSON/Table view"}>
-          <Switch
-            checked={showTable}
-            className="row-item-mar"
-            onChange={handleShowTable}
-          />
-        </Tooltip>
-        Show result:
-        <Select
-          value={historyMsgId}
-          onChange={handleChangeHistoryMsgId}
-          className="row-item"
-        >
-          {history.map((option, index) => (
-            <Select.Option key={`hist-${index}`} value={option.value}>
-              {option.label}
-            </Select.Option>
-          ))}
-        </Select>
-        <div className="spacer" />
-        <Button type="default" size="middle" onClick={handleClearResult}>
-          Clear
-        </Button>
-      </div>
-      <div className="playground-panel2">
-        {showTable ? (
-          <>
-            {resultJson
-              .filter((j) => (historyMsgId ? j.msgId === historyMsgId : true))
-              .map((r: any, ind: number) => (
-                <JsonToTable key={`tbl-${modif}-${ind}`} json={r} />
+      {displayPanes[0] && (
+        <>
+          <div className="cm-header">
+            <HistoryCommands onGetFromHistory={handleGetFromHistory} />
+            <Select
+              value={commandTypeFilter}
+              onChange={handleChangeCommandType}
+              className="row-item"
+            >
+              {commandTypes.map((option, index) => (
+                <Select.Option key={`cmdt-${index}`} value={option.value}>
+                  {option.label}
+                </Select.Option>
               ))}
-          </>
-        ) : (
-          <CodeMirror
-            className="cm-outer-container"
-            readOnly={true}
-            ref={resultPaneScroll}
-            value={
-              historyMsgId
-                ? JSON.stringify(
-                    resultJson.find((j) => j.msgId === historyMsgId),
-                    null,
-                    2,
+            </Select>
+            <Tooltip arrow title={"Commands group filter"}>
+              <Select
+                value={command}
+                onChange={handleChangeCommand}
+                className="row-item"
+                showSearch
+                onSearch={handleFilter}
+                style={{ width: 200 }}
+                placeholder="Search to Select"
+                optionFilterProp="label"
+                filterOption={false}
+              >
+                {actualCommandsFiltered.map((option, index) => (
+                  <Select.Option
+                    key={`opt-${index}`}
+                    value={option.value}
+                    commandType={option.commandType}
+                    description={option.description}
+                    extended={option.extended}
+                    _id={option._id}
+                    label={option.label}
+                  >
+                    {option.label}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Tooltip>
+            <Button
+              type="primary"
+              size="middle"
+              loading={loading}
+              onClick={handleSend}
+              disabled={!canWork}
+            >
+              Send
+            </Button>
+            <Button
+              size="middle"
+              disabled={!canWork}
+              onClick={handleSave}
+              className="button-margin"
+            >
+              Save
+            </Button>
+            <ButtonRemoveUserCommand
+              commandOption={commandOption as Command}
+              onRemove={handleRemove}
+            />
+            <OptionsPopup />
+            <UpDownBtn
+              downup={displayPanes}
+              btnIndex={0}
+              onClick={handleUpDown0}
+            />
+            {commandBar && <CommandBar commandbar={commandBar} />}
+
+            <div className="spacer" />
+            <Tooltip title={connectionStatusText}>
+              <>
+                Server:
+                <Badge
+                  className="connection-badge"
+                  status={connectionStatus}
+                  text={""}
+                />
+              </>
+            </Tooltip>
+            <Button type="default" size="middle" onClick={handleClear}>
+              Clear
+            </Button>
+          </div>
+
+          <div className="playground-panel">
+            <CodeMirror
+              className="cm-outer-container"
+              value={value}
+              extensions={[json()]}
+              onChange={onChange}
+              theme={themeCodeMirror}
+              ref={(instance) => {
+                if (instance?.view) {
+                  editorRef.current = instance.view;
+                }
+              }}
+            />
+          </div>
+        </>
+      )}
+      {displayPanes[1] && (
+        <>
+          <div className="cm-header">
+            <h4>Results</h4>
+            <Tooltip title={"JSON/Table view"}>
+              <Switch
+                checked={showTable}
+                className="row-item-mar"
+                onChange={handleShowTable}
+              />
+            </Tooltip>
+            Show result:
+            <Select
+              value={historyMsgId}
+              onChange={handleChangeHistoryMsgId}
+              className="row-item"
+            >
+              {history.map((option, index) => (
+                <Select.Option key={`hist-${index}`} value={option.value}>
+                  {option.label}
+                </Select.Option>
+              ))}
+            </Select>
+            <UpDownBtn
+              downup={displayPanes}
+              btnIndex={1}
+              onClick={handleUpDown1}
+            />
+            <div className="spacer" />
+            <Button type="default" size="middle" onClick={handleClearResult}>
+              Clear
+            </Button>
+          </div>
+          <div className="playground-panel2">
+            {showTable ? (
+              <>
+                {resultJson
+                  .filter((j) =>
+                    historyMsgId ? j.msgId === historyMsgId : true,
                   )
-                : result
-            }
-            extensions={[json()]}
-          />
-        )}
-      </div>
-      {openUserCommand && commandOption && (
+                  .map((r: any, ind: number) => (
+                    <JsonToTable key={`tbl-${modif}-${ind}`} json={r} />
+                  ))}
+              </>
+            ) : (
+              <CodeMirror
+                className="cm-outer-container"
+                readOnly={true}
+                value={
+                  historyMsgId
+                    ? JSON.stringify(
+                        resultJson.find((j) => j.msgId === historyMsgId),
+                        null,
+                        2,
+                      )
+                    : result
+                }
+                extensions={[json()]}
+                theme={themeCodeMirror}
+              />
+            )}
+          </div>
+        </>
+      )}
+      {openUserCommand  && (
         <UserCommand
           open={openUserCommand}
           onClose={handleCloseUserCommand}
@@ -553,6 +710,9 @@ const Console = () => {
           sendMsg={sendMsg}
         />
       )}
+      {testResultPopup &&
+        <TestResults items={testResultPopup} open={Boolean(testResultPopup)} onClose={()=> setTestResultPopup(null)}/>
+      }
       {showHelpForm && (
         <Forms
           open={showHelpForm}
@@ -562,7 +722,15 @@ const Console = () => {
           sendMsg={sendMsg}
         />
       )}
-      {showWindow && <WindowExtend visible={showWindow} title={'aaa'} onClose={()=> setShowWindow(false)}><h3>HI</h3></WindowExtend>}
+      {showWindow && (
+        <WindowExtend
+          visible={showWindow}
+          title={"aaa"}
+          onClose={() => setShowWindow(false)}
+        >
+          <h3>HI</h3>
+        </WindowExtend>
+      )}
       {/*  {showTestsForm &&   <Forms open={showTestsForm} onClose={h()=> setShowTestsForm(false)} sendMsg={sendMsg}/>} */}
     </div>
   );

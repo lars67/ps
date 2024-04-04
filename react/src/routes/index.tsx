@@ -1,5 +1,5 @@
 import { createBrowserRouter, useLocation } from "react-router-dom";
-import { Home, Console, ErrorPage, SignInPage } from "../pages";
+import { Home, Console, ErrorPage, SignInPage, Test } from "../pages";
 import { DashboardLayout, GuestLayout } from "../layouts";
 
 import React, { ReactNode, useEffect } from "react";
@@ -39,7 +39,10 @@ const router = createBrowserRouter([
     path: "login",
     element: <SignInPage />,
   },
-
+  {
+    path: "/test",
+    element: <Test />,
+  },
   {
     element: <ProtectedRoute />,
     children: [
@@ -55,6 +58,7 @@ const router = createBrowserRouter([
           },
         ],
       },
+
       {
         path: "/console",
         element: <PageWrapper children={<DashboardLayout />} />,

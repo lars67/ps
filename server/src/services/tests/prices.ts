@@ -56,7 +56,6 @@ export async function prices(
 export const description: CommandDescription = {
     prices: {
         label: "Test priceCache",
-        value: JSON.stringify({ command: "tests.prices", output:'2' }),
+        value: JSON.stringify({command: "tests.prices", output: '2'}),
     },
-
-};
+}

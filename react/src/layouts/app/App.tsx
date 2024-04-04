@@ -1,14 +1,14 @@
 import {
-  Button,
-  Dropdown,
-  Flex,
-  FloatButton,
-  Input,
-  Layout,
-  MenuProps,
-  message,
-  theme,
-  Tooltip,
+    Button, Drawer,
+    Dropdown,
+    Flex,
+    FloatButton,
+    Input,
+    Layout,
+    MenuProps,
+    message,
+    theme,
+    Tooltip,
 } from 'antd';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ReactNode, useEffect, useRef, useState } from 'react';
@@ -33,6 +33,7 @@ import HeaderNav from './HeaderNav';
 import FooterNav from './FooterNav';
 import { Nprogress } from '../../components/Nprogress';
 import { PATH_LANDING } from '../../constants';
+import CloseBtn from "../../components/CloseBtn";
 
 const { Content } = Layout;
 
@@ -104,7 +105,17 @@ const AppLayout = ({ children }: AppLayoutProps) => {
     });
   }, []);
 
-  return (
+    const [drawerVisible, setDrawerVisible] = useState(false);
+
+    const showDrawer = () => {
+        setDrawerVisible(true);
+    };
+
+    const closeDrawer = () => {
+        setDrawerVisible(false);
+    };
+
+    return (
     <>
       <Nprogress isAnimating={isLoading} key={location.key} />
       <Layout
@@ -116,7 +127,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
             'radial-gradient(at 82% 65%, hsl(204.07, 70%, 75%) 0, transparent 55%)',
         }}
       >
-        <SideNav
+              <SideNav
           trigger={null}
           collapsible
           collapsed={collapsed}
@@ -132,6 +143,22 @@ const AppLayout = ({ children }: AppLayoutProps) => {
             transition: 'all .2s',
           }}
         />
+
+          <Drawer
+              size={'large'}
+              title="Help"
+              placement="right"
+              closable={true}
+              onClose={closeDrawer}
+              mask={false}
+              open={drawerVisible} // Use 'open' instead of 'visible'
+              headerStyle={{ backgroundColor: '#DFD' }}
+          >
+              <p>Some contents...</p>
+              <p>Some contents...</p>
+              <p>Some contents...</p>
+          </Drawer>
+
         <Layout
           style={{
             background: 'none',
@@ -141,7 +168,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
             style={{
               marginLeft: 0,// collapsed ? 0 : '200px',
               padding: '0 2rem 0 0',
-              background: navFill ? '#eaf5fc' : 'none',
+              background: navFill ? '#0af5fc' : 'none',
               backdropFilter: navFill ? 'blur(8px)' : 'none',
               display: 'flex',
               alignItems: 'center',
@@ -150,9 +177,12 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               top: 0,
               zIndex: 1,
               gap: 8,
+                flexDirection:'row-reverse',
               transition: 'all .25s',
             }}
           >
+              <button onClick={showDrawer}>Open Drawer</button>
+
               {/*     <Flex align="center">
               <Tooltip title={`${collapsed ? 'Expand' : 'Collapse'} Sidebar`}>
                 <Button
@@ -230,9 +260,9 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                 </CSSTransition>
               </SwitchTransition>
             </TransitionGroup>
-            <div ref={floatBtnRef}>
+              {/*<div ref={floatBtnRef}>
               <FloatButton.BackTop />
-            </div>
+            </div>*/}
           </Content>
           <FooterNav
             style={{

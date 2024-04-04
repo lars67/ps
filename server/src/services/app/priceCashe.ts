@@ -62,7 +62,8 @@ export function getDatePrices(date:string, find: boolean=false) {
     }
     return null;
 }
-export function getDateSymbolPrice(date:string, symbol: string) {
+export function getDateSymbolPrice(dateInput:string, symbol: string) {
+    const date = dateInput.split('T').shift()  as string;
     if (dateHistory[date] && dateHistory[date][symbol]) {
         return dateHistory[date][symbol];
     }
@@ -82,8 +83,9 @@ export function getDateSymbolPrice(date:string, symbol: string) {
 export async function checkPriceCurrency(
     currency: string,
     balanceCurrency: string,
-    startDate: string
+    startDateInput: string
 ) {
+    const startDate = startDateInput.split('T').shift() as string
     if (balanceCurrency !== currency) {
         let symbol: string='';
         let fx = `${currency}${balanceCurrency}`;
@@ -108,16 +110,13 @@ export async function checkPriceCurrency(
             from: startDate
         });
         if (history  && history.length<1 ) {
-            await fetchHistory({
-                symbol: `${symbol}:FX`,
-            });
             history = await fetchHistory({
                 symbol: `${symbol}:FX`,
-                from: startDate
             });
 
+
         }
-        histories[symbol] = startDate;
+        histories[symbol] = history[0].date;
        // console.log('remember', symbol, history.length);
         history.map(h => {
             const { date, close } = h;
