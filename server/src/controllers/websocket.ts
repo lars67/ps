@@ -9,6 +9,7 @@ import * as trades from "../services/trade";
 import * as tests from "../services/tests/prices";
 
 import * as prices from "../services/custom/prices"
+import {CommandModel} from "@/models/command";
 //import customServises from '../services/custom';
 //const  { logs, symbols } = customServises;
 
@@ -38,6 +39,8 @@ export default async function handler(data, sendResponse, userModif, userId) {
   }
   const parts = command.split(".");
   const com = command.toLowerCase();
+
+
   if (handlers[com]) {
     // console.log('LIST', params);
     sendResponse(await handlers[com].list(params));
@@ -55,7 +58,7 @@ export default async function handler(data, sendResponse, userModif, userId) {
         return sendResponse(resp);
       } else {
         console.error(`Handler group "${parts[0]}" not found.`);
-        return sendResponse({ error: `Command "${command}" unknown`, msgId });
+        return sendResponse({error: `Command "${command}" unknown`, msgId});
       }
     } catch (error) {
       console.log(error);

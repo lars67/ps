@@ -34,6 +34,7 @@ import FooterNav from './FooterNav';
 import { Nprogress } from '../../components/Nprogress';
 import { PATH_LANDING } from '../../constants';
 import CloseBtn from "../../components/CloseBtn";
+import HelpViewer from "../../components/HelpViewer";
 
 const { Content } = Layout;
 
@@ -152,11 +153,10 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               onClose={closeDrawer}
               mask={false}
               open={drawerVisible} // Use 'open' instead of 'visible'
-              headerStyle={{ backgroundColor: '#DFD' }}
-          >
-              <p>Some contents...</p>
-              <p>Some contents...</p>
-              <p>Some contents...</p>
+              style={{overflow:'hidden', padding:'4px'}}
+              bodyStyle={{padding:'0px'}}
+              headerStyle={{ backgroundColor: '#DFD' }}>
+          <HelpViewer />
           </Drawer>
 
         <Layout
@@ -181,7 +181,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               transition: 'all .25s',
             }}
           >
-              <button onClick={showDrawer}>Open Drawer</button>
+              <Button type="link" onClick={showDrawer}>Help</Button>
 
               {/*     <Flex align="center">
               <Tooltip title={`${collapsed ? 'Expand' : 'Collapse'} Sidebar`}>

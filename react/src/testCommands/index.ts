@@ -36,21 +36,26 @@ const isFunction = (f: any) => typeof f === "function";
 export const processTestCommand = async (
   variables: Record<string, any>,
   commandObj: object,
-  variablesCallback: (v:object)=> void
+  variablesCallback: (v:object)=> void,
+  pars: {
+    deleteTestObserver: (key:string)=> void,
+    setTestObserver: (msgId: string, observer: (data:string)=> void)=>void
+
+  }
 ) => {
   const { command, ...params } = commandObj as { command: string };
 
-  console.log("O", command, params, "|", variables);
+  console.log("processTestCommand", command,"|", pars);
   const parts = command.split(".");
   const com = command.toLowerCase();
   if (handlers[parts[0]] && isFunction(handlers[parts[0]][parts[1]])) {
-    console.log(
+   /* console.log(
       "handler:",
       handlers[parts[0]],
       params,
       handlers[parts[0]][parts[1]],
-    );
-    const resp = await handlers[parts[0]][parts[1]](params, variables, variablesCallback);
+    );*/
+    const resp = await handlers[parts[0]][parts[1]](params, variables, variablesCallback, pars);
     return {...commandObj, data:resp};
   }
 };

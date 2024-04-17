@@ -32,6 +32,7 @@ const startServer = async () => {
   const httpsServerLogin = https.createServer(options, app);
   const httpsServerApp = https.createServer(options, app);
   await initWS(httpsServerLogin, httpsServerApp);
+  console.log('DATA_PROXY',process.env.DATA_PROXY);
   httpsServerLogin.listen(loginPort, () => {
     console.log(`Login server running on port ${loginPort}`);
 

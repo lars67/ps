@@ -6,9 +6,11 @@ import mongoose, {
   models,
   connect, FilterQuery,
 } from "mongoose";
-;
+
 import {errorMsgs} from "../constants";
-import {ErrorType} from "@/types/other";
+import {ErrorType} from "../types/other";
+import {Currency} from "../types/currency";
+import {CurrencyModel} from "../models/currency";
 const { ObjectId } = require('mongodb');
 
 
@@ -119,6 +121,16 @@ export const validateRequired = <T>(fields: string[], obj: T) =>
     return err;
   }, "");
 
+export const findOne = async <T>(model:Model<T>, filter: FilterQuery<T>) =>
+  (await model.findOne(filter)) as T
+
+
+export const checkCurrency = async (currency: string) => {
+    const c = await findOne<Currency>(CurrencyModel,{symbol:currency}) as Currency;
+  console.log(currency, 'CCCCCCCCCCCCCCCCCCCCCC',c);
+  return c ? null : errorMsgs.unknown('currency', currency)
+}
+
 export const findMinByField = <T>(arr: T[], field: keyof T) =>
   arr.reduce(
     (min, current) => (current[field] < min[field] ? current : min),
@@ -144,12 +156,12 @@ export const getModelInstanceByIDorName = async <T >(_id: string, model:Model<T>
   let error = null;
   try {
     if (isValidObjectId(_id)) {
-      instance = (await model.findById(_id)) as T;
+      instance = (await model.findById(_id)) ;
     }
     if (!instance) {
-      instance = (await model.findOne({name: _id})) as T;
+      instance = (await model.findOne({name: _id}));
       if (instance) {
-        _id = (instance as T & {_id: string})._id;
+        _id = (instance as T & {_id: typeof ObjectId})._id.toString();
       }
     }
     if (!instance) {
@@ -170,7 +182,7 @@ export const getRealId = async <T>(_id: string, model: Model<T>, nameField: stri
     if (isValidObjectId(_id)) {
       const instance = (await model.findById(_id)) as T;
       if (instance) {
-        return _id;
+        return _id.toString();
       }
     }
     const filter = {[nameField]:_id} as  FilterQuery<T>
@@ -225,5 +237,5 @@ export const divideArray = <T>(
 };
 
 export function isErrorType(variable: any): variable is ErrorType {
-  return typeof variable === 'object' && typeof variable.error === 'string';
+  return (typeof variable === 'object') && (typeof variable.error === 'string');
 }

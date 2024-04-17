@@ -1,0 +1,9 @@
+.hovered {
+    border: 2px solid #1890ff; /* Change the border styling as needed */
+}
+
+.hover-icons {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 5px; /* Adjust margin or spacing as needed */
+}

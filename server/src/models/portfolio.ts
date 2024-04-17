@@ -7,6 +7,8 @@ const PortfolioSchema = new Schema<Portfolio>({
   currency: { type: String, default: "USD", required: true },
   userId: { type: String,  required: true },
   baseInstrument: { type: String, default: "SPY", required: true },
+  portfolioType: {type: String}, //summation, portfolio
+  portfolioIds:{type: [String]}
 });
 
 export const PortfolioModel: Model<Portfolio> =

@@ -6,7 +6,7 @@ import { CommandDescription } from "../types/custom";
 import eventEmitter, { sendEvent } from "./app/eventEmiter";
 import { PortfolioModel } from "../models/portfolio";
 import { isTradeType } from "../utils/dictionary";
-import {isISODate, validateRequired} from "../utils";
+import {getRealId, isErrorType, isISODate, validateRequired} from "../utils";
 import { CurrencyModel } from "../models/currency";
 import {ErrorType} from "../types/other";
 import {errorMsgs} from "../constants";
@@ -43,7 +43,7 @@ export async function add(
   userModif: string,
   userId: string,
 ): Promise<Trade | ErrorType | null> {
-  //console.log("T", trade);
+  console.log("T", trade);
   let err_required = validateRequired<Trade>(validationsAddRequired, trade)
   if (err_required) {
     return errorMsgs.required(err_required);
@@ -51,9 +51,12 @@ export async function add(
   if (!isTradeSide(trade.side)) {
     return { error: `Wrong trade Side` };
   }
-  if (!(await PortfolioModel.findById(trade.portfolioId))) {
-    return { error: `Unknown portfolioId` };
+  const realId = await getRealId<Portfolio>(trade.portfolioId as string,PortfolioModel);
+  if (  isErrorType(realId)){
+    return realId;
   }
+  trade.portfolioId= realId;
+
   if (!(await CurrencyModel.find({ symbol: trade.currency }))) {
     return { error: `Unknown currency` };
   }
@@ -125,7 +128,7 @@ export type TradeFilter = {
   from: Date;
 };
 
-const buildFilterTrades = (tradesFilter: Partial<TradeFilter>) => {
+export const buildFilterTrades = (tradesFilter: Partial<TradeFilter>) => {
   const filter: FilterQuery<Trade> = Object.keys(tradesFilter).reduce(
       (f, field) => {
         switch (field) {
@@ -142,16 +145,7 @@ const buildFilterTrades = (tradesFilter: Partial<TradeFilter>) => {
   return filter;
 }
 
-/*
-export async function snapshot(
-    tradesFilter: Partial<TradeFilter>,
-    sendResponse: (data: any) => void,
-    msgId: string,
-): Promise<Trade[]> {
-  const filter: FilterQuery<Trade> = await buildFilterTrades(tradesFilter);
-  return await TradeModel.find(filter);
-}
-*/
+
 export async function subscribe(
     tradesFilter: Partial<TradeFilter>,
     sendResponse: (data: any) => void,
@@ -214,22 +208,14 @@ export async function removeAll({
 }
 
 export const description: CommandDescription = {
-  snapshot: {
-    label: "Get Trades",
-    value: JSON.stringify({
-      command: "trades.snapshot",
-      portfolioId: "?",
-      from: "",
-      till: "",
-    }),
-  },
+
   subscribe: {
     label: "Subscribe Portfolio Trades",
     value: JSON.stringify({
       command: "trades.subscribe",
       portfolioId: "?",
       from: "",
-      till: "",
+    //  till: "",
     }),
   },
   unsubscribe: {

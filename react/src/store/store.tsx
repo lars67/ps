@@ -3,11 +3,14 @@ import { configureStore } from "@reduxjs/toolkit";
 import { userSlice } from "./slices/user";
 import { globalSlice } from "./slices/global";
 import { optionsSlice } from "./slices/options";
+import { helpSlice} from "./slices/help";
+
 export const store = configureStore({
   reducer: {
     user: userSlice.reducer,
     global: globalSlice.reducer,
-    options: optionsSlice.reducer
+    options: optionsSlice.reducer,
+    help: helpSlice.reducer
   },
 });
 

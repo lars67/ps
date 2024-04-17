@@ -18,6 +18,7 @@ export async function delay({ delay }: { delay: number }): Promise<string> {
 type Condition =
   | { $eq: any }
   | { $gt: number }
+  | { $lt: number }
   | { $absent: boolean }
   | { $has: boolean }
   | { $isArray : boolean }
@@ -36,7 +37,7 @@ export function check({path, conditions}:{path: string, conditions: FieldConditi
 
      const v = path &&  getValueByPath(variables, path);
      return Object.keys(conditions).every((field:string) =>
-      checkDo(v, field, conditions[field]))
+      checkDo(v || {}, field, conditions[field]))
 }
 
 export function checkDo(
@@ -47,6 +48,7 @@ export function checkDo(
 ): boolean {
   if ("$eq" in condition) {
       const t = typeof object[field]
+    console.log('$EQ', field, object[field], condition.$eq ,t, typeof condition.$eq)
       if (t === 'string' )
            return object[field] === condition.$eq.toString();
       else if (t === 'number' )
@@ -54,9 +56,10 @@ export function checkDo(
       else
         return object[field] === condition.$eq;
   } else if ("$gt" in condition) {
-    return object[field] > (condition as { $gt: number }).$gt;
+    return Number(object[field]) > Number((condition as { $gt: number }).$gt);
   } else if ("$lt" in condition) {
-    return object[field] < (condition as { $lt: number }).$lt;
+    console.log( Number(object[field]), ' < ',Number((condition as { $lt: number }).$lt))
+    return Number(object[field]) < Number((condition as { $lt: number }).$lt);
   } else if ("$isArray" in condition) {
     const o = field === '*' ? object : object[field];
     return Array.isArray(o) === (condition as { $isArray: boolean }).$isArray;
@@ -73,14 +76,12 @@ export function checkDo(
     return typeof object === 'string'
   } else if ("$exists" in condition) {
      return Boolean(object)
-
+  } else if ("$sub" in condition) {
+    return Math.abs(Number(object[field])-(condition as { $sub: number }).$sub) <1
 }
   return false; // Default to false if condition is not recognized
 }
 
-console.log(checkDo({ a: "a", b: 1 }, "a", { $eq: "a" }));
-console.log(checkDo({ a: "a", b: 1 }, "a", { $eq: "aaaa" }));
-//console.log(cond({ a: "a", b: 1 }, { a: { $eq: "a" }, b: { $eq: 1 } }));
 
 
 export function setVar(
@@ -118,6 +119,41 @@ export function setMode(
   return {_mode}
 }
 
+
+export async function waitMsg(
+    waitMsgPar:{msgId: string ,to: string, delay: number},
+    variables: Record<string, any>,
+    variablesCallback: (v: object) => void,
+    {deleteTestObserver, setTestObserver}: {
+      deleteTestObserver: (key:string)=> void,
+      setTestObserver: (msgId: string, observer: (data:string)=> void)=>void}
+) {
+
+  return new Promise<object>(resolve=>  {
+    if (!waitMsgPar.msgId)
+      resolve({error: 'property "msgId" is reqired'})
+    if (!waitMsgPar.to)
+      resolve({error: 'property "to" is reqired'});
+    const msgKey = waitMsgPar.msgId as string
+    console.log(Date.now(), 'tests.waitMsg subscribe msgKey= ', msgKey)
+    let timer = setTimeout(() => {
+      console.log(Date.now(), 'stop by timeout observer', msgKey)
+      deleteTestObserver(msgKey);
+      resolve({msg:'Message is not recieved'})
+    }, waitMsgPar.delay || 3000)
+    console.log(Date.now(),'set testObservers[msgKey] msgKey=', msgKey)
+    setTestObserver(msgKey,(data: string) => {
+      clearTimeout(timer)
+      variablesCallback({[waitMsgPar.to]: JSON.parse(data).data});
+      console.log('tests.waitMsg setvariable to ', waitMsgPar.to)
+      deleteTestObserver(msgKey);;
+      resolve({msg:'Message processed'})
+    })
+    console.log('SETTTTTTTTTTT testObservers[msgKey]', msgKey);
+  })
+
+}
+
 export const description: CommandDescription = {
   delay: {
     label: "Delay",
@@ -150,7 +186,11 @@ export const description: CommandDescription = {
   },
 
   breakTests: {
-    label: "Set test mode",
+    label: "Break tests",
     value: JSON.stringify({ command: "tests.breakTests" }),
+  },
+  waitMsg: {
+    label: "Wait msg by msgIdDelay",
+    value: JSON.stringify({ command: "tests.waitMsg", "msgId":"{?}", "to":"{?}","delay": "1000" }),
   },
 };

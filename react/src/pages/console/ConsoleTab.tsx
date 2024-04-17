@@ -39,8 +39,8 @@ import WindowExtend from "../../components/WindowExtend";
 import themeCodeMirror from "./themeCodeMirror";
 import UpDownBtn from "../../components/UpDownBtn";
 import { processTestCommand, testCommands } from "../../testCommands";
-import TestResults, {TestItem} from "../../components/TestResults";
-import {getCommands, preprocessCommand} from "../../utils/command";
+import TestResults, { TestItem } from "../../components/TestResults";
+import { getCommands, preprocessCommand } from "../../utils/command";
 
 type WSMsg = {
   data: string;
@@ -49,7 +49,7 @@ type WSMsg = {
   index: number;
 };
 
-const Console = ({tabIndex}:{tabIndex:number}) => {
+const Console = ({ tabIndex }: { tabIndex: number }) => {
   const [loading, setLoading] = useState(false);
   const token = useAppSelector((state) => state.user.token);
   const modif = useRef(Math.round(10000 * Math.random()));
@@ -79,12 +79,16 @@ const Console = ({tabIndex}:{tabIndex:number}) => {
   const [showWindow, setShowWindow] = useState(false);
   const [displayPanes, setDisplayPanes] = useState<boolean[]>([true, true]);
   const editorRef = useRef<EditorView | null>(null);
-  const [testObservers, setTestObservers] = useState<
-    Record<string, (value: string) => void>
-  >({});
+
   const variables = useRef<Record<string, any>>({});
   const ncom = useRef<number>(1);
-  const [testResultPopup, setTestResultPopup] = useState<TestItem[] | null >(null)
+  const [testResultPopup, setTestResultPopup] = useState<TestItem[] | null>(
+    null,
+  );
+  const testObservers = useRef<Record<string, (value: string) => void>>(
+    {} as Record<string, (value: string) => void>,
+  );
+
   const onMessageCallback = (event: MessageEvent<string>) => {
     if (event.data !== "undefined") {
       const message = JSON.parse(event.data) as WSMsg;
@@ -100,9 +104,14 @@ const Console = ({tabIndex}:{tabIndex:number}) => {
       }
       fragments.current[msgId][index] = data;
       if (fragments.current[msgId].length === Number(total)) {
-        setLoading(false);
+        //setLoading(false);
         const assembledMessage = fragments.current[msgId].join("");
-        console.log("Received message:", assembledMessage.length);
+        console.log(
+          "Received message msgId:",
+          msgId,
+          "len",
+          assembledMessage.length,
+        );
 
         delete fragments.current[msgId];
         if (msgId === "ws_commands") {
@@ -114,20 +123,30 @@ const Console = ({tabIndex}:{tabIndex:number}) => {
           return;
         }
         const s = JSON.stringify(JSON.parse(assembledMessage), null, 2);
-        !variables.current?._mode?.hide && setResult((result) => result.concat(s + "\n\n"));
-
-        if (testObservers[msgId]) testObservers[msgId](result);
+        !variables.current?._mode?.hide &&
+          setResult((result) => result.concat(s + "\n\n"));
+        console.log(
+          "OOOOOOOOOOOOOOOO",
+          msgId,
+          "observer",
+          testObservers.current[msgId],
+          "num",
+          Object.keys(testObservers.current),
+        );
+        if (Boolean(testObservers.current[msgId]))
+          testObservers.current[msgId](assembledMessage);
       }
+      console.log("/onMessage");
     }
   };
 
   const { sendJsonMessage, readyState, getWebSocket } = useWebSocket(url, {
     onMessage: onMessageCallback,
-   // retryOnError: true,
-   // shouldReconnect: (event: WebSocketEventMap["close"]) => {
-      //console.log('REEEEEEEEEEEEEEEEEEE22EEEEEEEEEECONNECT', needReconnect.current)
+    // retryOnError: true,
+    // shouldReconnect: (event: WebSocketEventMap["close"]) => {
+    //console.log('REEEEEEEEEEEEEEEEEEE22EEEEEEEEEECONNECT', needReconnect.current)
     //  return false; //needReconnect.current
-   // },
+    // },
     //reconnectInterval: 5000,
     //reconnectAttempts: 3,
   });
@@ -147,11 +166,11 @@ const Console = ({tabIndex}:{tabIndex:number}) => {
   const handleSend = useCallback(async () => {
     let parsedValue: any = {};
     let answer;
-    const testResults:TestItem[] = []
+    const testResults: TestItem[] = [];
     variables.current = {};
     try {
       const commands = getCommands(value, false);
-      console.log("VVV", value);
+      // console.log("VVV", value);
       if (commands.length <= 0) {
         message.open({
           type: "error",
@@ -160,13 +179,26 @@ const Console = ({tabIndex}:{tabIndex:number}) => {
         return;
       }
       setLoading(true);
+      console.log("commands.length=", commands.length);
+
+      let ipr = 0;
       for (const notparsedValue of commands) {
+        //
+        const com: string = JSON.parse(notparsedValue).command;
 
-  const parsedValue = JSON.parse(preprocessCommand(notparsedValue, variables.current))
-
+        const parsedValue = JSON.parse(
+          preprocessCommand(notparsedValue, variables.current),
+        );
+        console.log(
+          `---------------------${notparsedValue}-------------------------\n`,
+          new Date().toISOString(),
+          "ipr=",
+          ++ipr,
+          " commands.length=",
+          commands.length,
+        );
 
         if (parsedValue.command.startsWith("tests.")) {
-
           const resp = await processTestCommand(
             variables.current,
             parsedValue,
@@ -175,46 +207,73 @@ const Console = ({tabIndex}:{tabIndex:number}) => {
                 (p: string) => (variables.current[p] = newVariables[p]),
               );
             },
+            {
+              deleteTestObserver: (key: string) => {
+                console.log("deleteTestObserver", key);
+                delete testObservers.current[key];
+              },
+              setTestObserver: (
+                msgId: string,
+                observer: (data: string) => void,
+              ) => {
+                console.log("setTestObserver", msgId);
+                testObservers.current[msgId] = observer;
+              },
+            },
+            //testObservers:testObservers.current}
           );
           if (resp) {
             setResult((result) =>
               result.concat(JSON.stringify(resp, null, 2) + "\n\n"),
             );
-            if (parsedValue.command === "tests.check" ) {
-              testResults.push({description: parsedValue.description || parsedValue.label, result: resp.data})
+            if (parsedValue.error) {
+              setLoading(false);
+              break;
             }
-            if (resp.data  as string === 'break') {
+
+            if (parsedValue.command === "tests.check") {
+              testResults.push({
+                description: parsedValue.description || parsedValue.label,
+                result: resp.data,
+              });
+            }
+            if ((resp.data as string) === "break") {
               setLoading(false);
               break;
             }
           }
-          setLoading(false);
         } else {
           //fragments.current = [];
 
-          msgId.current++;
-          const cmd = { ...parsedValue, msgId: msgId.current };
+          const useMsgId = parsedValue.msgId
+            ? parsedValue.msgId
+            : ++msgId.current;
+          const cmd = { ...parsedValue, msgId: useMsgId };
 
           if (clearAlwaysResult) {
             setResult("");
           }
-          console.log('cmd sent', cmd);
           const answer: string = (await sendJsonMessageSync(cmd)) as string;
-          console.log('answer recieved');
           const parsedAnswer = JSON.parse(answer);
           if (parsedValue._as) {
-            variables.current[parsedValue._as] = parsedAnswer.data || {error:parsedAnswer.error};
+            variables.current[parsedValue._as] = parsedAnswer.data || {
+              error: parsedAnswer.error,
+            };
           }
         }
       }
-      if (testResults.length > 0) setTestResultPopup(testResults)
-      historyCommands.unshift({ value, label: commandLabel|| `Command #${tabIndex}-${ncom.current++}` });
+      setLoading(false);
+      if (testResults.length > 0) setTestResultPopup(testResults);
+      historyCommands.unshift({
+        value,
+        label: commandLabel || `Command #${tabIndex}-${ncom.current++}`,
+      });
       if (historyCommands.length > 12) {
         historyCommands.pop();
       }
       setHistoryMsgId("");
     } catch (err) {
-      console.log(err)
+      console.log(err);
       message.open({
         type: "error",
         content: "Command json is wrong",
@@ -277,6 +336,20 @@ const Console = ({tabIndex}:{tabIndex:number}) => {
     [actualCommands, clearAlwaysCommand],
   );
 
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      //  console.log("Message received:", event);
+      setValue((oldValue) => oldValue + "\n" + value);
+      // alert(event.data)
+    };
+
+    // Add event listener when component mounts
+    ///???? window.addEventListener("message", handleMessage);
+
+    return () => {
+      window.removeEventListener("message", handleMessage);
+    };
+  }, []);
   const [showTable, setShowTable] = useState(false);
   const handleShowTable = useCallback((b: boolean) => {
     setShowTable(b);
@@ -300,7 +373,7 @@ const Console = ({tabIndex}:{tabIndex:number}) => {
         ar.map((a) => {
           const json = JSON.parse(a);
           jsons.push(json);
-          history.push({ label: json.command , value: json.msgId });
+          history.push({ label: json.command, value: json.msgId });
         });
         return [jsons, history];
       } catch (er) {
@@ -317,7 +390,7 @@ const Console = ({tabIndex}:{tabIndex:number}) => {
   async function sendJsonMessageSync(o: object) {
     return new Promise((resolve, reject) => {
       const socket = getWebSocket();
-console.log('socket?.readyState', socket?.readyState);
+
       if (socket) {
         const handleMessageMsg = (event: MessageEvent) => {
           const message = JSON.parse(event.data) as WSMsg;
@@ -347,7 +420,6 @@ console.log('socket?.readyState', socket?.readyState);
         socket.addEventListener("message", handleMessageMsg);
 
         socket.onerror = (error: Event) => {
-
           reject(error);
         };
         sendJsonMessage(o);
@@ -361,11 +433,11 @@ console.log('socket?.readyState', socket?.readyState);
     msgId.current++;
     //console.log("SendMSG", { ...cmd, msgId: msgId.current });
     try {
-      const r = await sendJsonMessageSync({...cmd, msgId: msgId.current});
+      const r = await sendJsonMessageSync({ ...cmd, msgId: msgId.current });
       //console.log("SYYYYYYYYYYYYYYNC", r);
       return r;
-    } catch(er) {
-      console.log('SendMsg error', er);
+    } catch (er) {
+      console.log("SendMsg error", er);
     }
   }, []);
 
@@ -531,6 +603,17 @@ console.log('socket?.readyState', socket?.readyState);
     link.click();
     URL.revokeObjectURL(url);
   };
+  const handleBadgeClick = useCallback(
+    (event: React.MouseEvent<HTMLAnchorElement>) => {
+      event.preventDefault();
+      if (connectionStatusText === "Open") {
+        sendJsonMessage({ type: "disconnect" });
+      } else if (connectionStatusText === "Closed") {
+        sendJsonMessage({ type: "reconnect" });
+      }
+    },
+    [connectionStatusText],
+  );
 
   return (
     <div className="playground-container">
@@ -556,8 +639,7 @@ console.log('socket?.readyState', socket?.readyState);
                 className="row-item"
                 showSearch
                 onSearch={handleFilter}
-                style={{ width: 200 }}
-                placeholder="Search to Select"
+                 placeholder="Search to Select"
                 optionFilterProp="label"
                 filterOption={false}
               >
@@ -609,11 +691,13 @@ console.log('socket?.readyState', socket?.readyState);
             <Tooltip title={connectionStatusText}>
               <>
                 Server:
-                <Badge
-                  className="connection-badge"
-                  status={connectionStatus}
-                  text={""}
-                />
+                <a href="#" onClick={handleBadgeClick}>
+                  <Badge
+                    className="connection-badge"
+                    status={connectionStatus}
+                    text={""}
+                  />
+                </a>
               </>
             </Tooltip>
             <Button type="default" size="middle" onClick={handleClear}>
@@ -701,7 +785,7 @@ console.log('socket?.readyState', socket?.readyState);
           </div>
         </>
       )}
-      {openUserCommand  && (
+      {openUserCommand && (
         <UserCommand
           open={openUserCommand}
           onClose={handleCloseUserCommand}
@@ -710,9 +794,13 @@ console.log('socket?.readyState', socket?.readyState);
           sendMsg={sendMsg}
         />
       )}
-      {testResultPopup &&
-        <TestResults items={testResultPopup} open={Boolean(testResultPopup)} onClose={()=> setTestResultPopup(null)}/>
-      }
+      {testResultPopup && (
+        <TestResults
+          items={testResultPopup}
+          open={Boolean(testResultPopup)}
+          onClose={() => setTestResultPopup(null)}
+        />
+      )}
       {showHelpForm && (
         <Forms
           open={showHelpForm}

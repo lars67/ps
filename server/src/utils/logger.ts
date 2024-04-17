@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import * as path from "path";
+import moment from "moment";
 const fs = require("fs");
 
 let logFileName: string | null = null;
@@ -31,11 +32,12 @@ function generateLogFileName(): string {
 }
 
 function logToFile(message: string) {
+  const t= moment().format('MM-DD HH:mm:ss SSS')
   const fileName = generateLogFileName();
   const logFilePath = path.join(logFolder, generateLogFileName()); // Assuming 'app.log' is the name of your log file
 
   const logStream = fs.createWriteStream(logFilePath, { flags: "a" });
-  logStream.write(`${message}\n`);
+  logStream.write(`${t} ${message}\n`);
   logStream.end();
 }
 

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Help</title>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="`./cm-viewer.css">
+    <link rel="stylesheet" href="./contextMenu.css">
+    <script src="./contextMenu.js"></script>
+    <style>
+        /* CSS styles for the list */
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        li {
+            margin-bottom: 5px;
+        }
+
+        a {
+            text-decoration: none;
+            color: #333;
+        }
+
+        a:hover {
+            background-color: #f0f0f0;
+        }
+
+        /* Nested list styling */
+        ul ul {
+            margin-left: 20px;
+        }
+    </style>
+
+</head>
+<body>
+<h1 id="manual"></h1>
+
+<ul>
+    <li><a href="#">Commands</a>
+        <ul>
+            <li><a href="./commands/collection">Collections</a></li>
+            <li><a href="./commands/tests">Tests</a></li>
+            <li><a href="./commands/portfolios">Portfolios</a></li>
+            <li><a href="./commands/trades">Trades</a></li>
+        </ul>
+    </li>
+    <li><a href="./commands/datasources">Data sources</a></li>
+
+</ul>
+</body>
+</html>
+

@@ -13,25 +13,37 @@ export default class SSEService implements SSEServiceInst {
   private onOpen?: () => void;
   private source: EventSource | null = null;
   private eventName: string;
+  private endPoint
+  private symbols: string='';
+  private isFirst: boolean = true;
 
   constructor(
     endPoint: string,
-    query: string,
+    symbols: string,
     eventName: string,
     onData?: (data: any) => void,
     onOpen?: () => void,
 
   ) {
+    this.endPoint = endPoint;
     this.stopped = true;
-    this.url = `${process.env.DATA_PROXY}/${endPoint}?${query}`;
+    this.url = `${process.env.DATA_PROXY}/${this.endPoint}?symbols=${symbols}`;
     this.onData = onData;
     this.onOpen = onOpen;
     this.eventName = eventName;
-    console.log("request SSE", this.url);
-    this.start();
+
+    this.start(symbols);
   }
 
-  private start(): void {
+  public start(symbols:string, restart:boolean=false): void {
+    if (!restart && this.symbols === symbols) {
+      return ;
+    }
+    this.isFirst= true;
+    this.symbols = symbols;
+
+    this.url = `${process.env.DATA_PROXY}/${this.endPoint}?symbols=${this.symbols}`;
+    console.log("SSEServicce start---------->", this.url);
     this.source = new EventSource(this.url, {
       https: { rejectUnauthorized: false },
     });
@@ -41,27 +53,31 @@ export default class SSEService implements SSEServiceInst {
     }
     this.stopped = false;
     this.source.onopen = (event) => {
-      console.log("open", this.url);
+      console.log("SSEServicce open", this.url);
       if (this.onOpen) this.onOpen();
     };
     this.source.onmessage = (event) => {
       const data: object = JSON.parse(event.data);
       if (this.onData) this.onData(data);
+
+      console.log(this.isFirst, 'ONMESSAGE SSE EVENT QUOTES', data)
       // @ts-ignore
-      //console.log('SSE EVENT', this.eventName, data)
-      const actualData = actualizeData(data);
-      if (actualData.length > 0) {
+      const actualData = this.isFirst  ?  data : actualizeData(data);
+      this.isFirst= false;
+      if (actualData) {
         testLogger.log(JSON.stringify(actualData));
         sendEvent(this.eventName, data);
       }
+
     };
     this.source.onerror = (event) => {
-      console.log("sse onerror", event, this.url);
+      console.log("SSEServicce onerror", event, this.url);
     };
   }
 
   public stop(): void {
     if (!this.stopped && this.source) {
+      console.log("SSEServicce CLOSE", this.url);
       this.source.close();
       this.stopped = true;
     }

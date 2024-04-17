@@ -66,7 +66,7 @@ const UserCommand = ({
       const cmd = {
         command,
         label: formValues.label,
-        value: JSON.stringify(value),
+        value: JSON.stringify(value.replace(/^\s+|\s+$/g, '')),
         commandType: "user",
         _id: (isAdd ? undefined : commandOption._id),
       };

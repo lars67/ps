@@ -1,0 +1,9 @@
+.floating-menu {
+    position: fixed;
+    top: 2px;
+    right: 20px;
+    width:500px;
+    z-index: 999; /* Overlay other content */
+}
+
+

@@ -1,0 +1,180 @@
+   const rez = await sendMsg({command: 'currencies.list'});
+
+{"command":"currencies.list","msgId":2,"data":[{"_id":"65df2224eaba5e4f97f231ab","currency_id":"36","symbol":"AUD","name":"Australian dollar","bid_ir":"0.050000","offer_ir":"0.050000"},{"_id":"65df2224eaba5e4f97f231ac","currency_id":"76","symbol":"BRL","name":"Brazilian real","bid_ir":"0.050000","offer_ir":"0.050000"},{"_id":"65df2224eaba5e4f97f231ad","currency_id":"124","symbol":"CAD","name":"Canadian dollar","bid_ir":"0.050000","offer_ir":"0.050000"},{"_id":"65df2224eaba5e4f97f231ae","currency_id":"756","symbol":"CHF","name":"Swiss franc","bid_ir":"0.050000","offer_ir":"0.050000"},{"_id":"65df2224eaba5e4f97f231af","currency_id":"156","symbol":"CNY","name":"Chinese yuan renminbi","bid_ir":"0.050000","offer_ir":"0.050000"},{"_id":"65df2224eaba5e4f97f231b0","currency_id":"208","symbol":"DKK","name":"Danish krone","bid_ir":"0.050000","offer_ir":"0.050000"},{"_id":"65df2224eaba5e4f97f231b1","currency_id":"978","symbol":"EUR","name":"The Euro","bid_ir":"0.050000","offer_ir":"0.050000"},{"_id":"65df2224eaba5e4f97f231b2","currency_id":"826","symbol":"GBP","name":"UK pound sterling","bid_ir":"0.050000","offer_ir":"0.050000"},{"_id":"65df2224eaba5e4f97f231b3","currency_id":"344","symbol":"HKD","name":"Hong Kong dollar","bid_ir":"0.050000","offer_ir":"0.050000"},{"_id":"65df2224eaba5e4f97f231b4","currency_id":"360","symbol":"IDR","name":"Indonesian rupiah","bid_ir":"0.050000","offer_ir":"0.050000"},{"_id":"65df2224eaba5e4f97f231b5","currency_id":"356","symbol":"INR","name":"Indian rupee","bid_ir":"0.050000","offer_ir":"0.050000"},{"_id":"65df2224eaba5e4f97f231b6","currency_id":"392","symbol":"JPY","name":"Japanese yen","bid_ir":"0.050000","offer_ir":"0.050000"},{"_id":"65df2224eaba5e4f97f231b7","currency_id":"484","symbol":"MXN","name":"Mexican nuevo peso","bid_ir":"0.050000","offer_ir":"0.050000"},{"_id":"65df2224eaba5e4f97f231b8","currency_id":"458","symbol":"MYR","name":"Malaysian ringgit","bid_ir":"0.050000","offer_ir":"0.050000"},{"_id":"65df2224eaba5e4f97f231b9","currency_id":"578","symbol":"NOK","name":"Norwegian krone","bid_ir":"0.050000","offer_ir":"0.050000"},{"_id":"65df2224eaba5e4f97f231ba","currency_id":"554","symbol":"NZD","name":"New Zealand dollar","bid_ir":"0.050000","offer_ir":"0.050000"},{"_id":"65df2224eaba5e4f97f231bb","currency_id":"2015","symbol":"RUB","name":"Russian Rouble","bid_ir":"0.050000","offer_ir":"0.050000"},{"_id":"65df2224eaba5e4f97f231bc","currency_id":"752","symbol":"SEK","name":"Swedish krona","bid_ir":"0.050000","offer_ir":"0.050000"},{"_id":"65df2224eaba5e4f97f231bd","currency_id":"702","symbol":"SGD","name":"Singapore dollar","bid_ir":"0.050000","offer_ir":"0.050000"},{"_id":"65df2224eaba5e4f97f231be","currency_id":"901","symbol":"TWD","name":"New Taiwan dollar","bid_ir":"0.050000","offer_ir":"0.050000"},{"_id":"65df2224eaba5e4f97f231bf","currency_id":"840","symbol":"USD","name":"US dollar","bid_ir":"1.000000","offer_ir":"1.000000"},{"_id":"65df2224eaba5e4f97f231c0","currency_id":"710","symbol":"ZAR","name":"South African rand","bid_ir":"0.050000","offer_ir":"0.050000"}]}
+
+<cmd _name="CLEANUP_PORTFOLIO" PORTFOLIO_ID="694" />
+<cmd _name="UPDATE_PORTFOLIO_ACCOUNT" PORTFOLIO_ID="694" CASH="50000.0000" CURRENCY="USD" TRADE_TIME="2020-01-01T17:00:00" />
+<cmd _name="ADD_TRADE" PORTFOLIO_ID="694" TYPE="1" SYMBOL="MSFT" TRADE_TIME="2020-02-01T00:01:02" CURRENCY="USD" SIDE="B" PRICE="150" VOLUME="1" TRADE_RATE="1" FEE="0.0"/>
+<cmd _name="ADD_TRADE" PORTFOLIO_ID="694" TYPE="1" SYMBOL="MSFT 2023-03-25 FW" TRADE_TIME="2020-03-02T00:01:02" CURRENCY="USD" SIDE="B" PRICE="200" VOLUME="1"  ASSET_RATE="1" FEE="0.0"/>
+<cmd _name="ADD_TRADE" PORTFOLIO_ID="694" TYPE="1" SYMBOL="MSFT 2023-03-25 300 CALL" TRADE_TIME="2020-04-03T00:01:02" CURRENCY="USD" SIDE="B" PRICE="50" VOLUME="1"  PORTFOLIO_RATE="1" FEE="0.0"/>
+
+<cmd _name="<cmd _name="<cmd _name="CLEANUP_PORTFOLIO" PORTFOLIO_ID="694" />
+<cmd _name="UPDATE_PORTFOLIO_ACCOUNT" PORTFOLIO_ID="694" CASH="50000.0000" CURRENCY="USD" TRADE_TIME="2020-01-01T17:00:00" />
+<cmd _name="PORTFOLIO_POSITIONS"  PORTFOLIO_ID="694" WHAT="ALL" BASE_PRICE="4" MARKET_PRICE="4" REQUEST_TYPE="1" MessageId="10"/>
+
+<response cmd="PORTFOLIO_HISTORY_DETAIL" messageId="12">
+<history_detail interval="2023-05-30 - 2024-03-08" currency="USD">
+    <![CDATA[
+      DateTime	    Type	CURR	 CrossRate	          Symbol	  Vol#	  Pos#	       AvgPx	  Unrealized	    Realized	        Cash	  Dividend	   Fee	     Price	     Close	    Invested	    MktValue	      Result	  Portf.CURR	     AccCash	AccDividends	      AccFee	 AccInvested	 CurMktValue	CurUnrealied	 AccRealized	   AccResult	       Money	     Fortune
+2023-05-30 17:00:00	    CASH	 USD	   1.00000	               -	     0	     -	           -	           -	           -	    50000.00	         -	  0.00	      0.00	         -	           -	           -	           -	         USD	    50000.00	        0.00	        0.00	        0.00	        0.00	           -	           -	        0.00	    50000.00	    50000.00
+2023-06-01 00:01:02	 OPN Buy	 USD	   1.00000	       MSFT Spot	    10	    10	     300.000	      325.80	        0.00	           -	         -	  0.00	    300.00	    332.58	     3000.00	     3325.80	      325.80	         USD	    50000.00	        0.00	        0.00	     3000.00	     3325.80	      325.80	        0.00	      325.80	    47000.00	    50325.80
+2023-06-08 00:01:02	 PRC Buy	 USD	   1.00000	       MSFT Spot	    10	    20	     310.000	      319.20	        0.00	           -	         -	  0.00	    320.00	    325.96	     3200.00	     3259.60	       59.60	         USD	    50000.00	        0.00	        0.00	     6200.00	     6519.20	      319.20	        0.00	      319.20	    43800.00	    50319.20
+2023-06-09 00:01:02	 PRC Buy	 USD	   1.00000	       MSFT Spot	    10	    30	     316.667	      303.70	        0.00	           -	         -	  0.00	    330.00	    326.79	     3300.00	     3267.90	      -32.10	         USD	    50000.00	        0.00	        0.00	     9500.00	     9803.70	      303.70	        0.00	      303.70	    40500.00	    50303.70
+2023-06-12 00:01:02	REO Sell	 USD	   1.00000	       MSFT Spot	   -40	   -10	     330.000	       22.10	      400.00	           -	         -	  0.00	    330.00	    327.79	   -13200.00	   -13111.60	       88.40	         USD	    50000.00	        0.00	        0.00	    -3700.00	    -3277.90	       22.10	      400.00	      422.10	    53700.00	    50422.10
+]]>
+
+
+"XLC"  position="646" invested_pc="47485.040" fee_pc="43.453" marketPrice="81.370" marketValue_pc="52565.020" result="5036.527" result_pc="5036.527" basePrice="81.370" close="81.370" avgPremium="73.574"/>
+"AMJ"  position="368" invested_pc="9452.080" fee_pc="14.438" marketPrice="28.050"  marketValue_pc="10322.400"
+ result="855.882" result_pc="855.882" basePrice="28.050" close="28.050" avgPremium="25.724"/>
+ <row position_id="250384" type="1" name="J.P. Morgan Alerian MLP Index ETN" underlying="AMJ" contract="Spot"
+ currency="USD" country="840" underlying_id="4715" underlying_type="1" position="368" contracts="368"
+ invested="9452.080" fee="14.438" invested_pc="9452.080" fee_pc="14.438" marketPrice="28.050" marketValue="10322.400"
+ marketValue_pc="10322.400" result="855.882" result_pc="855.882" basePrice="28.050" close="28.050" avgPremium="25.724"/>
+
+"IYC"  position="546" invested_pc="41043.180" fee_pc="21.891" marketPrice="81.270" marketValue_pc="44373.420" result="3308.349" result_pc="3308.349" basePrice="81.270" close="81.270" avgPremium="75.211"/>
+
+market =1
+   position="646" invested="47485.040" fee="43.453"
+    marketPrice="81.370" marketValue="52565.020" marketValue_pc="52565.020" result="5036.527" result_pc="5036.527" basePrice="81.370" close="81.370" avgPremium="73.574"/>
+ underlying="AMJ" position="368"invested_pc="9452.080" fee_pc="14.438" marketPrice="29.550" marketValue="10874.400" marketValue_pc="10874.400" result="1407.882" result_pc="1407.882" basePrice="28.050" close="28.050" avgPremium="25.724" todayResult="-552.000" todayResult_pc="-552.000"/>
+
+===
+  {
+    symbol: 'XLC',
+    bprice: 81.37,
+    marketClose: 81.37,
+    marketPrice: 81.78
+  },
+  {
+    symbol: 'AMJ',
+    bprice: 28.05,
+    marketClose: 28.05,
+    marketPrice: 28.82
+  },
+  {
+    symbol: 'IYC',
+    bprice: 81.27,
+    marketClose: 81.27,
+    marketPrice: 83.64
+  }
+]
+
+function exportAsHTML() {
+  const editorContent = editor.getValue();
+  const blob = new Blob([editorContent], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'editor-content.html';
+  link.click();
+  URL.revokeObjectURL(url);
+}
+===
+#Output for non "tests" command can be disabled with tests.setMode
+
+{"command":"tests.setMode","hide":true}
+
+#Save result command to variable with name 'list'.
+Parameter _as can be added to any comand and his reponse will be saved in variable with name accorinf  _as
+{"command":"portfolios.list", "filter":{}, "_as": "list"}
+
+# As result we have variable list filled with Portfolio items
+# We can read content variable "list" to output
+{"command":"tests.getVar","path":"list"}
+
+# We can read content  by some path inside list
+# read by index -first portfolio (
+{"command":"tests.getVar","path":"list.0"}
+
+# read by index -first portfolio and it field 'name' (
+{"command":"tests.getVar","path":"list.0.name"}
+
+# set variable (variable is {key:value} object
+{"command":"tests.setVar","v":{"a": 1, "b": "hi"}}
+
+# read variable' (
+{"command":"tests.getVar","path":"a"}
+===
+
+
+# read variable' (
+{"command":"tests.getVar","path":"a"}
+
+# prices.historical
+{"command":"prices.historical","symbols":"A,INTC,EURUSD:FX","date":"2024-01-29"}
+
+{"command":"trades.add","portfolioId":"$var.pid","tradeId":"503978","tradeType":"1","side":"B","price":"73.6900","currency":"USD","rate":"1.0000","volume":"575","fee":"21.185875","symbol":"XLC","name":"Communication Services Select Sector SPDR Fund","tradeTime":"2024-01-10T00:00:02"}
+{"command":"trades.add","portfolioId":"$var.pid","tradeId":"503982","tradeType":"1","side":"S","price":"73.8100","currency":"USD","rate":"1.0000","volume":"59","fee":"2.177395","symbol":"XLC","name":"Communication Services Select Sector SPDR Fund","tradeTime":"2024-01-12T00:00:06"}
+{"command":"trades.add","portfolioId":"$var.pid","tradeId":"503985","tradeType":"1","side":"S","price":"73.8100","currency":"USD","rate":"1.0000","volume":"6","fee":"0.221430","symbol":"XLC","name":"Communication Services Select Sector SPDR Fund","tradeTime":"2024-01-15T00:00:09"}
+{"command":"trades.add","portfolioId":"$var.pid","tradeId":"503986","tradeType":"1","side":"B","price":"72.9400","currency":"USD","rate":"1.0000","volume":"147","fee":"5.361090","symbol":"XLC","name":"Communication Services Select Sector SPDR Fund","tradeTime":"2024-01-17T00:00:10"}
+{"command":"trades.add","portfolioId":"$var.pid","tradeId":"503990","tradeType":"1","side":"S","price":"74.8300","currency":"USD","rate":"1.0000","volume":"127","fee":"4.751705","symbol":"XLC","name":"Communication Services Select Sector SPDR Fund","tradeTime":"2024-01-19T00:00:14"}
+{"command":"trades.add","portfolioId":"$var.pid","tradeId":"503991","tradeType":"1","side":"B","price":"74.9800","currency":"USD","rate":"1.0000","volume":"163","fee":"6.110870","symbol":"XLC","name":"Communication Services Select Sector SPDR Fund","tradeTime":"2024-01-22T00:00:15"}
+{"command":"trades.add","portfolioId":"$var.pid","tradeId":"503994","tradeType":"1","side":"S","price":"76.1900","currency":"USD","rate":"1.0000","volume":"71","fee":"2.704745","symbol":"XLC","name":"Communication Services Select Sector SPDR Fund","tradeTime":"2024-01-24T00:00:18"}
+{"command":"trades.add","portfolioId":"$var.pid","tradeId":"503998","tradeType":"1","side":"B","price":"78.3300","currency":"USD","rate":"1.0000","volume":"24","fee":"0.939960","symbol":"XLC","name":"Communication Services Select Sector SPDR Fund","tradeTime":"2024-01-29T00:00:22"}
+{"command":"trades.add","portfolioId":"$var.pid","tradeId":"503979","tradeType":"1","side":"B","price":"25.5500","currency":"USD","rate":"1.0000","volume":"296","fee":"3.781400","symbol":"AMJ","name":"J.P. Morgan Alerian MLP Index ETN","tradeTime":"2024-01-10T00:00:03"}
+{"command":"trades.add","portfolioId":"$var.pid","tradeId":"503980","tradeType":"1","side":"B","price":"25.7800","currency":"USD","rate":"1.0000","volume":"450","fee":"5.800500","symbol":"AMJ","name":"J.P. Morgan Alerian MLP Index ETN","tradeTime":"2024-01-12T00:00:04"}
+{"command":"trades.add","portfolioId":"$var.pid","tradeId":"503984","tradeType":"1","side":"S","price":"25.7800","currency":"USD","rate":"1.0000","volume":"25","fee":"0.322250","symbol":"AMJ","name":"J.P. Morgan Alerian MLP Index ETN","tradeTime":"2024-01-15T00:00:08"}
+{"command":"trades.add","portfolioId":"$var.pid","tradeId":"503987","tradeType":"1","side":"S","price":"25.4500","currency":"USD","rate":"1.0000","volume":"286","fee":"3.639350","symbol":"AMJ","name":"J.P. Morgan Alerian MLP Index ETN","tradeTime":"2024-01-17T00:00:11"}
+{"command":"trades.add","portfolioId":"$var.pid","tradeId":"503997","tradeType":"1","side":"S","price":"26.5600","currency":"USD","rate":"1.0000","volume":"7","fee":"0.092960","symbol":"AMJ","name":"J.P. Morgan Alerian MLP Index ETN","tradeTime":"2024-01-26T00:00:21"}
+{"command":"trades.add","portfolioId":"$var.pid","tradeId":"503999","tradeType":"1","side":"S","price":"26.7100","currency":"USD","rate":"1.0000","volume":"60","fee":"0.801300","symbol":"AMJ","name":"J.P. Morgan Alerian MLP Index ETN","tradeTime":"2024-01-29T00:00:23"}
+{"command":"trades.add","portfolioId":"$var.pid","tradeId":"503977","tradeType":"1","side":"B","price":"77.8200","currency":"USD","rate":"1.0000","volume":"642","fee":"24.980220","symbol":"FDIS","name":"Fidelity MSCI Consumer Discretionary Index ETF","tradeTime":"2024-01-10T00:00:01"}
+{"command":"trades.add","portfolioId":"$var.pid","tradeId":"503981","tradeType":"1","side":"S","price":"76.9300","currency":"USD","rate":"1.0000","volume":"94","fee":"3.615710","symbol":"FDIS","name":"Fidelity MSCI Consumer Discretionary Index ETF","tradeTime":"2024-01-12T00:00:05"}
+{"command":"trades.add","portfolioId":"$var.pid","tradeId":"503983","tradeType":"1","side":"B","price":"76.9300","currency":"USD","rate":"1.0000","volume":"14","fee":"0.538510","symbol":"FDIS","name":"Fidelity MSCI Consumer Discretionary Index ETF","tradeTime":"2024-01-15T00:00:07"}
+{"command":"trades.add","portfolioId":"$var.pid","tradeId":"503988","tradeType":"1","side":"S","price":"76.1000","currency":"USD","rate":"1.0000","volume":"45","fee":"1.712250","symbol":"FDIS","name":"Fidelity MSCI Consumer Discretionary Index ETF","tradeTime":"2024-01-17T00:00:12"}
+{"command":"trades.add","portfolioId":"$var.pid","tradeId":"503989","tradeType":"1","side":"B","price":"77.3200","currency":"USD","rate":"1.0000","volume":"118","fee":"4.561880","symbol":"FDIS","name":"Fidelity MSCI Consumer Discretionary Index ETF","tradeTime":"2024-01-19T00:00:13"}
+{"command":"trades.add","portfolioId":"$var.pid","tradeId":"503992","tradeType":"1","side":"S","price":"77.2300","currency":"USD","rate":"1.0000","volume":"185","fee":"7.143775","symbol":"FDIS","name":"Fidelity MSCI Consumer Discretionary Index ETF","tradeTime":"2024-01-22T00:00:16"}
+{"command":"trades.add","portfolioId":"$var.pid","tradeId":"503993","tradeType":"1","side":"B","price":"76.7300","currency":"USD","rate":"1.0000","volume":"102","fee":"3.913230","symbol":"FDIS","name":"Fidelity MSCI Consumer Discretionary Index ETF","tradeTime":"2024-01-24T00:00:17"}
+{"command":"trades.add","portfolioId":"$var.pid","tradeId":"503996","tradeType":"1","side":"S","price":"76.5500","currency":"USD","rate":"1.0000","volume":"552","fee":"21.127801","symbol":"FDIS","name":"Fidelity MSCI Consumer Discretionary Index ETF","tradeTime":"2024-01-26T00:00:20"}
+{"command":"trades.add","portfolioId":"$var.pid","tradeId":"503995","tradeType":"1","side":"B","price":"75.2000","currency":"USD","rate":"1.0000","volume":"564","fee":"21.206400","symbol":"IYC","name":"iShares U.S. Consumer Services ETF","tradeTime":"2024-01-26T00:00:19"}
+{"command":"trades.add","portfolioId":"$var.pid","tradeId":"504000","tradeType":"1","side":"S","price":"76.0900","currency":"USD","rate":"1.0000","volume":"18","fee":"0.684810","symbol":"IYC","name":"iShares U.S. Consumer Services ETF","tradeTime":"2024-01-29T00:00:24"}
+
+{"command":"trades.add","portfolioId":"$var.pid","tradeId":"503976","tradeType":"31","side":"P","price":"100000.0000","currency":"USD","rate":"1.0000","volume":"0","fee":"0.000000","symbol":"","name":"","tradeTime":"2024-01-09T00:00:00"}
+
+{"command":"tests.delay", "delay":1000}
+{"command":"portfolios.positions","_id":"_testPortfolioHistory","requestType":"1", "marketPrice":"4","basePrice":"4", "_as":"response"}
+{"command":"tests.setVar", "v":{"eventName": "$var.response.eventName"}}
+{"command":"tests.delay", "delay":3000}
+{"command":"portfolios.positions","_id":"_testPortfolioHistory","requestType":"3","eventName": "$var.eventName", "changes":[{"symbol": "XLC","close": 82.00}]}
+{"command":"tests.delay", "delay":3000}
+{"command":"portfolios.positions","_id":"_testPortfolioHistory","requestType":"3","eventName": "$var.eventName", "changes":[{"symbol": "XLC","close": 82.62}]}
+{"command":"tests.delay", "delay":5000}
+{"command":"portfolios.positions","_id":"_testPortfolioHistory","requestType":"2", "subscribeId":"1"  }
+
+===
+"command":"portfolios.positions","_id":"_testPortfolioHistory","requestType":"1", "marketPrice":"4","basePrice":"4", "_as":"response", "msgId":"subscribePosition"}
+{"command":"tests.setVar", "v":{"eventName": "$var.response.eventName"}}
+{"command":"tests.check", path="respone.msg" , "conditions": {"$eq":"subscribed"}, "description":"Subscription done"}
+{"command":"tests.waitMsg", msgId="subscribePosition", "_as":"position", "delay"}
+
+
+{"command":"tests.delay", "delay":3000}
+{"command":"portfolios.positions","_id":"_testPortfolioHistory","requestType":"3","changes": [{"symbol":"XLC","close":82} }]}
+{"command":"tests.delay", "delay":1000}
+{"command":"portfolios.positions","_id":"_testPortfolioHistory","requestType":"3","changes": [{"symbol":"XLC","close":82.62} }]}
+{"command":"tests.delay", "delay":1000}
+{"command":"portfolios.positions","_id":"_testPortfolioHistory","requestType":"2","subscribeId":1, "marketPrice":"4","basePrice":"4", "_as":"response"}
+
+"command":"portfolios.positions","_id":"_testPortfolioHistory","requestType":"1", "marketPrice":"4","basePrice":"4", "_as":"response", "msgId":"subscribePosition"}
+{"command":"tests.setVar", "v":{"eventName": "$var.response.eventName"}}
+{"command":"tests.check", path="respone.msg" , "conditions": {"$eq":"subscribed"}, "description":"Subscription done"}
+{"command":"tests.waitMsg", msgId="subscribePosition", "_as":"position", "delay"}
+
+==
+
+{"command":"portfolios.positions","_id":"_testPortfolioHistory","requestType":"1", "marketPrice":"4","basePrice":"4", "_as":"response", "msgId":"subscribePosition"}
+{"command":"tests.setVar", "v":{"eventName": "$var.response.eventName"}}
+{"command":"tests.check", "path":"respone.msg" , "conditions": {"msg":{"$eq":"subscribed"}}, "description":"Subscription done"}
+{"command":"tests.waitMsg", "msgId":"subscribePosition", "to":"currentPosition", "delay":1000}
+{"command":"portfolios.positions","_id":"_testPortfolioHistory","requestType":"2", "msgId":"subscribePosition"}
+
+
+
+{"command":"tests.waitMdelay", "delay":1000}
+
+
+{"command":"portfolios.positions","_id":"_testPortfolioHistory","requestType":"3","changes": [{"symbol":"XLC","close":82} }]}
+{"command":"tests.delay", "delay":1000}
+{"command":"portfolios.positions","_id":"_testPortfolioHistory","requestType":"3","changes": [{"symbol":"XLC","close":82.62} }]}
+{"command":"tests.delay", "delay":1000}
+{"command":"portfolios.positions","_id":"_testPortfolioHistory","requestType":"2","subscribeId":1, "marketPrice":"4","basePrice":"4", "_as":"response"}

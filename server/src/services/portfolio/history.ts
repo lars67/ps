@@ -13,7 +13,7 @@ import {
 } from "../../services/app/priceCashe";
 import { Portfolio } from "../../types/portfolio";
 
-import moment, { Moment } from "moment";
+import moment, {Moment, weekdaysShort} from "moment";
 import { formatYMD } from "../../constants";
 import {getModelInstanceByIDorName, isValidDateFormat, toNum} from "../../utils";
 
@@ -22,9 +22,10 @@ type Params = {
   from: string;
   till: string;
   detail: string; //0|1
+  sample: string;
 };
 export async function history(
-  { _id, from, till, detail }: Params,
+  { _id, from, till, detail='0', sample }: Params,
   sendResponse: (data: any) => void,
   msgId: string,
 ): Promise<{}> {
@@ -34,6 +35,9 @@ export async function history(
 
 
   const {_id:realId,error, instance:portfolio} = await  getModelInstanceByIDorName<Portfolio>(_id, PortfolioModel);
+
+  console.log('R', realId) ;
+
   if (error) {
     return error;
   }
@@ -51,6 +55,22 @@ export async function history(
   } else {
     till = moment().format(`${formatYMD}T23:59:59`);
   }
+  switch(sample){
+    case '1':
+    case 'day':
+      sample = 'day'
+      break;
+    case '2':
+    case 'week':
+      sample = 'week'
+      break;
+    case '3':
+    case 'month':
+      sample = 'month'
+      break;
+    default:
+      sample = ''
+  }
 
   const allTrades = await TradeModel.find({
     portfolioId: realId,
@@ -59,10 +79,16 @@ export async function history(
   })
     .sort({ tradeTime: 1 })
     .lean();
+//console.log('allTrades', allTrades)
+  const withDetail = Number(detail) !== 0;
+  if (allTrades.length <= 0) {
+    return { days: [], ...(withDetail && { rows: []})  };
+  }
+
   const { startDate, endDate, uniqueSymbols, uniqueCurrencies } =
-    await checkPortfolioPricesCurrencies(allTrades, portfolio.currency);
+  await checkPortfolioPricesCurrencies(allTrades, portfolio.currency);
   console.log("P", startDate, uniqueSymbols, uniqueCurrencies);
-  let date = moment(startDate);
+  const lastDay = till.split("T")[0];
   let currentDay = startDate.split("T")[0];
 
   const oldPortfolio: Record<string, Partial<Trade> | {}> = {};
@@ -74,23 +100,42 @@ export async function history(
   let nav = 0;
   for (const trade of allTrades) {
     if (!trade.tradeTime.includes(currentDay)) {
-      let { inv, notTradeChanges } = addNotTradesItems(
-        currentDay,
-        portfolio.currency,
-        tradedSymbols,
-        oldPortfolio,
-      );
-      notTradeChanges.forEach((t) => rows.push(t));
-      days.push({
-        date: currentDay,
-        invested: invested + inv,
-        investedWithoutTrades: inv,
-        cash,
-        nav: nav + inv,
-      });
-      invested = 0;
-      tradedSymbols = [];
-      currentDay = trade.tradeTime.split("T")[0];
+      const nextCurrentDayWithTrade = trade.tradeTime.split("T")[0];
+      if (sample) {
+      //  currentDay = moment(currentDay,formatYMD).add(1, 'day').format(formatYMD)
+      } else {
+        //currentDay = nextCurrentDayWithTrade;
+      }
+      ///process as not trades all till nextCurrentDayWithTrade
+      while (currentDay<nextCurrentDayWithTrade) {
+        const isNotTradedDate= tradedSymbols.length===0;
+        let {inv, notTradeChanges} = addNotTradesItems(
+            currentDay,
+            portfolio.currency,
+            tradedSymbols,
+            oldPortfolio,
+        );
+
+        notTradeChanges.forEach((t) => rows.push(t));
+        if(!sample || true) {
+          days.push({
+            date: currentDay,
+            invested: invested + inv,
+            investedWithoutTrades: inv,
+            cash,
+            nav: isNotTradedDate ? inv + cash : nav + inv,
+
+          });
+        }
+        console.log(isNotTradedDate, currentDay,nextCurrentDayWithTrade, days[days.length-1]);
+        currentDay = moment(currentDay,formatYMD).add(1, 'day').format(formatYMD)
+        invested = 0;
+        tradedSymbols = [];
+        if(!sample)break;
+      }
+
+      //->
+      currentDay = nextCurrentDayWithTrade;// trade.tradeTime.split("T")[0];
 
       Object.keys(oldPortfolio).map((p) => {
         const pi = oldPortfolio[p] as Trade;
@@ -145,6 +190,7 @@ export async function history(
       case "31":
       case "20":
         const cashPut =  trade.price* trade.rate
+          console.log('CASHPUT',trade.tradeTime,trade.price, trade.rate,'=', cashPut, '+',cash );
         cash += cashPut
       /*    priceToBaseCurrency(
             trade.price,
@@ -184,25 +230,31 @@ export async function history(
       delete oldPortfolio[p];
     }
   });
-  const lastDay = till.split("T")[0];
+
+
   if (lastDay > currentDay) {
-    let { inv, notTradeChanges } = addNotTradesItems(
-      till.split("T")[0],
-      portfolio.currency,
-      [],
-      oldPortfolio,
-    );
-    notTradeChanges.forEach((t) => rows.push(t));
-    days.push({
-      date: lastDay,
-      invested: inv,
-      cash,
-      nav: inv + cash,
-    });
+    currentDay = moment(currentDay,formatYMD).add(1, 'day').format(formatYMD)
+    while (currentDay<=lastDay) {
+
+      let {inv, notTradeChanges} = addNotTradesItems(
+          currentDay,
+          portfolio.currency,
+          [],
+          oldPortfolio,
+      );
+      notTradeChanges.forEach((t) => rows.push(t));
+      days.push({
+        date: currentDay,
+        investedWithoutTrades: inv,
+        cash,
+        nav: inv + cash,
+      });
+      currentDay = moment(currentDay,formatYMD).add(1, 'day').format(formatYMD)
+    }
   }
 
   const result = {};
-  const withDetail = Number(detail) !== 0;
+
   if (from) {
     const fromDate  = from.split('T').shift() as string;
     return {
@@ -214,7 +266,10 @@ export async function history(
       }),
     };
   }
-  return { days, ...(withDetail && { rows }) };
+  if (sample) {
+      days = resampleByTradeTime(days as TradeTimeItem[], sample )
+  }
+  return { days, ...(withDetail && { details: rows }) };
 }
 
 function addNotTradesItems(
@@ -251,4 +306,44 @@ function addNotTradesItems(
       }, 0);
   }
   return { inv, notTradeChanges: changes };
+}
+
+interface TradeTimeItem {
+  date: string;
+}
+function resampleByTradeTime(data: TradeTimeItem[], step: string): TradeTimeItem[] {
+  // Check the step parameter
+  let stepDuration: moment.unitOfTime.DurationConstructor;
+  switch (step) {
+    case 'day':
+    case '1':
+      stepDuration = 'days';
+      break;
+    case 'week':
+    case '2':
+      stepDuration = 'weeks';
+      break;
+    case 'month':
+    case '3':
+      stepDuration = 'months';
+      break;
+    default:
+      return data;
+  }
+
+  // Group the data by the resampled time periods
+  const resampled = data.reduce((acc: { [key: string]: TradeTimeItem }, curr: TradeTimeItem) => {
+    const tradeTime: Moment = moment(curr.date);
+    const resampledTime: string = tradeTime.startOf(stepDuration).format('YYYY-MM-DD');
+
+    if (!acc[resampledTime]) {
+      acc[resampledTime] = {
+        ...curr
+      };
+    }
+    return acc;
+  }, {});
+
+  // Convert the object to an array
+  return Object.values(resampled);
 }

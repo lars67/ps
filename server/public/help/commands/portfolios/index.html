@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Portfolios</title>
+    <link rel="stylesheet" href="../../style.css">
+    <link rel="stylesheet" href="../../cm-viewer.css">
+    <link rel="stylesheet" href="../../contextMenu.css">
+
+</head>
+<body>
+<h1 id="manual">Portfolios</h1>
+<table>
+    <tr>
+    <th>Command</th>
+    <th>Call</th>
+    </tr>
+    <tr>
+        <td>List</td>
+        <td><div class="cm-activeLine cm-line"><span class="cm-matchingBracket">{</span><span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.list"</span>,<span class="ͼ1m">"filter"</span>:{}<span class="cm-matchingBracket">}</span></div></td>
+    </tr>
+    <tr>
+        <td><a href="#to-add">Add</a></td>
+        <td><div class="cm-activeLine cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.add"</span>,<span class="ͼ1m">"name"</span>:<span class="ͼ19">"PortfolioName"</span>,<span class="ͼ1m">"description"</span>:<span class="ͼ19">""</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"USD"</span>,<span class="ͼ1m">"userId"</span>:<span class="ͼ19">""</span>,<span class="ͼ1m">"baseInstrument"</span>:<span class="ͼ19">"SPY"</span>}</div></td>
+    </tr>
+    <tr>
+        <td><a href="#to-update">Update</a></td>
+        <td><div class="cm-activeLine cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.update"</span>,<span class="ͼ1m">"_id"</span>:<span class="ͼ19">"?"</span>,<span class="ͼ1m">"name"</span>:<span class="ͼ19">"PortfolioName"</span>,<span class="ͼ1m">"description"</span>:<span class="ͼ19">""</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"USD"</span>,<span class="ͼ1m">"userId"</span>:<span class="ͼ19">""</span>,<span class="ͼ1m">"baseInstrument"</span>:<span class="ͼ19">"SPY"</span>}</div></td>
+    </tr>
+    <tr>
+        <td><a href="#to-remove">Remove</a></td>
+        <td><div class="cm-activeLine cm-line"><span class="cm-matchingBracket">{</span><span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.remove"</span>,<span class="ͼ1m">"_id"</span>:<span class="ͼ19">"?"</span><span class="cm-matchingBracket">}</span></div></td>
+    </tr>
+    <tr>
+        <td><a href="#to-history">History</a></td>
+        <td><div class="cm-activeLine cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.history"</span>,<span class="ͼ1m">"_id"</span>:<span class="ͼ19">"?"</span>,<span class="ͼ1m">"from"</span>:<span class="ͼ19">""</span>,<span class="ͼ1m">"till"</span>:<span class="ͼ19">""</span>,<span class="ͼ1m">"detail"</span>:<span class="ͼ1a">0</span>}</div></td>
+    </tr>
+    <tr>
+        <td><a href="#to-positions">Positions</a></td>
+        <td><div class="cm-activeLine cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.positions"</span>,<span class="ͼ1m">"_id"</span>:<span class="ͼ19">"?"</span>,<span class="ͼ1m">"requestType"</span>:<span class="ͼ19">"0"</span>,<span class="ͼ1m">"marketPrice"</span>:<span class="ͼ19">"4"</span>,<span class="ͼ1m">"basePrice"</span>:<span class="ͼ19">"4"</span>}</div></td>
+    </tr>
+    <tr>
+        <td><a href="#to-trades">Trades</a></td>
+        <td><div class="cm-activeLine cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolio.trades"</span>,<span class="ͼ1m">"_id"</span>:<span class="ͼ19">"?"</span>,<span class="ͼ1m">"from"</span>:<span class="ͼ19">""</span>}</div></td>
+    </tr>
+    <tr>
+        <td><a href="#to-putCash">Put Cash</td>
+        <td><div class="cm-activeLine cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.putCash"</span>,<span class="ͼ1m">"portfolioId"</span>:<span class="ͼ19">"?"</span>,<span class="ͼ1m">"amount"</span>:<span class="ͼ19">"?"</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"?"</span>,<span class="ͼ1m">"userId"</span>:<span class="ͼ19">""</span>}</div></td>
+    </tr>
+    <tr>
+        <td>Put Dividends</td>
+        <td><div class="cm-activeLine cm-line"><span class="cm-matchingBracket">{</span><span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.putDividends"</span>,<span class="ͼ1m">"portfolioId"</span>:<span class="ͼ19">"?"</span>,<span class="ͼ1m">"amount"</span>:<span class="ͼ19">"?"</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"?"</span>,<span class="ͼ1m">"userId"</span>:<span class="ͼ19">""</span><span class="cm-matchingBracket">}</span></div></td>
+    </tr>
+</table>
+<p>In all portfolio commands which used only _id  as portfolio id, can be used instead _id portfolio name. Examples:</p>
+<p> Remove with usage prtfolio name instead _id:</p>
+<div class="cm-activeLine cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.remove"</span>, <span class="ͼ1m">"_id"</span>:<span class="ͼ19">"_testPortfolio"</span>}</div>
+<p> Usage portfolio name instead _id:</p>
+<div class="cm-activeLine cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.history"</span>,<span class="ͼ1m">"_id"</span>:<span class="ͼ19">"$var.pid"</span>,<span class="ͼ1m">"detail"</span>:<span class="ͼ1a">1</span>, <span class="ͼ1m">"_as"</span>:<span class="ͼ19">"history2"</span>}</div>
+
+<h3 id="to-add">Add portfolio</h3>
+<div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.add"</span>,<span class="ͼ1m">"name"</span>:<span class="ͼ19">"_testPortfolio"</span>,<span class="ͼ1m">"description"</span>:<span class="ͼ19">""</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"USD"</span>,<span class="ͼ1m">"userId"</span>:<span class="ͼ19">""</span>,<span class="ͼ1m">"baseInstrument"</span>:<span class="ͼ19">"SPY"</span>}</div>
+<div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.add"</span>,<span class="ͼ1m">"_id"</span>: <span class="ͼ19">"65f52f98ab7128acd188b301"</span>,<span class="ͼ1m">"name"</span>:<span class="ͼ19">"testPortfolioName"</span>,<span class="ͼ1m">"description"</span>:<span class="ͼ19">""</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"USD"</span>,<span class="ͼ1m">"userId"</span>:<span class="ͼ19">""</span>,<span class="ͼ1m">"baseInstrument"</span>:<span class="ͼ19">"SPY"</span>}</div>
+<table>
+    <tr>
+        <th>Parameter</th>
+        <th>Value</th>
+        <th>Required</th>
+    </tr>
+    <tr>
+        <td>name</td>
+        <td>Portfolio name. Must be unique</td>
+        <td>Yes</td>
+    </tr>
+    <tr>
+        <td>currency</td>
+        <td>Portfolio currency value laike :  USD, DKK...</td>
+        <td>Yes</td>
+    </tr>
+    <tr>
+        <td>baseInstrument</td>
+        <td><Some symbol like: SPY</td>
+        <td>Yes</td>
+    </tr>
+    <tr>
+        <td>description</td>
+        <td>Desscriptiion</td>
+        <td>No</td>
+    </tr>
+    <tr>
+        <td>userId</td>
+        <td>Automaticallly assign current user _id</td>
+        <td>No</td>
+    </tr>
+    <tr>
+        <td>portfolioIds</td>
+        <td>Children portfolios _id or names. ['child1', '661fb59b6d472d966c0a7521']</td>
+        <td>No</td>
+    </tr>
+
+</table>
+<details>
+    <summary>Output</summary>
+    <pre>
+{
+  "command": "portfolios.add",
+  "msgId": 64,
+  "data": {
+    "name": "_testPortfolioHistory",
+    "currency": "USD",
+    "userId": "65dd09760689c3bd1c0ff45a",
+    "baseInstrument": "SPY",
+    "portfolioIds": [],
+    "_id": "661fb59b6d472d966c0a7521",
+  }
+}
+
+    </pre>
+</details>
+
+<h3 id="to-update">Update</h3>
+<table>
+    <tr>
+        <th>Parameter</th>
+        <th>Value</th>
+        <th>Required</th>
+    </tr>
+    <tr>
+        <td> _id</td>
+        <td>Portfolio , can be portfolio fields: _id or name</td>
+        <td>Yes</td>
+    </tr>
+    <tr>
+        <td>updated portfolio fields</td>
+        <td>description,currency,baseInstrument</td>
+        <td>No</td>
+    </tr>
+</table>
+
+<h3 id="to-remove">Remove</h3>
+Remove portfolio with all portfolio trades
+<div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.remove"</span>, <span class="ͼ1m">"_id"</span>:<span class="ͼ19">"_testPortfolio"</span>}</div>
+
+<table>
+    <tr>
+        <th>Parameter</th>
+        <th>Value</th>
+        <th>Required</th>
+    </tr>
+    <tr>
+        <td> _id</td>
+        <td>Portfolio , can be portfolio fields: _id or name</td>
+        <td>Yes</td>
+    </tr>
+</table>
+<details>
+    <summary>Output</summary>
+    Succesful:
+    <pre>
+{
+  "command": "portfolios.remove",
+  "msgId": 63,
+  "data": {
+    "_id": "661fb52d6d472d966c0a747e",
+    "name": "_testPortfolioHistory",
+    "currency": "USD",
+    "userId": "65dd09760689c3bd1c0ff45a",
+    "baseInstrument": "SPY",
+    "portfolioIds": [],
+    "__v": 0
+  }
+}
+
+    </pre>
+    Error:
+    <pre>
+{
+  "command": "portfolios.remove",
+  "msgId": 1,
+  "error": "Can't find record with this _id or name"
+}
+    </pre>
+</details>
+
+<h3 id="to-history">History</h3>
+<table>
+    <tr>
+    <th>Parameter</th>
+    <th>Value</th>
+    <th>Required</th>
+    </tr>
+    <tr>
+        <td> _id</td>
+        <td>Portfolio selection, can be portfolio fields: _id or name</td>
+        <td>Yes</td>
+    </tr>
+    <tr>
+        <td>from</td>
+        <td>Date from trades will be returned. Format YYYY-MM-DD</td>
+        <td>No</td>
+    </tr>
+    <tr>
+        <td>till</td>
+        <td>Date till trades will be returned. Format YYYY-MM-DD. Without will be used all from first </td>
+        <td>No</td>
+    </tr>
+    <tr>
+        <td>sample</td>
+        <td>Output date
+        <ul>
+            <li> not set or 0 - trade dates(default)</li>
+            <li> 'day' or 1 - date step</li>
+            <li> 'week' or 2 - week step</li>
+            <li> 'month' or 3 - month step</li>
+
+        </ul>
+        </td>
+        <td>No</td>
+    </tr>
+    <tr>
+        <td>detail</td>
+        <td><ul><li>0: show summary result only by trade dates</li>
+        <li>1: show summary and trades result</li></ul></td>
+        <td>No</td>
+    </tr>
+
+
+</table>
+<p>Output contain array with date history result in property 'days', and  when detail=1 property 'details' with  symbol information<\br>
+    Each day contain nav, cash, invested, investedWithoutTrades, where <b>nav=cash+invested+investedWithoutTrades</b><\br>
+    invested - part invested via trade in this day, investedWithoutTrade- part invested early, but without trade in this day but in current prices, cash- is not invested in symbols yet.</p>
+
+
+<details>
+    <summary>Output</summary>
+    <pre>
+{
+  "command": "portfolios.history",
+   "data": {
+    "days": [
+      {
+        "date": "2024-01-29",
+        "invested": 101975.6,
+        "investedWithoutTrades": 0,
+        "cash": 1083.7146,
+        "nav": 103059.3146
+      },
+      ..................
+    ],
+    "details": [
+      {
+        "symbol": "XLC",
+        "operation": "BUY",
+        "tradeTime": "2024-01-29T00:00:22",
+        "currency": "USD",
+        "rate": 1,
+        "volume": 24,
+        "price": 78.33,
+        "fee": 0.93996,
+        "cash": -1887.02,
+        "newVolume": 646,
+        "nav": 48714.160694,
+        "invested": 50601.18,
+        "investedSymbol": 50601.18,
+        "cashChangeSymbol": -1880.86
+      },
+        .............
+      {
+        "symbol": "AMJ",
+        "operation": "SELL",
+        "tradeTime": "2024-01-29T00:00:23",
+        "currency": "USD",
+        "rate": 1,
+        "volume": 60,
+        "price": 26.71,
+        "fee": 0.8013,
+        "cash": -285.22,
+        "newVolume": 368,
+        "nav": 60145.239394,
+        "invested": 60430.46,
+        "investedSymbol": 9829.28,
+        "cashChangeSymbol": 1601.7987
+      },
+      ........
+    ]
+  }
+    </pre>
+</details>
+
+<h3 id="to-positions">Positions</h3>
+<table>
+    <tr>
+    <th>Parameter</th>
+    <th>Value</th>
+    <th>Required</th>
+    </tr>
+    <tr>
+        <td> _id</td>
+        <td>Portfolio selection, can beportfolio fields _id or name</td>
+        <td>Yes</td>
+    </tr>
+    <tr>
+        <td>requestType</td>
+        <td><ul><li>0:Snapshot(default)</li><li>1:Subscribe</li><li>2:Unsubscribe</li></ul>
+        <td>No</td>
+    </tr>
+    <tr>
+        <td>marketType</td>
+        <td>   <ul> <li>0 bid</li>
+            <li>1 offer</li>
+            <li>2 last</li>
+            <li>3 open</li>
+            <li>4 close</li>
+            <li>5 high</li>
+            <li>6 low</li>
+            <li>7 average</li></ul></td>
+        <td>No</td>
+    </tr>
+    <tr>
+        <td>basePrice</td>
+        <td>
+            <ul>
+                <li>0 bid</li>
+                <li>1 offer</li>
+                <li>2 last</li>
+                <li>3 open</li>
+                <li>4 close</li>
+                <li>5 high</li>
+                <li>6 low</li>
+                <li>7 average</li>
+            </ul></td>
+        <td>No</td>
+    </tr>
+</table>
+
+<h3 id="to-trades">Return portfolio trades</h3>
+
+    <table><tr>
+        <th>Parameter</th>
+        <th>Value</th>
+        <th>Required</th>
+        </tr>
+        <tr>
+            <td> _id</td>
+            <td>Portfolio selection, can beportfolio fields _id or name</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>from</td>
+            <td>Date from trades will be returned. Format YYYY-MM-DD</td>
+            <td>No</td>
+        </tr>
+    </table>
+
+
+<h3 id="to-putCash">Put Cash</h3>
+<p>Put/Get cash from portfolio </p>
+
+<table>
+    <tr>
+    <th>Parameter</th>
+    <th>Value</th>
+    <th>Required</th>
+    </tr>
+    <tr>
+        <td> _id</td>
+        <td>Portfolio selection, can be portfolio fields: _id or name</td>
+        <td>Yes</td>
+    </tr>
+    <tr>
+        <td>amount</td>
+        <td>value </td>
+        <td>No</td>
+    </tr>
+    <tr>
+        <td>currency</td>
+        <td>value </td>
+        <td>No</td>
+    </tr>
+</table>
+
+<h3>Scenarios</h3>
+<div class="help-section">
+<div class="cm-line">Tests with portfolio with name <span class="ͼ19">"_testPortfolio"</span></div><div class="cm-line">#<span class="ͼ1a">1</span> Remove if exists</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.remove"</span>, <span class="ͼ1m">"_id"</span>:<span class="ͼ19">"_testPortfolio"</span>}</div><div class="cm-line">#<span class="ͼ1a">2</span> Create new portfolio</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.add"</span>,<span class="ͼ1m">"name"</span>:<span class="ͼ19">"_testPortfolio"</span>,<span class="ͼ1m">"description"</span>:<span class="ͼ19">""</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"USD"</span>,<span class="ͼ1m">"userId"</span>:<span class="ͼ19">""</span>,<span class="ͼ1m">"baseInstrument"</span>:<span class="ͼ19">"SPY"</span>}</div><div class="cm-line">#<span class="ͼ1a">3</span> Get our portfolio to variable with name =result </div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.list"</span>, <span class="ͼ1m">"filter"</span>: {<span class="ͼ1m">"name"</span>:<span class="ͼ19">"_testPortfolio"</span>}, <span class="ͼ1m">"_as"</span>:<span class="ͼ19">"result"</span>}</div><div class="cm-line">#<span class="ͼ1a">4</span> Check that variable result is array and it length=<span class="ͼ1a">1</span></div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.check"</span>, <span class="ͼ1m">"path"</span>: <span class="ͼ19">"result"</span>, <span class="ͼ1m">"conditions"</span>: {<span class="ͼ1m">"*"</span>: {<span class="ͼ1m">"$isArray"</span>: <span class="ͼ1b">true</span>}}, <span class="ͼ1m">"description"</span>: <span class="ͼ19">"Check that porfolio.list return array"</span>}</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.check"</span>, <span class="ͼ1m">"path"</span>: <span class="ͼ19">"result"</span>, <span class="ͼ1m">"conditions"</span>: {<span class="ͼ1m">"length"</span>: {<span class="ͼ1m">"$eq"</span>: <span class="ͼ1a">1</span>}},  <span class="ͼ1m">"description"</span>: <span class="ͼ19">"Check that porfolio.list return one item "</span>}</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.check"</span>, <span class="ͼ1m">"path"</span>: <span class="ͼ19">"result.0"</span>, <span class="ͼ1m">"conditions"</span>: {<span class="ͼ1m">"name"</span>: {<span class="ͼ1m">"$eq"</span>: <span class="ͼ19">"_testPortfolio"</span>}},  <span class="ͼ1m">"description"</span>: <span class="ͼ19">"Check that returned porfolio with requested name"</span>}</div><div class="cm-line">#<span class="ͼ1a">5</span> copy portfolio._id to variable pid </div><div class="cm-line">{<span class="ͼ1m">"command"</span>: <span class="ͼ19">"tests.setVar"</span>, <span class="ͼ1m">"v"</span>:{<span class="ͼ1m">"pid"</span>: <span class="ͼ19">"$var.result.0._id"</span> }}</div><div class="cm-line">#<span class="ͼ1a">6</span> </div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.check"</span>, <span class="ͼ1m">"path"</span>: <span class="ͼ19">"result.0"</span>, <span class="ͼ1m">"conditions"</span>: {<span class="ͼ1m">"_id"</span>: {<span class="ͼ1m">"$eq"</span>: <span class="ͼ19">"$var.pid"</span>}},  <span class="ͼ1m">"description"</span>: <span class="ͼ19">"Check that variable with name 'pid'= portfolio._id"</span>}</div><div class="cm-line">#<span class="ͼ1a">7</span> Put cash</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.putCash"</span>,<span class="ͼ1m">"portfolioId"</span>:<span class="ͼ19">"$var.pid"</span>,<span class="ͼ1m">"amount"</span>:<span class="ͼ19">"1000"</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"USD"</span>, <span class="ͼ1m">"tradeTime"</span> :<span class="ͼ19">"2024-03-01T08:00:00"</span>}</div><div class="cm-line">#<span class="ͼ1a">8</span> Add cash</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.history"</span>,<span class="ͼ1m">"_id"</span>:<span class="ͼ19">"$var.pid"</span>,<span class="ͼ1m">"detail"</span>:<span class="ͼ1a">1</span>, <span class="ͼ1m">"_as"</span>:<span class="ͼ19">"history"</span>}</div><div class="cm-line">#<span class="ͼ1a">9</span></div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.check"</span>, <span class="ͼ1m">"path"</span>: <span class="ͼ19">"history.days.0"</span>, <span class="ͼ1m">"conditions"</span>: {<span class="ͼ1m">"cash"</span>: {<span class="ͼ1m">"$eq"</span>: <span class="ͼ1a">1000</span>}},  <span class="ͼ1m">"description"</span>: <span class="ͼ19">"Check frst day put cash"</span>}</div><div class="cm-line">#<span class="ͼ1a">10</span> Put Cash in EUR</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.putCash"</span>,<span class="ͼ1m">"portfolioId"</span>:<span class="ͼ19">"$var.pid"</span>,<span class="ͼ1m">"amount"</span>:<span class="ͼ19">"1000"</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"EUR"</span>, <span class="ͼ1m">"tradeTime"</span> :<span class="ͼ19">"2024-03-02T08:00:00"</span>}</div><div class="cm-line">#<span class="ͼ1a">11</span> Get history</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.history"</span>,<span class="ͼ1m">"_id"</span>:<span class="ͼ19">"$var.pid"</span>,<span class="ͼ1m">"detail"</span>:<span class="ͼ1a">1</span>, <span class="ͼ1m">"_as"</span>:<span class="ͼ19">"history2"</span>}</div><div class="cm-line"><br></div><div class="cm-line"><br></div><div class="cm-line"><br></div><div class="cm-line"><br></div><div class="cm-line"><br></div><div class="cm-line"><br></div><div class="cm-line"><br></div>></div>
+</div>
+<script src="../../contextMenu.js"></script>
+
+<script>
+</script>
+</body>
+</html>
