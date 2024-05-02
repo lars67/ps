@@ -2,7 +2,7 @@ import { Trade, TradeOp } from "../types/trade";
 import { TradeModel } from "../models/trade";
 import { PortfolioModel } from "../models/portfolio";
 import {
-    checkPortfolioPricesCurrencies,
+    checkPortfolioPricesCurrencies, checkPriceCurrency,
     getDateSymbolPrice,
     getRate,
     priceToBaseCurrency,
@@ -13,7 +13,7 @@ import moment, { Moment } from "moment";
 import { formatYMD } from "../constants";
 import {
     divideArray,
-    extractUniqueFields,
+    extractUniqueFields, findMinByField,
     getModelInstanceByIDorName,
     isValidDateFormat,
     toNum,
@@ -24,7 +24,9 @@ import SSEService, {
 } from "../services/app/SSEService";
 import eventEmitter, {sendEvent} from "../services/app/eventEmiter";
 import { getCompanyField } from "../services/app/companies";
-import { TradeFilter } from "@/services/trade";
+import { TradeFilter } from "../services/trade";
+import {fixRate, summationFlatPortfolios} from "../services/portfolio/helper";
+import {FilterQuery} from "mongoose";
 type SubscribeObj = { handler: (o: object) => void; sseService: SSEService };
 const subscribers: Record<string, SubscribeObj> = {};
 
@@ -121,7 +123,7 @@ async function getPositions(allTrades: Trade[], portfolio: Portfolio) {
             case "1":
                 const { symbol } = trade;
                 const dir = trade.side === "B" ? -1 : 1;
-                const priceN = toNum(trade.price);
+                const priceN = toNum({n : trade.price});
 
                 const cashChange =
                     dir * priceN * trade.rate * trade.volume -
@@ -237,7 +239,7 @@ function addNotTradesItems(
             .filter((k) => !tradedSymbols.includes(k))
             .reduce((sum, symbol) => {
                 const pi = oldPortfolio[symbol] as Trade;
-                const price = toNum(getDateSymbolPrice(currentDay, symbol) as number);
+                const price = toNum({n : getDateSymbolPrice(currentDay, symbol) as number});
                 const rate = getRate(pi.currency, portfolioCurrency, currentDay);
                 if (!price || !rate) {
                     throw `No price=${price}|rate=${rate} ${symbol} ${currentDay}`;
@@ -337,4 +339,46 @@ function getBasePrice(q: QuoteData, basePrice?: string): number | undefined {
         default:
             return q.close;
     }
+}
+
+
+export async function getPortfolioTrades(_id: string, from?:string, filterAdditional?: object) {
+    const {
+        _id: realId,
+        error,
+        instance:portfolio,
+    } = await getModelInstanceByIDorName<Portfolio>(_id, PortfolioModel);
+    if (  error){
+        return error
+    }
+    let portfolioFilter={}
+    let portfolioRates;
+    if (portfolio.portfolioType=== 'summation') {
+        // const {portfolioRateMap,portfolioFilterItems, flatPortfolios:sumPortfolios} =
+        //     await processSumation(portfolio)
+        const {portfolioFilterItems, portfolioRateMap}= await summationFlatPortfolios(portfolio);
+        portfolioFilter = {portfolioId:{$in: portfolioFilterItems}}
+        portfolioRates=portfolioRateMap;
+        console.log('>>>>>>>> getPortfolioTrades portfolioFilter=', portfolioFilter);// 'portfolioRateMap', portfolioRateMap);
+
+    } else {
+        portfolioFilter = {portfolioId: realId}
+    }
+
+    const filter: FilterQuery<Trade> = {...portfolioFilter,...(from && { tradeTime: {$gte: from}}), ...filterAdditional};
+    const trades:Trade[] = await TradeModel.find(filter)
+        .sort({ tradeTime: 1 })
+        .lean();
+    const minDate = from || findMinByField(trades, "tradeTime").tradeTime.split('T').shift() || '2020-01-01';
+    if (portfolioRates) {
+        const flatRates =  [...new Set(Object.values(portfolioRates).flat())]
+        for(let cur  of flatRates) {
+            const c = cur.slice(0, 3);
+            const pCur = cur.slice(3);
+            await checkPriceCurrency(c, pCur,minDate)
+        }
+        console.log('getPortfolioTrades portfolioRates', portfolioRates);
+        return  await fixRate(trades, portfolioRates )
+    }
+    return trades;
 }

@@ -18,35 +18,51 @@ async function delay(n: number) {
         }, n);
     });
 }
-export async function checkPrices(portfolioSymbols:string[], startDate0: Date | string) {
-    let isSended = 0;
-    const startDate =  typeof  startDate0 === 'string' ? startDate0 : (moment(startDate0 as Date)).format(formatYMD);
-    // console.log('checkPrices startDate:', startDate0, '>',startDate);
-    //console.log('cekPrices', portfolio, startDate0);
-    await Promise.all(
-        portfolioSymbols.map(async (symbol:string, ind: number) => {
-            if (!histories[symbol] || histories[symbol] > startDate) {
-                const history = await fetchHistory({
-                    symbol,
-                    from: startDate,
-                });
-                histories[symbol] = startDate;
-                history.map((h) => {
-                    const { date,  close } = h;
-                    if (!dateHistory[date]) {
-                        dateHistory[date] = { [symbol]:  close };
-                    } else {
-                        dateHistory[date][symbol] = close;
-                    }
-                });
-                if (isSended++ > 10) {
-                    await delay(200);
-                }
-            }
-        })
-    );
-}
 
+export async function checkPrices(
+    portfolioSymbols: string[],
+    startDate0: Date | string,
+    maxConcurrentRequests = 10,
+    delayBetweenBatches = 200
+) {
+    let isSended = 0;
+    const startDate =
+        typeof startDate0 === 'string'
+            ? startDate0
+            : moment(startDate0 as Date).format(formatYMD);
+
+    try {
+        await Promise.all(
+            portfolioSymbols.map(async (symbol: string) => {
+                if (!histories[symbol] || histories[symbol] > startDate) {
+                    const history = await fetchHistory({
+                        symbol,
+                        from: startDate,
+                    });
+
+                    histories[symbol] = startDate;
+
+                    for (const h of history) {
+                        const { date, close } = h;
+                        if (!dateHistory[date]) {
+                            dateHistory[date] = { [symbol]: close };
+                        } else {
+                            dateHistory[date][symbol] = close;
+                        }
+                    }
+
+                    if (++isSended > maxConcurrentRequests) {
+                        await delay(delayBetweenBatches);
+                        isSended = 0;
+                    }
+                }
+            })
+        );
+    } catch (error) {
+        console.error('Error in checkPrices:', error);
+        throw error;
+    }
+}
 export function getDatePrices(date:string, find: boolean=false) {
     if (dateHistory[date]) {
         return dateHistory[date];
@@ -85,7 +101,10 @@ export async function checkPriceCurrency(
     balanceCurrency: string,
     startDateInput: string
 ) {
-    const startDate = startDateInput.split('T').shift() as string
+    const startDateInputM = moment(startDateInput.split('T').shift() as string, formatYMD);
+
+    const startDate = startDateInputM.add(-7,'days').format(formatYMD);
+
     if (balanceCurrency !== currency) {
         let symbol: string='';
         let fx = `${currency}${balanceCurrency}`;
@@ -138,6 +157,7 @@ export async function checkPortfolioPricesCurrencies(
 ) {
     const uniqueSymbols = extractUniqueFields(trades,'symbol');
     const uniqueCurrencies = extractUniqueFields(trades,'currency');
+    console.log('TRADES', trades)
     const startDate =  findMinByField<Trade>(trades, 'tradeTime').tradeTime.split('T')[0]
     const endDate =  findMaxByField<Trade>(trades, 'tradeTime').tradeTime.split('T')[0]
     console.log('startDate', startDate);
@@ -185,6 +205,9 @@ export const getRate = (currency: string, balanceCurrency: string, date: string)
     //console.log(`RATES '${currency}${balanceCurrency}' '${date}'`, rate1, rate2, '=>', r)
     return Number(r.toFixed(4));
 };
+
+
+
 
 /*
 export function findSymbolDatePrices(date, symbol) {

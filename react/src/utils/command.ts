@@ -1,3 +1,5 @@
+import {isVarObject} from "./index";
+
 export function getValueByPath(obj: Record<string, any>, path: string): any {
   if (path.endsWith(".*")) {
     const wildcardPath = path.slice(0, -2); // Remove the wildcard indicator '.*'
@@ -5,12 +7,16 @@ export function getValueByPath(obj: Record<string, any>, path: string): any {
   }
 
   return path.split(".").reduce((acc, key) => {
+    console.log('path', path, 'acc', acc, 'key', key);
     if (Array.isArray(acc)) {
       if ( /^\d+$/.test(key)) {
         return acc[parseInt(key, 10)];
-      } else if (/\[\w*[a-zA-Z0-9_-]+\=[a-zA-Z0-9_-]+\]/.test((key))) {
+      } else if (/\[\w*[a-zA-Z0-9_-]+\=[:^a-zA-Z0-9_-]+\]/.test((key))) {
         const [field, value] = key.substring(1,key.length -1).split('=');
-        return acc.find(a => a[field] === value)
+        console.log('array compare', acc, field, value, '>', acc.find(a => a[field] == value));
+        return acc.find(a => a[field] == value)
+      } else if (key === 'length'){
+        return acc.length;
       }
     } else {
       return acc ? acc[key] : undefined;
@@ -70,20 +76,90 @@ function extractAndParseJSONObjects(input: string): any[] {
   return fragments;
 }
 
+function calculateExpression(expression: string, variables:Record<string, object>) {
+  // Regular expression to match variables like $var.a, $var.b
+  const regex = /\$var\.(\w+)/g;
+
+  // Replace variable references with their corresponding values from the data object
+  const replacedExpression = expression.replace(regex, (match, varName) => getValueByPath(variables, varName));
+  const parts = replacedExpression.split(',')
+  // Evaluate the replaced expression to perform the calculation
+  let v = eval(parts[0]);
+  if (parts[1]) {
+    v = Number(v.toFixed(Number(parts[1])))
+  }
+  return v;
+}
+
+function replaceCalculationWithResult(text:string, variables:Record<string, object>) {
+  const regexCalc = /calc\((.*?)\)/g;
+  const regexInested = /invested\((.*?)\)/g;
+
+  let replacedText = text.replace(regexCalc, (match, expression) => {
+    const result = calculateExpression(expression, variables);
+    return result;
+  });
+  /*replacedText = replacedText.replace(regexInvested, (match, expression) => {
+    const result = calculateExpression(expression, variables);
+    return result;
+  });*/
+
+  return replacedText;
+}
+
+const toNumber = (v:any, toNum:boolean) => {
+  if (toNum && (typeof v === 'string' || typeof v === 'number')) return  Number(v);
+  return v;
+}
+
+function checkTextForCalcExpression(text:string) {
+  // Remove all instances of "calc(" and ")" that are inside existing "calc(" and ")" pairs
+  const cleanedText = text.replace(/calc\((?:[^()]*(?:\([^)]*\))?[^()]*)*\)/g, '');
+
+  // Check if the cleaned text still contains "calc(" or ")"
+  return /calc\(|[\)]/g.test(cleanedText);
+}
+
+function replaceTextMarker(data: any, marker: string, markerChange: any): any {
+  if (typeof data === 'object' && data !== null) {
+    for (const key in data) {
+      if (Object.prototype.hasOwnProperty.call(data, key)) {
+        if (typeof data[key] === 'string' && data[key] === marker) {
+          data[key] = markerChange;
+        } else if (typeof data[key] === 'object') {
+          replaceTextMarker(data[key], marker, markerChange);
+        }
+      }
+    }
+  }
+  return data;
+}
 export const preprocessCommand = (
   s: string,
   variables: Record<string, object>,
 ) => {
  // console.log('process', s)
+  //s = replaceCalculationWithResult(s, variables)
+  const isCalc = s.indexOf('calc(')>=0;
   const matches = findValidVar(s);
   //console.log("matches", matches);
   matches.forEach((match: string) => {
-    const v = match.substring(6, match.length-1);
-    const val = getValueByPath(variables, v);
-    console.log("replace", match, `"${val}"`);
-    s = s.replace(match, `"${val}"`);
+    const v = match.substring(5, match.length);
+    const val = toNumber(getValueByPath(variables, v), isCalc);
+    console.log("replace", match, `${val}`);
+    if (!Array.isArray(val) && !isVarObject(val)) {//replace if this can be done setVar not need
+      s = s.replace(match, `${val}`);
+    } else {
+      const parsed = JSON.parse(s)
+      console.log('parsed=', parsed);
+      s = JSON.stringify(replaceTextMarker(parsed, match, val));
+      //s = s.replace(match, `${JSON.stringify(val, undefined,2)}`);
+    }
   });
-  return s;
+  console.log('S', s);
+  const prepared = replaceCalculationWithResult(s, variables);
+  console.log('PPPPPPPREPARED', prepared)
+  return prepared;
 };
 
 export const getCommands = (
@@ -108,13 +184,39 @@ export const getCommands = (
   return jsonArray;
 };
 
-const regexVar = /["|']+\$var\.([^\"]+)["|']+/g;
+const regexVar =  /\$var\.([^\"\-\+\/\*\)\,]+)/g;
+const regex0 = /\[(.*?)\]/g;
 
 export function findValidVar(text: string) {
+  const matches0 = text.match(regex0);
+  console.log('matches0', matches0);
+  matches0?.forEach((m,i)=> {
+    text = text.replace(m, `_$_m${i}`);
+  })
+  const matches = text.match(regexVar) || [];
+  console.log('matches', matches);
+  matches?.map((m, l)=> {
+    console.log(m,'>');
+    matches0?.map((b, i)=> {m = m.replace(`_$_m${i}`, b)})
+    console.log(m,'>>>');
+    matches[l] =m;
+
+  })
+  matches0?.map((b, i)=> {
+    const ar = findValidVar0(b);
+    // @ts-ignore
+    ar.length > 0 && matches.push(...ar);
+  });
+  console.log('matches=>', matches);
+  return matches || [];
+}
+
+function findValidVar0(text: string) {
   const matches = text.match(regexVar);
 
   return matches || [];
 }
+
 
 function replaceValidVar(text: string, replacement: string) {
   return text.replace(regexVar, replacement);

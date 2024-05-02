@@ -2,15 +2,23 @@ import { Portfolio, PortfolioWithID } from "@/types/portfolio";
 import { PortfolioModel } from "../models/portfolio";
 import { FilterQuery } from "mongoose";
 import { CommandDescription } from "@/types/custom";
-import {checkCurrency, checkUnique, getRealId, isErrorType, validateRequired} from "../utils";
+import {
+  checkCurrency,
+  checkUnique, extractUniqueValues, findMinByField,
+  getModelInstanceByIDorName,
+  getRealId,
+  isErrorType,
+  validateRequired
+} from "../utils";
 
 import {errorMsgs} from "../constants";
 import {ErrorType} from "../types/other"
 import {Trade} from "../types/trade";
 
-import {PutCash, putSpecialTrade} from "../services/portfolio/helper";
+import {fixRate, PutCash, putSpecialTrade, summationFlatPortfolios} from "../services/portfolio/helper";
 import {TradeModel} from "../models/trade";
-import {getCurrentPosition} from "../utils/portfolio";
+import {getCurrentPosition, getPortfolioTrades} from "../utils/portfolio";
+import {checkPriceCurrency} from "../services/app/priceCashe";
 
 export  {history} from './portfolio/history';
 export  {positions} from './portfolio/positions';
@@ -105,12 +113,8 @@ export async function trades(
   if (!_id) {
     return errorMsgs.required1('_id')
   }
-  const realId = await getRealId<Portfolio>(_id,PortfolioModel);
-  if (  isErrorType(realId)){
-    return realId;
-  }
-  const filter: FilterQuery<Trade> = {portfolioId:  realId, ...(from && { tradeTime: {$gte: from}})};
-  return await TradeModel.find(filter);
+  return await getPortfolioTrades(_id, from);
+
 }
 
 export async function putCash(
@@ -164,7 +168,7 @@ export const description: CommandDescription = {
 
   history: {
     label: "Portfolio History",
-    value: `${JSON.stringify({command: "portfolios.history", _id: "?", from: "", till: "", sample: "", detail: 0})}
+    value: `${JSON.stringify({command: "portfolios.history", _id: "?", from: "", till: "", sample: "", detail: 0, precision:2})}
 
                
       

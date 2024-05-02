@@ -63,6 +63,7 @@ export default class SSEService implements SSEServiceInst {
       console.log(this.isFirst, 'ONMESSAGE SSE EVENT QUOTES', data)
       // @ts-ignore
       const actualData = this.isFirst  ?  data : actualizeData(data);
+      console.log('actualdata', actualData)
       this.isFirst= false;
       if (actualData) {
         testLogger.log(JSON.stringify(actualData));
@@ -76,6 +77,7 @@ export default class SSEService implements SSEServiceInst {
   }
 
   public stop(): void {
+    console.log('this.stopped', this.stopped)
     if (!this.stopped && this.source) {
       console.log("SSEServicce CLOSE", this.url);
       this.source.close();

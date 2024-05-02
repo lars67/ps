@@ -52,7 +52,7 @@ type WSMsg = {
 const Console = ({ tabIndex }: { tabIndex: number }) => {
   const [loading, setLoading] = useState(false);
   const token = useAppSelector((state) => state.user.token);
-  const modif = useRef(Math.round(10000 * Math.random()));
+  const modif = useRef(Math.round(100000 * Math.random()));
   const url = `${process.env.REACT_APP_WS}?${encodeURIComponent(token)}@${modif.current}`;
   const fragments = useRef<{ [key: string]: string[] }>({});
   const fragmentsMsg = useRef<{ [key: string]: string[] }>({});
@@ -140,7 +140,7 @@ const Console = ({ tabIndex }: { tabIndex: number }) => {
     }
   };
 
-  const { sendJsonMessage, readyState, getWebSocket } = useWebSocket(url, {
+  const { sendJsonMessage, readyState, getWebSocket} = useWebSocket(url, {
     onMessage: onMessageCallback,
     // retryOnError: true,
     // shouldReconnect: (event: WebSocketEventMap["close"]) => {
@@ -185,9 +185,10 @@ const Console = ({ tabIndex }: { tabIndex: number }) => {
       for (const notparsedValue of commands) {
         //
         const com: string = JSON.parse(notparsedValue).command;
-
+        const preprocessed = preprocessCommand(notparsedValue, variables.current);
+        console.log('consoleTAB preprocessed', preprocessed);
         const parsedValue = JSON.parse(
-          preprocessCommand(notparsedValue, variables.current),
+          preprocessed,
         );
         console.log(
           `---------------------${notparsedValue}-------------------------\n`,
@@ -503,8 +504,9 @@ const Console = ({ tabIndex }: { tabIndex: number }) => {
   );
 
   const handleRemove = useCallback(
-    (cmd: Command) => {
+    async (cmd: Command) => {
       setCommands((commands) => commands.filter((c) => c._id !== cmd._id));
+      const rez = await sendMsg({ command: "commands.remove", _id: cmd._id });
       setCommand("");
       setValue("");
       setCommandOption(undefined);
@@ -607,9 +609,10 @@ const Console = ({ tabIndex }: { tabIndex: number }) => {
     (event: React.MouseEvent<HTMLAnchorElement>) => {
       event.preventDefault();
       if (connectionStatusText === "Open") {
-        sendJsonMessage({ type: "disconnect" });
+
+        //disconnect()
       } else if (connectionStatusText === "Closed") {
-        sendJsonMessage({ type: "reconnect" });
+        // reconnect()
       }
     },
     [connectionStatusText],

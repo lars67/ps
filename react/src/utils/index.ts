@@ -11,3 +11,6 @@ export * from "./remember-route";
 export const isUserCommand = (c:Command) => c.commandType === 'user'
 
 
+export function isVarObject(value:any ) {
+    return typeof value === 'object' && value !== null;
+}

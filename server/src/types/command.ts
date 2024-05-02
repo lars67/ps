@@ -8,6 +8,8 @@ export type Command = {
   ownerId?: string | null;
   commandType?: string;
   extended?: object[];
+  createdAt?: Date;
+  updatedAt?: Date;
 };
 
 //export type CommandWithID = Command & { _id: string | ObjectId };

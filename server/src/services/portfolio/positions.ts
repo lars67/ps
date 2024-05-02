@@ -25,8 +25,12 @@ import SSEService, {
 import eventEmitter, {sendEvent} from "../../services/app/eventEmiter";
 import { getCompanyField } from "../../services/app/companies";
 import { TradeFilter } from "@/services/trade";
-type SubscribeObj = { handler: (o: object) => void; sseService: SSEService };
-const subscribers: Record<string, SubscribeObj> = {};
+import {summationFlatPortfolios} from "../../services/portfolio/helper";
+import {getPortfolioTrades} from "../../utils/portfolio";
+import {SubscribeMsgs} from "../../types/other";
+//type SubscribeObj = { handler: (o: object) => void; sseService: SSEService };
+//type SubscribeMsgs = Record<string, SubscribeObj>
+const subscribers: Record<string,SubscribeMsgs> = {}; //userModif-> SubscribeMsgs
 
 type QuoteData2 = {
   symbol: string;
@@ -82,10 +86,12 @@ let sseServiceNumber = 0;
 export async function positions(
   { _id, requestType, subscribeId, marketPrice = "4", basePrice = "4" , changes, eventName:SSEEventName}: Params,
   sendResponse: (data?: object) => void,
-  msgId: string,
+  msgId: string, userModif: string,
+
 ): Promise<{} | undefined> {
   if (requestType === "77") {
-    Object.values(subscribers).forEach(subscriber => {
+    Object.values(subscribers[userModif]).forEach(subscriber => {
+      console.log('stop', subscriber.sseService.getEventName());
       subscriber.sseService.stop();
       eventEmitter.removeListener(
           subscriber.sseService.getEventName(),
@@ -108,6 +114,9 @@ export async function positions(
     if (err) {
       return {error: err};
     }
+  }
+  if (!subscribers[userModif]) {
+    subscribers[userModif] = {}
   }
   const {
     _id: realId,
@@ -151,6 +160,11 @@ console.log(`====================requestType=${requestType}=================`);
     })
       .sort({ tradeTime: 1 })
       .lean();
+    console.log('allTrades.length', allTrades.length)
+    if(allTrades.length===0) {
+      return;
+    }
+
     const positions = await getPositions(allTrades, portfolio);
 
     const symbols = [
@@ -163,7 +177,7 @@ console.log(`====================requestType=${requestType}=================`);
         .filter(Boolean),
     ].join(",");
     console.log("resubscribe if need ");
-    subscribers[msgId].sseService.start(symbols,true);
+    subscribers[userModif][msgId].sseService.start(symbols,true);
     rates = { [portfolio.currency]: 1.0 } as Record<string, number>;
     fees = positions.fees;
 
@@ -182,11 +196,11 @@ console.log(`====================requestType=${requestType}=================`);
     if (!subscribeId) {
       return { error: "subscribeId is required  in unsubscrube command" };
     }
-    if (subscribers[subscribeId]) {
-      subscribers[subscribeId].sseService.stop();
+    if (subscribers[userModif][subscribeId]) {
+      subscribers[userModif][subscribeId].sseService.stop();
       eventEmitter.removeListener(
-        subscribers[subscribeId].sseService.getEventName(),
-        subscribers[subscribeId].handler,
+        subscribers[userModif][subscribeId].sseService.getEventName(),
+        subscribers[userModif][subscribeId].handler,
       );
       eventEmitter.removeListener("trade.change", subscriberOnTrades);
       return {
@@ -196,15 +210,35 @@ console.log(`====================requestType=${requestType}=================`);
       return { error: `subscribeId=${subscribeId} is unknown` };
     }
   }
-
-
+  /*
+  let portfolioFilter={}
+  if (portfolio.portfolioType=== 'summation') {
+   // const {portfolioRateMap,portfolioFilterItems, flatPortfolios:sumPortfolios} =
+   //     await processSumation(portfolio)
+    const portfolioFilterItems = await summationFlatPortfolios(portfolio);
+    portfolioFilter = {portfolioId:{$in: portfolioFilterItems}}
+    console.log('>>>>>>>> portfolioFilter=', portfolioFilter);// 'portfolioRateMap', portfolioRateMap);
+  } else {
+    portfolioFilter = {portfolioId: realId}
+  }
   const allTrades = await TradeModel.find({
-    portfolioId: realId,
+    ...portfolioFilter,
     state: { $in: [1, 21] },
   })
     .sort({ tradeTime: 1 })
     .lean();
-  const positions = await getPositions(allTrades, portfolio);
+*/
+  const allTrades = await getPortfolioTrades(realId, undefined,{
+    state: { $in: [1, 21] }} )
+  if ((allTrades as {error:string}).error) {
+    return allTrades as {error:string}
+  }
+  const trades = allTrades as Trade[]
+  console.log('allTrades.length', trades.length)
+  if(trades.length===0) {
+    return;
+  }
+  const positions = await getPositions(trades, portfolio);
 
   const symbols = [
     ...positions.positions.map((p) => p.symbol),
@@ -233,10 +267,10 @@ console.log(`====================requestType=${requestType}=================`);
     );
     if (requestType === "0") {
       console.log("stop");
-      subscribers[msgId].sseService.stop();
+      subscribers[userModif][msgId].sseService.stop();
       eventEmitter.removeListener(
-        subscribers[msgId].sseService.getEventName(),
-        subscribers[msgId].handler,
+        subscribers[userModif][msgId].sseService.getEventName(),
+        subscribers[userModif][msgId].handler,
       );
     }
     console.log('isFirst--------------------->', isFirst);
@@ -282,7 +316,7 @@ console.log(`====================requestType=${requestType}=================`);
           ...portfolioPositions[symbol],
           marketRate: rates[cur],
           marketValue: rates[cur] * marketPrice * volume,
-          marketValueSymbol: marketPrice * volume,
+          marketValueSymbol: rates[cur] * marketPrice * volume,
           //  avgPremium: volume !== 0 ? (invested + (portfolioPositions[symbol].fee || 0) ) / volume : 0,
           avgPremium: volume !== 0 ? (investedFull + fees[symbol]) / volume : 0,
 
@@ -331,7 +365,7 @@ console.log(`====================requestType=${requestType}=================`);
         console.log("change by fields ", change, rates[cur], fees[symbol]);
         if (change.marketRate || change.marketPrice) {
           change.marketValue =
-            rates[cur] *
+              (rates[cur] || change.marketRate) *
             (change.marketPrice ||
               Number(portfolioPositions[symbol].marketPrice)) *
             Number(portfolioPositions[symbol].volume);
@@ -412,17 +446,17 @@ console.log(`====================requestType=${requestType}=================`);
   };
 
   //--
-  subscribers[msgId] = {
+  subscribers[userModif][msgId] = {
     sseService,
     handler: (data: object) => {
       console.log('handler event');
       const changes  = calcChanges(data);
-      console.log(moment().format('HH:mm:ss SSS'),"subscriber SSE-> ",msgId,  data, '===>', changes);
+      console.log(moment().format('HH:mm:ss SSS'),"subscriber SSE-> ",userModif, msgId,  data, '===>', changes);
       changes?.length && sendResponse(changes);
     },
   };
 
-  eventEmitter.on(eventName, subscribers[msgId].handler);
+  eventEmitter.on(eventName, subscribers[userModif][msgId].handler);
   //const { positions , fees,...rest } = positions;
   return { msg: requestType === "1" ? "subscribed" : "snapshot", eventName };
 }
@@ -452,7 +486,7 @@ async function getPositions(allTrades: Trade[], portfolio: Portfolio) {
       case "1":
         const { symbol } = trade;
         const dir = trade.side === "B" ? -1 : 1;
-        const priceN = toNum(trade.price);
+        const priceN = toNum({n : trade.price});
 
         const cashChange =
           dir * priceN * trade.rate * trade.volume -
@@ -508,7 +542,7 @@ async function getPositions(allTrades: Trade[], portfolio: Portfolio) {
   );
 
   const tradedSymbols = Object.keys(positions).filter(
-    (s) => positions[s].tradeTime?.split("T")[0] === currentDay,
+    (s) => positions[s].tradeTime?.split("T")[0] === nowDay,//currentDay,
   );
   // console.log("tradedSymbols", tradedSymbols, "positions", positions);
   let invested = 0;
@@ -517,13 +551,13 @@ async function getPositions(allTrades: Trade[], portfolio: Portfolio) {
 
   if (curentPositions.length < Object.keys(positions).length) {
     let { inv, notTradeChanges } = addNotTradesItems(
-      currentDay,
+      nowDay,
       portfolio.currency,
       tradedSymbols,
       positions,
     );
     //invested += inv;
-    // console.log("notTradeChanges", notTradeChanges);
+    // console.log("notTradeChanges", notTradeChanges);marketValue
     curentPositions.push(...Object.values(notTradeChanges));
   }
   for (const p of curentPositions) {
@@ -605,7 +639,7 @@ function addNotTradesItems(
       .filter((k) => !tradedSymbols.includes(k))
       .reduce((sum, symbol) => {
         const pi = oldPortfolio[symbol] as Trade;
-        const price = toNum(getDateSymbolPrice(currentDay, symbol) as number);
+        const price = toNum({n : getDateSymbolPrice(currentDay, symbol) as number});
         const rate = getRate(pi.currency, portfolioCurrency, currentDay);
         if (!price || !rate) {
           throw `No price=${price}|rate=${rate} ${symbol} ${currentDay}`;
@@ -706,3 +740,46 @@ function getBasePrice(q: QuoteData, basePrice?: string): number | undefined {
       return q.close;
   }
 }
+
+/*
+async function processSumation(portfolio:Portfolio)  {
+  const portfolioRateMap={} as Record<string, string[]>
+  let sumPortfolios: Portfolio[] =[] //flat portfolios im all sum
+  const portfolioFilterItems: string[]=[];
+
+  console.log('processSumation.portfolio', portfolio);
+  const rateMap = async (portfolio:Portfolio,rates:string[]=[]) => {
+
+    console.log('rateMap() portfolioType:',portfolio.portfolioType, portfolio.portfolioIds);
+    if (portfolio.portfolioType==='summation'  && portfolio.portfolioIds) {
+      for (let pid of portfolio.portfolioIds){
+        console.log('pid ', pid);
+        const {
+          _id: childId,
+          error,
+          instance,
+        } = await getModelInstanceByIDorName<Portfolio>(pid, PortfolioModel);
+        if (error) {
+          return {error: "Error processing child portfolio"};
+        }
+        sumPortfolios.push(instance);
+        if (instance.portfolioType!=='summation'){
+          portfolioFilterItems.push(childId)
+
+        }
+         if (instance) {
+          await rateMap(instance, instance.currency==portfolio.currency ? rates : [...rates,`${instance.currency}${portfolio.currency}`])
+        }
+      }
+    } else {
+      portfolioRateMap[portfolio.name]= rates;
+      console.log(portfolio.name, ':',rates);
+    }
+  }
+
+  await  rateMap(portfolio,[])
+  console.log('SUMMATION PROCESS',portfolioRateMap,portfolioFilterItems, sumPortfolios);
+  return {portfolioRateMap,portfolioFilterItems, flatPortfolios:sumPortfolios};
+}
+*/
+

@@ -11,6 +11,8 @@
 </head>
 <body>
 <h1 id="manual">Tests</h1>
+<a href="../commands/testFunctions">Test Fuctions</a></li>
+
 <p>Execute test commands on the client side, enabling the creation of tests alongside other commands</p>
 <p>Test commands can create and utilize variables with arbitrary values during the execution of the command package.
 Creating a variable is done using the parameter "_as"="name_variable". Adding this parameter to any command allows creating a variable with the value of the "data" field.Example save command output(which present in field 'data' will be saved in variable with name 'response' :</p>
@@ -165,7 +167,7 @@ Below we find object in variable with name 'history1' which has propery 'days' w
                 <li>$sub "conditions":{"field": {"$sub": 10000}}</li>
                 $sub calculate ABS( value_from_object_path - value from $sub) <1, so tolerancy =1
             </ul>
-
+            For $eq number comparation will be used precision from $eq value. When $eq = 1.0000 then comparable value also be comnveredt to value with 4 digitrs.
         </td>
         <td>Yes</td>
     </tr>

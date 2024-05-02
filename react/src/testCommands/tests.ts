@@ -1,5 +1,7 @@
 import { CommandDescription } from "./index";
 import {getValueByPath} from "../utils/command";
+import {isVarObject} from "../utils";
+import {type} from "os";
 
 type TestFunction = (
   par: Record<string, any>,
@@ -35,39 +37,53 @@ export function check({path, conditions}:{path: string, conditions: FieldConditi
                       variablesCallback: (v: object) => void,
                       ): boolean {
 
-     const v = path &&  getValueByPath(variables, path);
+     const v = path ?  getValueByPath(variables, path) : variables;
      return Object.keys(conditions).every((field:string) =>
-      checkDo(v || {}, field, conditions[field]))
+      checkDo(v || {}, field, conditions[field], variables))
 }
 
+function getDecimalPrecision(number: number | string) {
+  const decimalPart = number.toString().split('.')[1];
+  console.log('NUMBER', number, 'decimalPart', decimalPart);
+  if (decimalPart) {
+    return decimalPart.length;
+  }
+  return 0; // If the number has no decimal part
+}
 export function checkDo(
   object: any,
   field: string,
   condition: Condition,
-
+  variables: Record<string, any>
 ): boolean {
+  let leftPart = getValueByPath(object, field);
+  if (typeof leftPart === 'undefined'){
+    leftPart = field;
+  }
   if ("$eq" in condition) {
-      const t = typeof object[field]
-    console.log('$EQ', field, object[field], condition.$eq ,t, typeof condition.$eq)
+      const t = typeof leftPart
+    console.log('$EQ', field, leftPart, condition.$eq ,t, typeof condition.$eq)
       if (t === 'string' )
-           return object[field] === condition.$eq.toString();
-      else if (t === 'number' )
-        return object[field] === Number(condition.$eq);
-      else
-        return object[field] === condition.$eq;
+           return leftPart === condition.$eq.toString();
+      else if (t === 'number' ) {
+        const p = getDecimalPrecision(condition.$eq);
+        console.log('p', p, Number(leftPart.toFixed(p)) ,Number(condition.$eq))
+        return Number(leftPart.toFixed(p)) === Number(condition.$eq);
+      } else
+        return leftPart === condition.$eq;
   } else if ("$gt" in condition) {
-    return Number(object[field]) > Number((condition as { $gt: number }).$gt);
+    return Number(leftPart) > Number((condition as { $gt: number }).$gt);
   } else if ("$lt" in condition) {
-    console.log( Number(object[field]), ' < ',Number((condition as { $lt: number }).$lt))
+    console.log( Number(leftPart), ' < ',Number((condition as { $lt: number }).$lt))
     return Number(object[field]) < Number((condition as { $lt: number }).$lt);
   } else if ("$isArray" in condition) {
-    const o = field === '*' ? object : object[field];
+    const o = field === '*' ? object : leftPart;
     return Array.isArray(o) === (condition as { $isArray: boolean }).$isArray;
   } else if ("$isObject" in condition) {
-    const o = field === '*' ? object : object[field];
+    const o = field === '*' ? object : leftPart;
       return (o !== null && typeof o === 'object' && o.constructor === Object) === (condition as{ $isObject: boolean }).$isObject;
   } else if ("$absent" in condition) {
-    return object[field] === undefined || object[field] === null;
+    return leftPart === undefined || leftPart === null;
   } else if ("$has" in condition) {
     return (
       object.hasOwnProperty(field) === (condition as { $has: boolean }).$has
@@ -77,7 +93,7 @@ export function checkDo(
   } else if ("$exists" in condition) {
      return Boolean(object)
   } else if ("$sub" in condition) {
-    return Math.abs(Number(object[field])-(condition as { $sub: number }).$sub) <1
+    return Math.abs(Number(leftPart)-(condition as { $sub: number }).$sub) <1
 }
   return false; // Default to false if condition is not recognized
 }
@@ -97,7 +113,10 @@ export function getVar(
   { path }: { path: string },
   variables: Record<string, any>,
 ) {
-  return getValueByPath(variables,path) || null;
+  const o =getValueByPath(variables,path);
+  console.log('getVar======================>', path, '=>', typeof o, o );
+  if (isVarObject(o)) return JSON.stringify(o,undefined ,2);
+  return o || null;
 }
 
 export function breakTests() {
@@ -175,7 +194,7 @@ export const description: CommandDescription = {
     label: "Get variable",
     value: JSON.stringify({ command: "tests.getVar", path: "?" }),
   },
-  getVarMames: {
+  getVarNames: {
     label: "Get variable names",
     value: JSON.stringify({ command: "tests.getVarNames" }),
   },

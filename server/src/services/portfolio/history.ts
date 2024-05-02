@@ -16,6 +16,8 @@ import { Portfolio } from "../../types/portfolio";
 import moment, {Moment, weekdaysShort} from "moment";
 import { formatYMD } from "../../constants";
 import {getModelInstanceByIDorName, isValidDateFormat, toNum} from "../../utils";
+import {getPortfolioTrades} from "../../utils/portfolio";
+
 
 type Params = {
   _id: string;
@@ -23,9 +25,10 @@ type Params = {
   till: string;
   detail: string; //0|1
   sample: string;
+  precision:number
 };
 export async function history(
-  { _id, from, till, detail='0', sample }: Params,
+  { _id, from, till, detail='0', sample , precision=2}: Params,
   sendResponse: (data: any) => void,
   msgId: string,
 ): Promise<{}> {
@@ -33,10 +36,12 @@ export async function history(
     return { error: "Portolio _id is required" };
   }
 
+  const toNumLocal = ( n: number) => toNum({n, precision});
+
 
   const {_id:realId,error, instance:portfolio} = await  getModelInstanceByIDorName<Portfolio>(_id, PortfolioModel);
 
-  console.log('R', realId) ;
+  console.log('R', realId, 'from', _id) ;
 
   if (error) {
     return error;
@@ -72,21 +77,30 @@ export async function history(
       sample = ''
   }
 
-  const allTrades = await TradeModel.find({
+  const allTrades = await getPortfolioTrades(realId, from, {
+    state: { $in: [1] },
+    ...(till && { tradeTime: { $lt: till } })
+  } )
+  if ((allTrades as {error:string}).error) {
+    return allTrades as {error:string}
+  }
+  const trades = allTrades as Trade[]
+
+  /*const allTrades = await TradeModel.find({
     portfolioId: realId,
     state: { $in: [1] },
     ...(till && { tradeTime: { $lt: till } }),
   })
     .sort({ tradeTime: 1 })
-    .lean();
+    .lean();*/
 //console.log('allTrades', allTrades)
   const withDetail = Number(detail) !== 0;
-  if (allTrades.length <= 0) {
+  if (trades.length <= 0) {
     return { days: [], ...(withDetail && { rows: []})  };
   }
 
   const { startDate, endDate, uniqueSymbols, uniqueCurrencies } =
-  await checkPortfolioPricesCurrencies(allTrades, portfolio.currency);
+  await checkPortfolioPricesCurrencies(trades, portfolio.currency);
   console.log("P", startDate, uniqueSymbols, uniqueCurrencies);
   const lastDay = till.split("T")[0];
   let currentDay = startDate.split("T")[0];
@@ -98,7 +112,7 @@ export async function history(
   let days = [];
   const rows = [];
   let nav = 0;
-  for (const trade of allTrades) {
+  for (const trade of trades) {
     if (!trade.tradeTime.includes(currentDay)) {
       const nextCurrentDayWithTrade = trade.tradeTime.split("T")[0];
       if (sample) {
@@ -120,10 +134,10 @@ export async function history(
         if(!sample || true) {
           days.push({
             date: currentDay,
-            invested: invested + inv,
-            investedWithoutTrades: inv,
+            invested: toNumLocal(invested + inv),
+            investedWithoutTrades: toNumLocal(inv),
             cash,
-            nav: isNotTradedDate ? inv + cash : nav + inv,
+            nav: toNumLocal(isNotTradedDate ? inv + cash : nav + inv),
 
           });
         }
@@ -160,7 +174,7 @@ export async function history(
         const dir = trade.side === "B" ? -1 : 1;
         let newVolume =
           (oldPortfolio[symbol] as Trade).volume - dir * trade.volume;
-        const priceN = toNum(trade.price);
+        const priceN = toNum({n : trade.price});
         const cashChange =
           dir * priceN * trade.rate * trade.volume - trade.fee * trade.rate;
         (oldPortfolio[symbol] as Trade).volume = newVolume;
@@ -219,10 +233,10 @@ export async function history(
   notTradeChanges.forEach((t) => rows.push(t));
   days.push({
     date: currentDay,
-    invested: invested + inv,
-    investedWithoutTrades: inv,
-    cash,
-    nav: nav + inv,
+    invested: toNumLocal(invested + inv),
+    investedWithoutTrades: toNumLocal(inv),
+    cash:  toNumLocal(cash),
+    nav: toNumLocal(nav + inv),
   });
   Object.keys(oldPortfolio).map((p) => {
     const pi = oldPortfolio[p] as Trade;
@@ -233,7 +247,7 @@ export async function history(
 
 
   if (lastDay > currentDay) {
-    currentDay = moment(currentDay,formatYMD).add(1, 'day').format(formatYMD)
+    currentDay = moment(currentDay,formatYMD).add(1, 'days').format(formatYMD)
     while (currentDay<=lastDay) {
 
       let {inv, notTradeChanges} = addNotTradesItems(
@@ -245,9 +259,10 @@ export async function history(
       notTradeChanges.forEach((t) => rows.push(t));
       days.push({
         date: currentDay,
-        investedWithoutTrades: inv,
-        cash,
-        nav: inv + cash,
+        investedWithoutTrades: toNumLocal(inv),
+        invested: toNumLocal(inv),
+        cash: toNumLocal(cash),
+        nav: toNumLocal(inv + cash),
       });
       currentDay = moment(currentDay,formatYMD).add(1, 'day').format(formatYMD)
     }
@@ -285,7 +300,7 @@ function addNotTradesItems(
       .filter((k) => !tradedSymbols.includes(k))
       .reduce((sum, symbol) => {
         const pi = oldPortfolio[symbol] as Trade;
-        const price = toNum(getDateSymbolPrice(currentDay, symbol) as number);
+        const price = toNum({n : getDateSymbolPrice(currentDay, symbol) as number});
         const rate = getRate(pi.currency, portfolioCurrency, currentDay);
         if (!price || !rate) {
           throw `No price=${price}|rate=${rate} ${symbol} ${currentDay}`;

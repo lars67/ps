@@ -25,6 +25,7 @@ export function getTypeJSON<T>(type: new () => T, values: Partial<T>): string {
   return JSON.stringify(type);
 }
 
+
 // Define a function to create a model instance based on the collection name
 export const getModelNameByCollectionName = (
   collectionName: string,
@@ -136,7 +137,15 @@ export const findMinByField = <T>(arr: T[], field: keyof T) =>
     (min, current) => (current[field] < min[field] ? current : min),
     arr[0],
   );
+/*
+function getMinimalFieldValue(objects, field) {
+  // Extract an array of field values from objects
+  const fieldValues = objects.map(obj => obj[field]);
+  // Find the minimum value using Math.min and spread the fieldValues array as arguments
+  const minValue = Math.min(...fieldValues);
 
+  return minValue;
+}*/
 export const findMaxByField = <T>(arr: T[], field: keyof T) =>
   arr.reduce(
     (max, current) => (current[field] > max[field] ? current : max),
@@ -170,7 +179,7 @@ export const getModelInstanceByIDorName = async <T >(_id: string, model:Model<T>
   } catch(err) {
     error = {error: "Error during find by _id or name"}
   }
-
+console.log('getModelInstanceByIDorName', _id, instance);
   return {_id, error, instance: instance as T}
 }
 
@@ -205,7 +214,12 @@ export const checkUnique= async <T>( model: Model<T>,value: string, field: strin
   return null;
 }
 
-export const toNum = (n: number) => n;
+interface ToNumParams {
+  n: number;
+  precision?: number
+}
+
+export const toNum = ({n, precision}: ToNumParams) => precision ? Number(n.toFixed(precision)) : n;
 
 export const extractUniqueFields = <T>(data: T[], field: keyof T) => {
   const uniqueSymbols = new Set();
@@ -219,6 +233,15 @@ export const extractUniqueFields = <T>(data: T[], field: keyof T) => {
   return Array.from(uniqueSymbols) as string[];
 };
 
+export const extractUniqueValues = (data: string[]) => {
+  const uniqueSymbols = new Set();
+
+  data.forEach((item) => {
+      uniqueSymbols.add(item);
+  });
+
+  return Array.from(uniqueSymbols) as string[];
+};
 export const divideArray = <T>(
   arr: T[],
   func: (t: T) => boolean,

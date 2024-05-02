@@ -7,7 +7,7 @@ const CommandSchema = new Schema<Command>({
   description: String,
   ownerId: String,
   commandType: String,
-});
+}, {timestamps: true});
 
 export const CommandModel: Model<Command> =
   (models && models.Command) || model("Command", CommandSchema, "commands");
