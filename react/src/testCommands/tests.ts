@@ -115,7 +115,7 @@ export function getVar(
 ) {
   const o =getValueByPath(variables,path);
   console.log('getVar======================>', path, '=>', typeof o, o );
-  if (isVarObject(o)) return JSON.stringify(o,undefined ,2);
+  //if (isVarObject(o)) return JSON.stringify(o,undefined ,2);
   return o || null;
 }
 
@@ -136,6 +136,20 @@ export function setMode(
 ) {
   variablesCallback({_mode});
   return {_mode}
+}
+
+export function min(
+    { path, field }: { path: string, field: string},
+    variables: Record<string, any>,
+) {
+ if (!path) {
+   return {error:'Path is required property'}
+ }
+   if (!field) {
+     return {error:'Field is required property'}
+     }
+  const o =getValueByPath(variables,path) as any[];
+  return Math.min(...o.map(obj => obj[field]))
 }
 
 
@@ -212,4 +226,9 @@ export const description: CommandDescription = {
     label: "Wait msg by msgIdDelay",
     value: JSON.stringify({ command: "tests.waitMsg", "msgId":"{?}", "to":"{?}","delay": "1000" }),
   },
+  min: {
+    label: "Find object in arrya with minimal field value",
+    value: JSON.stringify({ command: "tests.min", "path":"{?}","field":"?" }),
+
+  }
 };

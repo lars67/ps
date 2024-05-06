@@ -96,6 +96,24 @@ export function getDateSymbolPrice(dateInput:string, symbol: string) {
     return null;
 }
 
+
+export function getDatesSymbols(symbols: string[], from:string, till?: string) {
+    let date = from.split('T').shift()  as string;
+    const dateLast =  till?.split('T').shift() || moment().format(formatYMD)
+    const prices = [];
+    while( date < dateLast) {
+      const datePrice: Record <string,number> = {};
+          symbols.forEach(symbol => {
+              if (dateHistory[date] && dateHistory[date][symbol]) {
+                  datePrice[symbol] = dateHistory[date][symbol];
+              }
+          })
+        prices.push({date, ...datePrice})
+      date= moment(date, formatYMD).add(1,'days').format(formatYMD)
+    }
+    return prices;
+}
+
 export async function checkPriceCurrency(
     currency: string,
     balanceCurrency: string,
@@ -157,10 +175,10 @@ export async function checkPortfolioPricesCurrencies(
 ) {
     const uniqueSymbols = extractUniqueFields(trades,'symbol');
     const uniqueCurrencies = extractUniqueFields(trades,'currency');
-    console.log('TRADES', trades)
+  //  console.log('TRADES', trades)
     const startDate =  findMinByField<Trade>(trades, 'tradeTime').tradeTime.split('T')[0]
     const endDate =  findMaxByField<Trade>(trades, 'tradeTime').tradeTime.split('T')[0]
-    console.log('startDate', startDate);
+    console.log('checkPortfolioPricesCurrencies startDate', startDate);
     await checkPrices(uniqueSymbols, startDate);
     for (const currency of uniqueCurrencies) {
         await checkPriceCurrency(currency,   balanceCurrency, startDate)

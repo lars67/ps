@@ -366,9 +366,13 @@ export async function getPortfolioTrades(_id: string, from?:string, filterAdditi
     }
 
     const filter: FilterQuery<Trade> = {...portfolioFilter,...(from && { tradeTime: {$gte: from}}), ...filterAdditional};
+   console.log(filter);
     const trades:Trade[] = await TradeModel.find(filter)
         .sort({ tradeTime: 1 })
         .lean();
+    if (trades?.length === 0) {
+        return trades;
+    }
     const minDate = from || findMinByField(trades, "tradeTime").tradeTime.split('T').shift() || '2020-01-01';
     if (portfolioRates) {
         const flatRates =  [...new Set(Object.values(portfolioRates).flat())]

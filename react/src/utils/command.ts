@@ -14,7 +14,13 @@ export function getValueByPath(obj: Record<string, any>, path: string): any {
       } else if (/\[\w*[a-zA-Z0-9_-]+\=[:^a-zA-Z0-9_-]+\]/.test((key))) {
         const [field, value] = key.substring(1,key.length -1).split('=');
         console.log('array compare', acc, field, value, '>', acc.find(a => a[field] == value));
-        return acc.find(a => a[field] == value)
+        const r = acc.filter(a => a[field] == value)
+        if (Array.isArray(r)){
+          if (r.length ===1)
+            return r[0];
+
+        }
+        return r;
       } else if (key === 'length'){
         return acc.length;
       }
@@ -215,9 +221,4 @@ function findValidVar0(text: string) {
   const matches = text.match(regexVar);
 
   return matches || [];
-}
-
-
-function replaceValidVar(text: string, replacement: string) {
-  return text.replace(regexVar, replacement);
 }

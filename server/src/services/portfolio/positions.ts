@@ -22,15 +22,15 @@ import SSEService, {
   QuoteData,
   SSEServiceInst,
 } from "../../services/app/SSEService";
-import eventEmitter, {sendEvent} from "../../services/app/eventEmiter";
+import eventEmitter, { sendEvent } from "../../services/app/eventEmiter";
 import { getCompanyField } from "../../services/app/companies";
 import { TradeFilter } from "@/services/trade";
-import {summationFlatPortfolios} from "../../services/portfolio/helper";
-import {getPortfolioTrades} from "../../utils/portfolio";
-import {SubscribeMsgs} from "../../types/other";
+import { summationFlatPortfolios } from "../../services/portfolio/helper";
+import { getPortfolioTrades } from "../../utils/portfolio";
+import { SubscribeMsgs } from "../../types/other";
 //type SubscribeObj = { handler: (o: object) => void; sseService: SSEService };
 //type SubscribeMsgs = Record<string, SubscribeObj>
-const subscribers: Record<string,SubscribeMsgs> = {}; //userModif-> SubscribeMsgs
+const subscribers: Record<string, SubscribeMsgs> = {}; //userModif-> SubscribeMsgs
 
 type QuoteData2 = {
   symbol: string;
@@ -60,6 +60,7 @@ type PortfolioPosition = {
   investedFull: number;
   investedFullSymbol: number;
   weight: number;
+  realized: number;
 };
 
 type PortfolioPositionFull = PortfolioPosition & QuoteData2;
@@ -77,28 +78,40 @@ type Params = {
   subscribeId?: string;
   basePrice?: string;
   marketPrice?: string;
-  changes?:Partial<QuoteData[]>,
-  eventName?: string
+  changes?: Partial<QuoteData[]>;
+  eventName?: string;
 };
 
+export type RealizedData = {
+  realized: number;
+  totalCost: number;
+};
 let sseServiceNumber = 0;
 
 export async function positions(
-  { _id, requestType, subscribeId, marketPrice = "4", basePrice = "4" , changes, eventName:SSEEventName}: Params,
+  {
+    _id,
+    requestType,
+    subscribeId,
+    marketPrice = "4",
+    basePrice = "4",
+    changes,
+    eventName: SSEEventName,
+  }: Params,
   sendResponse: (data?: object) => void,
-  msgId: string, userModif: string,
-
+  msgId: string,
+  userModif: string,
 ): Promise<{} | undefined> {
   if (requestType === "77") {
-    Object.values(subscribers[userModif]).forEach(subscriber => {
-      console.log('stop', subscriber.sseService.getEventName());
+    Object.values(subscribers[userModif]).forEach((subscriber) => {
+      console.log("stop", subscriber.sseService.getEventName());
       subscriber.sseService.stop();
       eventEmitter.removeListener(
-          subscriber.sseService.getEventName(),
-          subscriber.handler
+        subscriber.sseService.getEventName(),
+        subscriber.handler,
       );
-    })
-    return {msg:'Stop all positions'};
+    });
+    return { msg: "Stop all positions" };
   }
   if (!_id) {
     return { error: "Portolio _id is required" };
@@ -106,17 +119,17 @@ export async function positions(
   if (requestType === "3") {
     let err;
     if (!SSEEventName) {
-      err="eventName is required for emulation mode\n";
+      err = "eventName is required for emulation mode\n";
     }
     if (!changes) {
-      err=`${err}changes is required for emulation mode`
+      err = `${err}changes is required for emulation mode`;
     }
     if (err) {
-      return {error: err};
+      return { error: err };
     }
   }
   if (!subscribers[userModif]) {
-    subscribers[userModif] = {}
+    subscribers[userModif] = {};
   }
   const {
     _id: realId,
@@ -129,18 +142,28 @@ export async function positions(
   if (!portfolio) {
     return { error: `Portfolio with _id=${realId} is not exists` };
   }
-console.log(`====================requestType=${requestType}=================`);
-
+  console.log(
+    `====================requestType=${requestType}=================`,
+  );
 
   if (requestType === "3") {
     if (changes && SSEEventName) {
-      setTimeout(()=> {
-        console.log(moment().format('HH:mm:ss SSS'),'emulate sendEvent ---------------->',SSEEventName, changes)
+      setTimeout(() => {
+        console.log(
+          moment().format("HH:mm:ss SSS"),
+          "emulate sendEvent ---------------->",
+          SSEEventName,
+          changes,
+        );
         sendEvent(SSEEventName, changes);
       }, 50);
     }
-    console.log(moment().format('HH:mm:ss SSS'),'emulator send respomse', SSEEventName)
-    return {emulated: true, eventName:SSEEventName, changes};
+    console.log(
+      moment().format("HH:mm:ss SSS"),
+      "emulator send respomse",
+      SSEEventName,
+    );
+    return { emulated: true, eventName: SSEEventName, changes };
   }
 
   sseServiceNumber++;
@@ -151,7 +174,7 @@ console.log(`====================requestType=${requestType}=================`);
 
   let portfolioPositions: Record<string, Partial<PortfolioPositionFull>>;
   let isFirst: boolean = true;
-
+  let totalRealized=0;
   const subscriberOnTrades = async (ev: TradeOp) => {
     console.log("subscriberOnTrades get event==========", ev);
     const allTrades = await TradeModel.find({
@@ -160,8 +183,8 @@ console.log(`====================requestType=${requestType}=================`);
     })
       .sort({ tradeTime: 1 })
       .lean();
-    console.log('allTrades.length', allTrades.length)
-    if(allTrades.length===0) {
+    console.log("allTrades.length", allTrades.length);
+    if (allTrades.length === 0) {
       return;
     }
 
@@ -177,7 +200,7 @@ console.log(`====================requestType=${requestType}=================`);
         .filter(Boolean),
     ].join(",");
     console.log("resubscribe if need ");
-    subscribers[userModif][msgId].sseService.start(symbols,true);
+    subscribers[userModif][msgId].sseService.start(symbols, true);
     rates = { [portfolio.currency]: 1.0 } as Record<string, number>;
     fees = positions.fees;
 
@@ -228,14 +251,15 @@ console.log(`====================requestType=${requestType}=================`);
     .sort({ tradeTime: 1 })
     .lean();
 */
-  const allTrades = await getPortfolioTrades(realId, undefined,{
-    state: { $in: [1, 21] }} )
-  if ((allTrades as {error:string}).error) {
-    return allTrades as {error:string}
+  const allTrades = await getPortfolioTrades(realId, undefined, {
+    state: { $in: [1, 21] },
+  });
+  if ((allTrades as { error: string }).error) {
+    return allTrades as { error: string };
   }
-  const trades = allTrades as Trade[]
-  console.log('allTrades.length', trades.length)
-  if(trades.length===0) {
+  const trades = allTrades as Trade[];
+  console.log("allTrades.length", trades.length);
+  if (trades.length === 0) {
     return;
   }
   const positions = await getPositions(trades, portfolio);
@@ -252,7 +276,7 @@ console.log(`====================requestType=${requestType}=================`);
 
   rates = { [portfolio.currency]: 1.0 } as Record<string, number>;
   fees = positions.fees;
-
+  totalRealized =  positions.realized;
   portfolioPositions = positions.positions.reduce(
     (o, p) => ({ ...o, [p.symbol as string]: p }),
     {} as Record<string, Partial<PortfolioPositionFull>>,
@@ -273,7 +297,7 @@ console.log(`====================requestType=${requestType}=================`);
         subscribers[userModif][msgId].handler,
       );
     }
-    console.log('isFirst--------------------->', isFirst);
+    console.log("isFirst--------------------->", isFirst);
     const q2Rates = prepareQuoteData2(
       currencyData,
       marketPrice,
@@ -285,7 +309,7 @@ console.log(`====================requestType=${requestType}=================`);
     q2Rates.forEach((r) => {
       const cur = (r as { symbol: string }).symbol.substring(0, 3);
       const newRate = (r as QuoteData2).marketPrice;
-     // console.log((r as { symbol: string }).symbol, cur, newRate, rates[cur]);
+      // console.log((r as { symbol: string }).symbol, cur, newRate, rates[cur]);
       if (!rates[cur] && newRate) {
         newRates[cur] = newRate;
         rates[cur] = newRate;
@@ -294,7 +318,7 @@ console.log(`====================requestType=${requestType}=================`);
         rates[cur] = newRate;
       }
     });
-   // console.log("rates", rates, "newRates", newRates, "fees", fees);
+    // console.log("rates", rates, "newRates", newRates, "fees", fees);
 
     const q2Symbols = prepareQuoteData2(
       symbolData,
@@ -365,7 +389,7 @@ console.log(`====================requestType=${requestType}=================`);
         console.log("change by fields ", change, rates[cur], fees[symbol]);
         if (change.marketRate || change.marketPrice) {
           change.marketValue =
-              (rates[cur] || change.marketRate) *
+            (rates[cur] || change.marketRate) *
             (change.marketPrice ||
               Number(portfolioPositions[symbol].marketPrice)) *
             Number(portfolioPositions[symbol].volume);
@@ -384,8 +408,6 @@ console.log(`====================requestType=${requestType}=================`);
           change.todayResult = (cPrice - mPrice) * volume * rates[cur];
           change.todayResultPercent =
             Math.round((10000 * (cPrice - mPrice)) / mPrice) / 100;
-
-
 
           portfolioPositions[symbol].marketValue = change.marketValue;
           portfolioPositions[symbol].todayResult = change.todayResult;
@@ -422,6 +444,10 @@ console.log(`====================requestType=${requestType}=================`);
       (sum, symbol) => sum + Number(portfolioPositions[symbol].todayResult),
       0,
     );
+    /*const realized = Object.keys(portfolioPositions).reduce(
+        (sum, symbol) => sum + Number(portfolioPositions[symbol].realized),
+        0,
+    );*/
     //weights add to porfolioPositions
     Object.keys(portfolioPositions).forEach((symbol) => {
       let change = changes.find((c) => c.symbol === symbol);
@@ -440,6 +466,7 @@ console.log(`====================requestType=${requestType}=================`);
       marketValue,
       result,
       todayResult,
+      realized:totalRealized,
     } as PortfolioPositionFull);
 
     return changes;
@@ -449,9 +476,17 @@ console.log(`====================requestType=${requestType}=================`);
   subscribers[userModif][msgId] = {
     sseService,
     handler: (data: object) => {
-      console.log('handler event');
-      const changes  = calcChanges(data);
-      console.log(moment().format('HH:mm:ss SSS'),"subscriber SSE-> ",userModif, msgId,  data, '===>', changes);
+      console.log("handler event");
+      const changes = calcChanges(data);
+      console.log(
+        moment().format("HH:mm:ss SSS"),
+        "subscriber SSE-> ",
+        userModif,
+        msgId,
+        data,
+        "===>",
+        changes,
+      );
       changes?.length && sendResponse(changes);
     },
   };
@@ -464,12 +499,15 @@ console.log(`====================requestType=${requestType}=================`);
 async function getPositions(allTrades: Trade[], portfolio: Portfolio) {
   const { startDate, endDate, uniqueSymbols, uniqueCurrencies } =
     await checkPortfolioPricesCurrencies(allTrades, portfolio.currency);
-  console.log("P", startDate, uniqueSymbols, uniqueCurrencies);
+  console.log("positions.467", startDate, uniqueSymbols, uniqueCurrencies);
 
   let cash = 0;
   const fees: Record<string, number> = {};
   const symbolFullInvestedSymbol: Record<string, number> = {};
   const symbolFullInvested: Record<string, number> = {};
+  const symbolRealized: Record<string, RealizedData> = {};
+  const symbolFullCash: Record<string, number> = {};
+  const symbolFullCashSymbol: Record<string, number> = {};
   const appendFee = (symbol: string, fee: number): number => {
     if (!fees[symbol]) {
       fees[symbol] = fee;
@@ -486,12 +524,20 @@ async function getPositions(allTrades: Trade[], portfolio: Portfolio) {
       case "1":
         const { symbol } = trade;
         const dir = trade.side === "B" ? -1 : 1;
-        const priceN = toNum({n : trade.price});
+        const priceN = toNum({ n: trade.price });
 
         const cashChange =
           dir * priceN * trade.rate * trade.volume -
           appendFee(symbol, trade.fee * trade.rate);
+        const cashChangeSymbol =
+          dir * priceN * trade.volume - appendFee(symbol, trade.rate);
         cash += cashChange;
+        symbolFullCash[symbol] = symbolFullCash[symbol]
+          ? symbolFullCash[symbol] + cashChange
+          : cashChange;
+        symbolFullCashSymbol[symbol] = symbolFullCashSymbol[symbol]
+          ? symbolFullCashSymbol[symbol] + cashChangeSymbol
+          : cashChangeSymbol;
         const o = oldPortfolio[symbol] || {};
         const newVolume: number = o.volume
           ? o.volume - dir * trade.volume
@@ -515,6 +561,33 @@ async function getPositions(allTrades: Trade[], portfolio: Portfolio) {
         symbolFullInvestedSymbol[symbol] = symbolFullInvestedSymbol[symbol]
           ? symbolFullInvestedSymbol[symbol] + vs
           : vs;
+        //if (dir > 0) {
+          /*const close = toNum({
+            n: getDateSymbolPrice(trade.tradeTime, trade.symbol) as number,
+          });
+          const rateClose = getRate(
+            trade.currency,
+            portfolio.currency,
+            trade.tradeTime,
+          );
+          const v = toNum({ n: close * rateClose * trade.volume });*/
+          const vi = toNum({ n: trade.price * trade.rate * trade.volume });
+          if(!symbolRealized[symbol]) {
+            symbolRealized[symbol]= {totalCost:0, realized:0}
+          }
+          let avgPrice =0;
+          let realizedPnL=0;
+          if (trade.side === "B") {
+            symbolRealized[symbol].totalCost+=vi
+          } else {
+            avgPrice = o.volume ? symbolRealized[symbol].totalCost / o.volume : 0;
+            realizedPnL = (trade.price*trade.rate - avgPrice) * trade.volume;
+            symbolRealized[symbol].realized += realizedPnL;
+            symbolRealized[symbol].totalCost -= avgPrice * trade.volume;
+          }
+          //console.log('RRRRRRRRRRR', trade.tradeTime, symbol, symbolRealized[symbol], '|', trade.side, o.volume, newVolume, '|',trade.volume, trade.price);
+          console.log(`${trade.tradeTime}, ${symbol},  ${trade.side}, ${trade.price},${trade.volume}, ${trade.rate}, ${o.volume|| 0},${newVolume},${avgPrice.toFixed(4)}, ${realizedPnL.toFixed(4)},${symbolRealized[symbol].realized.toFixed(4)},${symbolRealized[symbol].totalCost.toFixed(4)}`);
+        //}
         break;
       case "31":
       case "20":
@@ -532,23 +605,23 @@ async function getPositions(allTrades: Trade[], portfolio: Portfolio) {
   }
   let currentDay = endDate.split("T")[0];
   const nowDay = moment().format(formatYMD); //!!!!!!!!!!!!!!!!!!!!!!!!
-  const actualKeys = Object.keys(oldPortfolio).filter(
-    (s) => oldPortfolio[s].volume !== 0,
-  );
-  console.log("OOOO", currentDay, nowDay, actualKeys);
-  const positions: Record<string, Partial<Trade>> = actualKeys.reduce(
-    (p, s) => ({ ...p, [s]: oldPortfolio[s] }),
+  const allSymbols = Object.keys(oldPortfolio);
+
+  const actualSymbols = allSymbols.filter((s) => oldPortfolio[s].volume !== 0);
+
+  console.log("positions.OOOO", currentDay, nowDay, actualSymbols);
+  const positions: Record<string, Partial<Trade>> = actualSymbols.reduce(
+    (p, s) => ({ ...p, /*positionType:1,*/ [s]: oldPortfolio[s] }),
     {},
   );
 
   const tradedSymbols = Object.keys(positions).filter(
-    (s) => positions[s].tradeTime?.split("T")[0] === nowDay,//currentDay,
+    (s) => positions[s].tradeTime?.split("T")[0] === nowDay, //currentDay,
   );
   // console.log("tradedSymbols", tradedSymbols, "positions", positions);
   let invested = 0;
   const curentPositions = tradedSymbols.map((s) => positions[s]);
-  //if (currentDay <= nowDay) {
-
+  console.log("symbolRealized", symbolRealized);
   if (curentPositions.length < Object.keys(positions).length) {
     let { inv, notTradeChanges } = addNotTradesItems(
       nowDay,
@@ -560,6 +633,7 @@ async function getPositions(allTrades: Trade[], portfolio: Portfolio) {
     // console.log("notTradeChanges", notTradeChanges);marketValue
     curentPositions.push(...Object.values(notTradeChanges));
   }
+  let realized= allSymbols.reduce((sum,symbol) => sum + symbolRealized[symbol].realized, 0);
   for (const p of curentPositions) {
     const symbol = p.symbol as string;
     p.name = await getCompanyField(symbol);
@@ -567,6 +641,8 @@ async function getPositions(allTrades: Trade[], portfolio: Portfolio) {
     (p as PortfolioPosition).investedFullSymbol =
       symbolFullInvestedSymbol[symbol];
     invested += Number(p.invested);
+    (p as PortfolioPosition).realized = symbolRealized[symbol].realized;
+
   }
 
   return {
@@ -576,6 +652,7 @@ async function getPositions(allTrades: Trade[], portfolio: Portfolio) {
     nav: cash + invested,
     positions: curentPositions as PortfolioPosition[],
     fees,
+    realized
   };
 }
 
@@ -639,7 +716,9 @@ function addNotTradesItems(
       .filter((k) => !tradedSymbols.includes(k))
       .reduce((sum, symbol) => {
         const pi = oldPortfolio[symbol] as Trade;
-        const price = toNum({n : getDateSymbolPrice(currentDay, symbol) as number});
+        const price = toNum({
+          n: getDateSymbolPrice(currentDay, symbol) as number,
+        });
         const rate = getRate(pi.currency, portfolioCurrency, currentDay);
         if (!price || !rate) {
           throw `No price=${price}|rate=${rate} ${symbol} ${currentDay}`;
@@ -655,6 +734,7 @@ function addNotTradesItems(
           volume: pi.volume,
           invested, //InvwstedSymbol
           fee: pi.fee,
+          realized:0
         });
 
         return sum + invested;
@@ -783,3 +863,51 @@ async function processSumation(portfolio:Portfolio)  {
 }
 */
 
+
+
+
+/*
+
+symbolRealized {
+  FDIS: [
+    [ 94, 7231.420000000001 ],
+    [ 45, 3424.49991 ],
+    [ 185, 14287.550555 ],
+    [ 552, 42255.601656 ]
+  ],
+  XLC: [
+    [ 59, 4354.789882 ],
+    [ 6, 442.85998799999993 ],
+    [ 127, 9503.410253999999 ],
+    [ 71, 5409.490142000001 ]
+  ],
+  AMJ: [
+    [ 25, 644.5000249999999 ],
+    [ 286, 7278.700286 ],
+    [ 7, 185.919993 ],
+    [ 60, 1602.59994 ]
+  ],
+  IYC: [ [ 18, 1369.619928 ] ]
+
+
+totalQuantity = trades.reduce((total, trade) => total + trade.quantity, 0);
+
+// Step 2: Separate buy and sell trades to calculate average cost and realized value
+const buyTrades = trades.filter(trade => trade.type === 'Buy');
+const sellTrades = trades.filter(trade => trade.type === 'Sell');
+
+// Calculate average cost and realized value for buy and sell trades separately
+const averageCostBuy = buyTrades.reduce((total, trade) => total + trade.quantity * trade.price, 0)
+/ buyTrades.reduce((total, trade) => total + trade.quantity, 0);
+const realizedValueBuy = buyTrades.reduce((total, trade) => total + trade.quantity * (trade.price - sellTrades[sellTrades.length - 1].price), 0);
+const averageCostSell = sellTrades.reduce((total, trade) => total + trade.quantity * trade.price, 0) / sellTrades.reduce((total, trade) => total + trade.quantity, 0);
+const realizedValueSell = sellTrades.reduce((total, trade) => total + trade.quantity * (sellTrades[sellTrades.length - 1].price - trade.price), 0);
+
+// Step 3: Calculate the total cost, realized value, and average cost
+totalCost = totalQuantity * averageCostBuy;
+totalRealized = totalCost + realizedValueSell - realizedValueBuy;
+
+console.log({ totalCost, totalRealized, averageCostBuy, averageCostSell });
+
+In thi
+ */

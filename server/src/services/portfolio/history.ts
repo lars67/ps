@@ -17,6 +17,7 @@ import moment, {Moment, weekdaysShort} from "moment";
 import { formatYMD } from "../../constants";
 import {getModelInstanceByIDorName, isValidDateFormat, toNum} from "../../utils";
 import {getPortfolioTrades} from "../../utils/portfolio";
+import {RealizedData} from "@/services/portfolio/positions";
 
 
 type Params = {
@@ -78,7 +79,7 @@ export async function history(
   }
 
   const allTrades = await getPortfolioTrades(realId, from, {
-    state: { $in: [1] },
+    state: { $in: ['1'] },
     ...(till && { tradeTime: { $lt: till } })
   } )
   if ((allTrades as {error:string}).error) {
@@ -105,6 +106,8 @@ export async function history(
   const lastDay = till.split("T")[0];
   let currentDay = startDate.split("T")[0];
 
+  const symbolRealized: Record<string, RealizedData> = {};
+
   const oldPortfolio: Record<string, Partial<Trade> | {}> = {};
   let cash = 0;
   let invested = 0;
@@ -112,6 +115,23 @@ export async function history(
   let days = [];
   const rows = [];
   let nav = 0;
+  let totalRealized=0;
+
+  function setSymbolRealized(symbol:string, trade: Trade, oldVolume: number) {
+    if (!symbolRealized[symbol]) {
+      symbolRealized[symbol] = {totalCost: 0, realized: 0}
+    }
+    if (trade.side === "B") {
+       symbolRealized[symbol].totalCost += toNum({ n: trade.price * trade.rate * trade.volume })
+    } else {
+      const avgPrice = oldVolume ? symbolRealized[symbol].totalCost / oldVolume : 0;
+      const realizedPnL = (trade.price * trade.rate - avgPrice) * trade.volume;
+      symbolRealized[symbol].realized += realizedPnL;
+      symbolRealized[symbol].totalCost -= avgPrice * trade.volume;
+    }
+    console.log('RRRRRRRRRRR', trade.tradeTime, symbol, symbolRealized[symbol], '|', trade.side, oldVolume,  '|', trade.volume, trade.price, trade.rate);
+  }
+
   for (const trade of trades) {
     if (!trade.tradeTime.includes(currentDay)) {
       const nextCurrentDayWithTrade = trade.tradeTime.split("T")[0];
@@ -172,8 +192,9 @@ export async function history(
           };
         }
         const dir = trade.side === "B" ? -1 : 1;
+        const oldVolume = (oldPortfolio[symbol] as Trade).volume
         let newVolume =
-          (oldPortfolio[symbol] as Trade).volume - dir * trade.volume;
+          oldVolume - dir * trade.volume;
         const priceN = toNum({n : trade.price});
         const cashChange =
           dir * priceN * trade.rate * trade.volume - trade.fee * trade.rate;
@@ -184,6 +205,8 @@ export async function history(
         const investedSymbol = newVolume * priceN * trade.rate;
         invested += investedSymbol; //investedTrade+investedBefore
         nav = invested + cash;
+        //-
+        setSymbolRealized(symbol, trade,oldVolume)//--
         rows.push({
           symbol,
           operation: trade.side === "B" ? "BUY" : "SELL",
@@ -199,12 +222,14 @@ export async function history(
           invested,
           investedSymbol,
           cashChangeSymbol: cashChange,
+          realized: toNumLocal(symbolRealized[symbol].realized)
         });
         break;
       case "31":
       case "20":
-        const cashPut =  trade.price* trade.rate
-          console.log('CASHPUT',trade.tradeTime,trade.price, trade.rate,'=', cashPut, '+',cash );
+        const rate = trade.rate || 1.0;
+        const cashPut =  trade.price* rate
+          console.log('CASHPUT',trade.tradeTime,trade.price, rate,'=', cashPut, '+',cash );
         cash += cashPut
       /*    priceToBaseCurrency(
             trade.price,
@@ -237,6 +262,8 @@ export async function history(
     investedWithoutTrades: toNumLocal(inv),
     cash:  toNumLocal(cash),
     nav: toNumLocal(nav + inv),
+   // realized= allSymbols.reduce((sum,symbol) => sum + symbolRealized[symbol].realized, 0);
+
   });
   Object.keys(oldPortfolio).map((p) => {
     const pi = oldPortfolio[p] as Trade;

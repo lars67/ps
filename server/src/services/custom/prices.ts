@@ -1,5 +1,5 @@
 import { CommandDescription } from "../../types/custom";
-import {checkPrices, getDateSymbolPrice} from "../../services/app/priceCashe";
+import {checkPrices, getDatesSymbols, getDateSymbolPrice} from "../../services/app/priceCashe";
 import {isValidDateFormat} from "../../utils";
 import {SubscribeMsgs} from "../../types/other";
 import moment from "moment";
@@ -10,8 +10,10 @@ import {formatYMD} from "../../constants";
 
 type Par = {
     symbols: string;
-    date: string;
+    date?: string;
     precision: number;
+    from?: string;
+    till?:string;
 }
 type ParQuotes = {
     symbols: string;
@@ -35,16 +37,32 @@ export const historical = async (
     if (symbols.length<1) {
         return {error: 'No symbols'}
     }
-    if (!isValidDateFormat(par.date)) {
-        return { error: "Wrong 'date'" };
+    if (par?.from ) {
+        if (!isValidDateFormat(par.from)) {
+            return { error: "Wrong 'from'" };
+        }
+        if (par.till && !isValidDateFormat(par.till)) {
+            return { error: "Wrong 'till'" };
+        }
+    } else {
+        if (!par.date) {
+            return { error: "Need set 'date' or 'from','till'" };
+        }
+        if (!isValidDateFormat(par.date)) {
+            return { error: "Wrong 'date'" };
+        }
+
     }
-    const date = par.date;
+    const date = par?.from ? par?.from  : par.date;
     console.log('date', date)
     const dateShift = moment(date, formatYMD).add(-7, 'day').format(formatYMD)
     console.log('date,dateShift', date,dateShift);
     await checkPrices(symbols, dateShift);
+    if (par?.from) {
+        return getDatesSymbols(symbols, par.from, par?.till)
+    }
      return symbols.reduce((o, symbol)=>
-          ({...o, [symbol]:Number(getDateSymbolPrice(date, symbol)?.toFixed(precision))}), {})
+          ({...o, [symbol]:Number(getDateSymbolPrice(date as string, symbol)?.toFixed(precision))}), {})
 
 };
 /*
@@ -95,7 +113,7 @@ export const quotes = async (
 export const description: CommandDescription = {
     historical: {
         label: "Get historical prices",
-        value: JSON.stringify({ command: "prices.historical", symbols: "?", "date":"?", "precision":4 }),
+        value: JSON.stringify({ command: "prices.historical", symbols: "?", "date":"?", "from": "", "till":"", "precision":4 }),
     },
   /*  quotes: {
         label: "Get quotes prices",
