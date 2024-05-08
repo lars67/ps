@@ -327,6 +327,30 @@ const xmlString2009=`
 
 `
 
+const dkk2018=`
+<response cmd="TRADES" messageId="4">
+    <row trade_id="506535" type="1" state="1" side="B" portfolio="DKK01" price="159.1200" trade_currency="USD" portfolio_currency="DKK" crossRate="6.8719" volume="10" fee="0.795600" underlying_id="4" underlying="AMZN" name="Amazon.com Inc." contract="Spot" user="test7" trade_time="2024-01-26T00:00:15"/>
+    <row trade_id="506537" type="1" state="1" side="S" portfolio="DKK01" price="43.6500" trade_currency="USD" portfolio_currency="DKK" crossRate="6.8719" volume="44" fee="0.960300" underlying_id="21" underlying="INTC" name="Intel Corporation" contract="Spot" user="test7" trade_time="2024-01-26T00:00:17"/>
+    <row trade_id="506533" type="1" state="1" side="B" portfolio="DKK01" price="49.5500" trade_currency="USD" portfolio_currency="DKK" crossRate="6.8518" volume="16" fee="0.396400" underlying_id="21" underlying="INTC" name="Intel Corporation" contract="Spot" user="test7" trade_time="2024-01-25T00:00:13"/>
+    <row trade_id="506524" type="1" state="1" side="B" portfolio="DKK01" price="47.2500" trade_currency="USD" portfolio_currency="DKK" crossRate="6.8217" volume="28" fee="0.661500" underlying_id="21" underlying="INTC" name="Intel Corporation" contract="Spot" user="test7" trade_time="2024-01-10T00:00:04"/>
+    <row trade_id="506538" type="1" state="1" side="S" portfolio="DKK01" price="624.6500" trade_currency="USD" portfolio_currency="DKK" crossRate="6.8745" volume="1" fee="0.312325" underlying_id="16" underlying="NVDA" name="NVIDIA Corporation" contract="Spot" user="test7" trade_time="2024-01-29T00:00:18"/>
+    <row trade_id="506522" type="1" state="1" side="B" portfolio="DKK01" price="543.4100" trade_currency="USD" portfolio_currency="DKK" crossRate="6.8217" volume="4" fee="1.086820" underlying_id="16" underlying="NVDA" name="NVIDIA Corporation" contract="Spot" user="test7" trade_time="2024-01-10T00:00:02"/>
+    <row trade_id="506530" type="1" state="1" side="S" portfolio="DKK01" price="571.0700" trade_currency="USD" portfolio_currency="DKK" crossRate="6.8512" volume="1" fee="0.285535" underlying_id="16" underlying="NVDA" name="NVIDIA Corporation" contract="Spot" user="test7" trade_time="2024-01-18T00:00:10"/>
+    <row trade_id="506525" type="1" state="1" side="B" portfolio="DKK01" price="541.5400" trade_currency="USD" portfolio_currency="DKK" crossRate="6.8010" volume="2" fee="0.541540" underlying_id="16" underlying="NVDA" name="NVIDIA Corporation" contract="Spot" user="test7" trade_time="2024-01-11T00:00:05"/>
+    <row trade_id="506523" type="1" state="1" side="B" portfolio="DKK01" price="190.6000" trade_currency="DKK" portfolio_currency="DKK" crossRate="1.0000" volume="96" fee="9.148800" underlying_id="120" underlying="DANSKE:XCSE" name="Danske Bank A/S" contract="Spot" user="test7" trade_time="2024-01-10T00:00:03"/>
+    <row trade_id="506527" type="1" state="1" side="S" portfolio="DKK01" price="188.3500" trade_currency="DKK" portfolio_currency="DKK" crossRate="1.0000" volume="10" fee="0.941750" underlying_id="120" underlying="DANSKE:XCSE" name="Danske Bank A/S" contract="Spot" user="test7" trade_time="2024-01-11T00:00:07"/>
+    <row trade_id="506528" type="1" state="1" side="S" portfolio="DKK01" price="189.5500" trade_currency="DKK" portfolio_currency="DKK" crossRate="1.0000" volume="14" fee="1.326850" underlying_id="120" underlying="DANSKE:XCSE" name="Danske Bank A/S" contract="Spot" user="test7" trade_time="2024-01-15T00:00:08"/>
+    <row trade_id="506531" type="1" state="1" side="B" portfolio="DKK01" price="188.5500" trade_currency="DKK" portfolio_currency="DKK" crossRate="1.0000" volume="26" fee="2.451150" underlying_id="120" underlying="DANSKE:XCSE" name="Danske Bank A/S" contract="Spot" user="test7" trade_time="2024-01-22T00:00:11"/>
+    <row trade_id="506532" type="1" state="1" side="S" portfolio="DKK01" price="188.5000" trade_currency="DKK" portfolio_currency="DKK" crossRate="1.0000" volume="16" fee="1.508000" underlying_id="120" underlying="DANSKE:XCSE" name="Danske Bank A/S" contract="Spot" user="test7" trade_time="2024-01-24T00:00:12"/>
+    <row trade_id="506534" type="1" state="1" side="S" portfolio="DKK01" price="190.2500" trade_currency="DKK" portfolio_currency="DKK" crossRate="1.0000" volume="10" fee="0.951250" underlying_id="120" underlying="DANSKE:XCSE" name="Danske Bank A/S" contract="Spot" user="test7" trade_time="2024-01-25T00:00:14"/>
+    <row trade_id="506526" type="1" state="1" side="S" portfolio="DKK01" price="60.5100" trade_currency="EUR" portfolio_currency="DKK" crossRate="7.4719" volume="13" fee="0.393315" underlying_id="1036" underlying="BN:XPAR" name="DANONE" contract="Spot" user="test7" trade_time="2024-01-11T00:00:06"/>
+    <row trade_id="506529" type="1" state="1" side="S" portfolio="DKK01" price="61.7800" trade_currency="EUR" portfolio_currency="DKK" crossRate="7.4592" volume="5" fee="0.154450" underlying_id="1036" underlying="BN:XPAR" name="DANONE" contract="Spot" user="test7" trade_time="2024-01-16T00:00:09"/>
+    <row trade_id="506521" type="1" state="1" side="B" portfolio="DKK01" price="61.0600" trade_currency="EUR" portfolio_currency="DKK" crossRate="7.4603" volume="121" fee="3.694130" underlying_id="1036" underlying="BN:XPAR" name="DANONE" contract="Spot" user="test7" trade_time="2024-01-10T00:00:01"/>
+    <row trade_id="506536" type="1" state="1" side="B" portfolio="DKK01" price="61.2900" trade_currency="EUR" portfolio_currency="DKK" crossRate="7.4540" volume="17" fee="0.520965" underlying_id="1036" underlying="BN:XPAR" name="DANONE" contract="Spot" user="test7" trade_time="2024-01-26T00:00:16"/>
+    <row trade_id="506520" type="31" state="1" side="P" portfolio="DKK01" price="100000.0000" trade_currency="DKK" portfolio_currency="DKK" crossRate="1.0000" volume="0" fee="0.000000" contract="CASH" user="test7" trade_time="2024-01-09T00:00:00"/>
+</response>
+`
+
 const convertXmlToJson = (xmlString: string, portfolioId: string): any[] => {
   const parser = new DOMParser();
   const xmlDoc = parser.parseFromString(xmlString, "text/xml");
@@ -355,8 +379,11 @@ const convertXmlToJson = (xmlString: string, portfolioId: string): any[] => {
 
 //const pid = "65ef5e7e447f2942f66a3a9d";
 //const trades = convertXmlToJson(xmlString, pid);
-const pid = "65f52f98ab7128acd188b333";//"65fd4da55e7f16b5c35d57c8";///VTrst0 1004
-const trades = convertXmlToJson(xmlString2009, pid);
+//const pid = "65f52f98ab7128acd188b333";//"65fd4da55e7f16b5c35d57c8";///VTrst0 1004
+//const trades = convertXmlToJson(xmlString2009, pid);
+
+const pid = "20182f98ab7128acd1882018";//"65fd4da55e7f16b5c35d57c8";///VTrst0 1004
+const trades = convertXmlToJson(dkk2018, pid);
 
 //console.log(trades);
 /*

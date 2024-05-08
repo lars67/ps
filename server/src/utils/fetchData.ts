@@ -40,7 +40,7 @@ export const fetchHistory =  async function(query:StringRecord):Promise<Historic
     try {
 
         console.log(getDataUrl('historical', toQueryString(query)));
-        const response = await fetch(getDataUrl('historical', toQueryString(query)));
+        const response = await fetch(getDataUrl('historical', toQueryString(query)) );
         const data = await response.json();
         const symbol = query.symbol;
         let prevValue: HistoricalDataInput;
@@ -65,7 +65,7 @@ export const fetchHistory =  async function(query:StringRecord):Promise<Historic
 
         return targetData;
     } catch (err) {
-        console.log('Error', err);
+        console.log('Error', query, err);
         return [];
     }
 }

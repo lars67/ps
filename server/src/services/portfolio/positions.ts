@@ -46,6 +46,7 @@ type QuoteData2 = {
   avgPremium: number;
   todayResult: number;
   todayResultPercent: number;
+  avgPremiumSymbol: number;
 };
 
 type PortfolioPosition = {
@@ -57,13 +58,17 @@ type PortfolioPosition = {
   currency: string;
   tradeTime: string;
   fee: number;
+  feeSymbol: number;
   investedFull: number;
   investedFullSymbol: number;
   weight: number;
   realized: number;
 };
 
-type PortfolioPositionFull = PortfolioPosition & QuoteData2;
+type PortfolioPositionFull = PortfolioPosition & QuoteData2 &{
+  total?: number;
+  totalSymbol?: number
+};
 
 type QuoteChange = PortfolioPositionFull;
 /*QuoteData2 & {
@@ -170,11 +175,17 @@ export async function positions(
   const eventName = `SSE_QUOTES_${sseServiceNumber}`;
 
   let rates: Record<string, number>;
-  let fees: Record<string, number>;
+  let fees: Record<string, { fee: number; feeSym: number }>;
 
   let portfolioPositions: Record<string, Partial<PortfolioPositionFull>>;
+  let currencyInvested: Record<
+    string,
+    { invested: number; investedSymbol: number, fee:number, feeSymbol:number }
+  > = {};
+
+  let currr;
   let isFirst: boolean = true;
-  let totalRealized=0;
+  let totalRealized = 0;
   const subscriberOnTrades = async (ev: TradeOp) => {
     console.log("subscriberOnTrades get event==========", ev);
     const allTrades = await TradeModel.find({
@@ -189,7 +200,7 @@ export async function positions(
     }
 
     const positions = await getPositions(allTrades, portfolio);
-
+    currencyInvested = positions.currencyInvested;
     const symbols = [
       ...positions.positions.map((p) => p.symbol),
       ...extractUniqueFields(positions.positions, "currency")
@@ -263,6 +274,7 @@ export async function positions(
     return;
   }
   const positions = await getPositions(trades, portfolio);
+  currencyInvested = positions.currencyInvested;
 
   const symbols = [
     ...positions.positions.map((p) => p.symbol),
@@ -276,7 +288,7 @@ export async function positions(
 
   rates = { [portfolio.currency]: 1.0 } as Record<string, number>;
   fees = positions.fees;
-  totalRealized =  positions.realized;
+  totalRealized = positions.realized;
   portfolioPositions = positions.positions.reduce(
     (o, p) => ({ ...o, [p.symbol as string]: p }),
     {} as Record<string, Partial<PortfolioPositionFull>>,
@@ -290,7 +302,7 @@ export async function positions(
       (q: QuoteData) => q.symbol.indexOf(":FX") > 0,
     );
     if (requestType === "0") {
-      console.log("stop");
+      console.log("stop!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
       subscribers[userModif][msgId].sseService.stop();
       eventEmitter.removeListener(
         subscribers[userModif][msgId].sseService.getEventName(),
@@ -335,16 +347,32 @@ export async function positions(
       const volume = Number(portfolioPositions[symbol].volume);
       const invested = Number(portfolioPositions[symbol].invested);
       const investedFull = Number(portfolioPositions[symbol].investedFull);
+      const investedFullSymbol = Number(
+        portfolioPositions[symbol].investedFullSymbol,
+      );
       if (isFirst) {
+        console.log(
+          "volume,investedFull, fees",
+          volume,
+          investedFull,
+          fees[symbol].fee,
+        );
+
         portfolioPositions[symbol] = {
           ...portfolioPositions[symbol],
           marketRate: rates[cur],
           marketValue: rates[cur] * marketPrice * volume,
-          marketValueSymbol: rates[cur] * marketPrice * volume,
+          marketValueSymbol: marketPrice * volume,
           //  avgPremium: volume !== 0 ? (invested + (portfolioPositions[symbol].fee || 0) ) / volume : 0,
-          avgPremium: volume !== 0 ? (investedFull + fees[symbol]) / volume : 0,
-
+          avgPremium:
+            volume !== 0 ? (investedFull + fees[symbol].fee) / volume : 0,
+          avgPremiumSymbol:
+            volume !== 0
+              ? (investedFullSymbol + fees[symbol].feeSym) / volume
+              : 0,
           ...p,
+          fee: fees[symbol].fee,
+          feeSymbol: fees[symbol].feeSym,
         };
 
         change = portfolioPositions[symbol] as QuoteChange;
@@ -352,12 +380,12 @@ export async function positions(
           (change.marketValue ||
             Number(portfolioPositions[symbol].marketValue)) -
           Number(portfolioPositions[symbol].investedFull) -
-          fees[symbol];
+          fees[symbol].fee;
         change.resultSymbol =
           (change.marketValueSymbol ||
             Number(portfolioPositions[symbol].marketValueSymbol)) -
           Number(portfolioPositions[symbol].investedFullSymbol) -
-          fees[symbol];
+          fees[symbol].feeSym;
         const mPrice = Number(
           p?.marketPrice || portfolioPositions[symbol].marketPrice,
         );
@@ -398,7 +426,7 @@ export async function positions(
             (change.marketValue ||
               Number(portfolioPositions[symbol].marketValue)) -
             Number(portfolioPositions[symbol].investedFull) -
-            fees[symbol];
+            fees[symbol].fee;
           const mPrice = Number(
             p?.marketPrice || portfolioPositions[symbol].marketPrice,
           );
@@ -461,12 +489,23 @@ export async function positions(
             marketValue,
         ) / 100;
     });
+    Object.keys(currencyInvested).forEach((symbol) => {
+      changes.push({
+        symbol: `TOTAL_${symbol}`,
+        investedFull: toNum({n:currencyInvested[symbol].invested}),
+        investedFullSymbol: toNum({n:currencyInvested[symbol].investedSymbol}),
+        fee: toNum({n:currencyInvested[symbol].fee}),
+        feeSymbol: toNum({n:currencyInvested[symbol].feeSymbol}),
+        total:toNum({n:currencyInvested[symbol].invested-currencyInvested[symbol].fee}),
+        totalSymbol:toNum({n:currencyInvested[symbol].investedSymbol-currencyInvested[symbol].feeSymbol}),
+      } as PortfolioPositionFull);
+    });
     changes.push({
       symbol: "TOTAL",
-      marketValue,
-      result,
-      todayResult,
-      realized:totalRealized,
+      marketValue:toNum({n:marketValue}),
+      result:toNum({n:result}),
+      todayResult:toNum({n:todayResult}),
+      realized: toNum({n:totalRealized}),
     } as PortfolioPositionFull);
 
     return changes;
@@ -500,22 +539,17 @@ async function getPositions(allTrades: Trade[], portfolio: Portfolio) {
   const { startDate, endDate, uniqueSymbols, uniqueCurrencies } =
     await checkPortfolioPricesCurrencies(allTrades, portfolio.currency);
   console.log("positions.467", startDate, uniqueSymbols, uniqueCurrencies);
-
+  let currencyInvested: Record<
+    string,
+    { invested: number; investedSymbol: number, fee:number, feeSymbol:number }
+  > = {};
   let cash = 0;
-  const fees: Record<string, number> = {};
+  const fees: Record<string, { fee: number; feeSym: number }> = {};
   const symbolFullInvestedSymbol: Record<string, number> = {};
   const symbolFullInvested: Record<string, number> = {};
   const symbolRealized: Record<string, RealizedData> = {};
   const symbolFullCash: Record<string, number> = {};
   const symbolFullCashSymbol: Record<string, number> = {};
-  const appendFee = (symbol: string, fee: number): number => {
-    if (!fees[symbol]) {
-      fees[symbol] = fee;
-    } else {
-      fees[symbol] += fee;
-    }
-    return fee;
-  };
 
   let oldPortfolio: Record<string, Partial<Trade>> = {};
   for (const trade of allTrades) {
@@ -525,12 +559,14 @@ async function getPositions(allTrades: Trade[], portfolio: Portfolio) {
         const { symbol } = trade;
         const dir = trade.side === "B" ? -1 : 1;
         const priceN = toNum({ n: trade.price });
+        const fs = trade.fee;
+        const f = fs * trade.rate;
+        if (!fees[symbol]) fees[symbol] = { fee: 0, feeSym: 0 };
 
-        const cashChange =
-          dir * priceN * trade.rate * trade.volume -
-          appendFee(symbol, trade.fee * trade.rate);
-        const cashChangeSymbol =
-          dir * priceN * trade.volume - appendFee(symbol, trade.rate);
+        fees[symbol].fee += f;
+        fees[symbol].feeSym += fs;
+        const cashChange = dir * priceN * trade.rate * trade.volume - f;
+        const cashChangeSymbol = dir * priceN * trade.volume - fs;
         cash += cashChange;
         symbolFullCash[symbol] = symbolFullCash[symbol]
           ? symbolFullCash[symbol] + cashChange
@@ -547,9 +583,9 @@ async function getPositions(allTrades: Trade[], portfolio: Portfolio) {
           symbol,
           volume: newVolume,
           price: trade.price,
-          rate: trade.rate,
+          //?   rate: trade.rate,
           currency: trade.currency,
-          fee: trade.fee,
+          //?  fee: trade.fee,
           invested: newVolume * trade.price * trade.rate, //invwstedSymbol
           tradeTime: trade.tradeTime,
         };
@@ -561,8 +597,16 @@ async function getPositions(allTrades: Trade[], portfolio: Portfolio) {
         symbolFullInvestedSymbol[symbol] = symbolFullInvestedSymbol[symbol]
           ? symbolFullInvestedSymbol[symbol] + vs
           : vs;
+
+        if (!currencyInvested[trade.currency]) {
+          currencyInvested[trade.currency] = { invested: 0, investedSymbol: 0, fee:0 , feeSymbol:0 };
+        }
+        currencyInvested[trade.currency].invested -= v;
+        currencyInvested[trade.currency].investedSymbol -= vs;
+        currencyInvested[trade.currency].fee += f;
+        currencyInvested[trade.currency].feeSymbol += fs;
         //if (dir > 0) {
-          /*const close = toNum({
+        /*const close = toNum({
             n: getDateSymbolPrice(trade.tradeTime, trade.symbol) as number,
           });
           const rateClose = getRate(
@@ -571,36 +615,44 @@ async function getPositions(allTrades: Trade[], portfolio: Portfolio) {
             trade.tradeTime,
           );
           const v = toNum({ n: close * rateClose * trade.volume });*/
-          const vi = toNum({ n: trade.price * trade.rate * trade.volume });
-          if(!symbolRealized[symbol]) {
-            symbolRealized[symbol]= {totalCost:0, realized:0}
-          }
-          let avgPrice =0;
-          let realizedPnL=0;
-          if (trade.side === "B") {
-            symbolRealized[symbol].totalCost+=vi
-          } else {
-            avgPrice = o.volume ? symbolRealized[symbol].totalCost / o.volume : 0;
-            realizedPnL = (trade.price*trade.rate - avgPrice) * trade.volume;
-            symbolRealized[symbol].realized += realizedPnL;
-            symbolRealized[symbol].totalCost -= avgPrice * trade.volume;
-          }
-          //console.log('RRRRRRRRRRR', trade.tradeTime, symbol, symbolRealized[symbol], '|', trade.side, o.volume, newVolume, '|',trade.volume, trade.price);
-          console.log(`${trade.tradeTime}, ${symbol},  ${trade.side}, ${trade.price},${trade.volume}, ${trade.rate}, ${o.volume|| 0},${newVolume},${avgPrice.toFixed(4)}, ${realizedPnL.toFixed(4)},${symbolRealized[symbol].realized.toFixed(4)},${symbolRealized[symbol].totalCost.toFixed(4)}`);
+        const vi = toNum({ n: trade.price * trade.rate * trade.volume });
+        if (!symbolRealized[symbol]) {
+          symbolRealized[symbol] = { totalCost: 0, realized: 0 };
+        }
+        let avgPrice = 0;
+        let realizedPnL = 0;
+        if (trade.side === "B") {
+          symbolRealized[symbol].totalCost += vi;
+        } else {
+          avgPrice = o.volume ? symbolRealized[symbol].totalCost / o.volume : 0;
+          realizedPnL = (trade.price * trade.rate - avgPrice) * trade.volume;
+          symbolRealized[symbol].realized += realizedPnL;
+          symbolRealized[symbol].totalCost -= avgPrice * trade.volume;
+        }
+        //console.log('RRRRRRRRRRR', trade.tradeTime, symbol, symbolRealized[symbol], '|', trade.side, o.volume, newVolume, '|',trade.volume, trade.price);
+        console.log(
+          `${trade.tradeTime}, ${symbol},  ${trade.side}, ${trade.price},${trade.volume}, ${trade.rate}, ${o.volume || 0},${newVolume},${avgPrice.toFixed(4)}, ${realizedPnL.toFixed(4)},${symbolRealized[symbol].realized.toFixed(4)},${symbolRealized[symbol].totalCost.toFixed(4)}`,
+        );
         //}
         break;
       case "31":
       case "20":
         const cashPut = trade.price * trade.rate;
         cash += cashPut;
-      /*
-        cash +=
-          priceToBaseCurrency(
-            trade.price,
-            trade.tradeTime,
-            trade.currency,
-            portfolio.currency,
-          ) || 0;*/
+        if (!currencyInvested[trade.currency]) {
+          currencyInvested[trade.currency] = { invested: 0, investedSymbol: 0, fee:0 , feeSymbol:0 };
+        }
+        currencyInvested[trade.currency].invested += cashPut;
+        currencyInvested[trade.currency].investedSymbol += trade.price;
+
+        /*
+          cash +=
+            priceToBaseCurrency(
+              trade.price,
+              trade.tradeTime,
+              trade.currency,
+              portfolio.currency,
+            ) || 0;*/
     }
   }
   let currentDay = endDate.split("T")[0];
@@ -633,18 +685,27 @@ async function getPositions(allTrades: Trade[], portfolio: Portfolio) {
     // console.log("notTradeChanges", notTradeChanges);marketValue
     curentPositions.push(...Object.values(notTradeChanges));
   }
-  let realized= allSymbols.reduce((sum,symbol) => sum + symbolRealized[symbol].realized, 0);
+  let realized = allSymbols.reduce(
+    (sum, symbol) => sum + symbolRealized[symbol].realized,
+    0,
+  );
   for (const p of curentPositions) {
     const symbol = p.symbol as string;
+    console.log(`getCompanyField(${symbol})`);
     p.name = await getCompanyField(symbol);
+    console.log(`/getCompanyField(${symbol})`);
+
     (p as PortfolioPosition).investedFull = symbolFullInvested[symbol];
     (p as PortfolioPosition).investedFullSymbol =
       symbolFullInvestedSymbol[symbol];
     invested += Number(p.invested);
     (p as PortfolioPosition).realized = symbolRealized[symbol].realized;
-
   }
-
+  const currencyTotals = Object.keys(currencyInvested).map((cur) => ({
+    currency: cur,
+    invested: currencyInvested[cur].invested,
+    currencyInvestedSymbol: currencyInvested[cur].investedSymbol,
+  }));
   return {
     date: nowDay,
     invested,
@@ -652,7 +713,8 @@ async function getPositions(allTrades: Trade[], portfolio: Portfolio) {
     nav: cash + invested,
     positions: curentPositions as PortfolioPosition[],
     fees,
-    realized
+    realized,
+    currencyInvested,
   };
 }
 
@@ -734,7 +796,7 @@ function addNotTradesItems(
           volume: pi.volume,
           invested, //InvwstedSymbol
           fee: pi.fee,
-          realized:0
+          realized: 0,
         });
 
         return sum + invested;
@@ -862,9 +924,6 @@ async function processSumation(portfolio:Portfolio)  {
   return {portfolioRateMap,portfolioFilterItems, flatPortfolios:sumPortfolios};
 }
 */
-
-
-
 
 /*
 

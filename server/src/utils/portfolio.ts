@@ -382,7 +382,7 @@ export async function getPortfolioTrades(_id: string, from?:string, filterAdditi
             await checkPriceCurrency(c, pCur,minDate)
         }
         console.log('getPortfolioTrades portfolioRates', portfolioRates);
-        return  await fixRate(trades, portfolioRates )
+       return await fixRate(trades, portfolioRates )
     }
     return trades;
 }

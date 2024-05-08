@@ -163,9 +163,10 @@ export async function fixRate(trades:Trade[], portfolioRates: Record<string,stri
       console.log('fixRate',t, r,getRate(c,pCur,t || '2020-01-01'));
       return s*getRate(c,pCur,t || '2020-01-01') //TO DO FIX
     },1)
-   console.log('TTT',trade.tradeTime, trade.symbol,trade.currency,trade.price, trade.rate, portfolioRates[trade.portfolioId], rateChange, '>', );
+   console.log('TTT',trade.tradeTime, trade.symbol,trade.currency,trade.price, trade.fee, trade.rate, portfolioRates[trade.portfolioId], rateChange, '>', );
     trade.rate*=rateChange
-    //trade.fee*=rateChange
+
+
   }
   return trades;
 }
