@@ -1,4 +1,4 @@
-//import SignUpPage from './SignUp.tsx';
+import SignUpPage from './SignUp';
 import SignInPage from './SignIn';
 //mport WelcomePage from './Welcome.tsx';
 //import VerifyEmailPage from './VerifyEmail.tsx';
@@ -6,7 +6,7 @@ import SignInPage from './SignIn';
 //import AccountDeactivePage from './AccountDeactivate.tsx';
 
 export {
-  //SignUpPage,
+  SignUpPage,
   SignInPage,
   //WelcomePage,
  // VerifyEmailPage,

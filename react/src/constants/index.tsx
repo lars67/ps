@@ -31,6 +31,7 @@ import {
     PATH_TEST
 } from './routes';
 
+
 export const COLOR = {
   50: '#dfefff',
   100: '#b9d2f8',

@@ -1,9 +1,10 @@
 import { WebSocketServer, WebSocket } from "ws";
 import jwt, { JwtPayload } from "jsonwebtoken";
-import { login } from "./auth";
+import {login, signup} from "./auth";
 import controller from "../controllers/websocket";
 import logger from "../utils/logger";
 import * as https from "https";
+import {ErrorType} from "../types/other";
 
 
 const secretKey = "ps2-secret-key";
@@ -20,16 +21,22 @@ export const initWS = (serverLogin: https.Server, serverApp: https.Server) => {
   console.log("-------------------- SOCKET SERVER -------------");
   loginServer.on("connection", (socket) => {
     socket.on("message", async (data) => {
-      const { username, password } = JSON.parse(data.toString());
-      const user = await login(username, password);
-      if (user) {
-        const token = jwt.sign(
-          { userId: user?._id, name: user?.name },
-          secretKey,
-        );
-        socket.send(JSON.stringify({ token }));
+      const { username, password, email='', cmd='login' } = JSON.parse(data.toString());
+      if (cmd === 'signup') {
+        const user = await signup(username, password, email);
+        console.log('signup', user);
+        socket.send(JSON.stringify(user));
       } else {
-        socket.send(JSON.stringify({ error: "Invalid username or password" }));
+        const user = await login(username, password);
+        if (user) {
+          const token = jwt.sign(
+              {userId: user?._id, name: user?.name},
+              secretKey,
+          );
+          socket.send(JSON.stringify({token}));
+        } else {
+          socket.send(JSON.stringify({error: "Invalid username or password"}));
+        }
       }
     });
   });

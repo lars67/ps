@@ -4,6 +4,9 @@ import { DashboardLayout, GuestLayout } from "../layouts";
 
 import React, { ReactNode, useEffect } from "react";
 import ProtectedRoute from "./ProtectedRoute";
+import {SignUpPage} from "../pages/authentication";
+import {BASE_NAME} from "../constants/routes";
+
 
 export const ScrollToTop: React.FC = () => {
   const { pathname } = useLocation();
@@ -40,6 +43,10 @@ const router = createBrowserRouter([
     element: <SignInPage />,
   },
   {
+    path: "signup",
+    element: <SignUpPage />,
+  },
+  {
     path: "/test",
     element: <Test />,
   },
@@ -73,6 +80,6 @@ const router = createBrowserRouter([
       },
     ],
   },
-], { basename: "/ps2console" });
+], { basename: BASE_NAME });
 
 export default router;

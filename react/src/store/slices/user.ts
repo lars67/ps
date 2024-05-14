@@ -2,10 +2,11 @@ import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 
 export interface UserState {
-  loading: "idle" | "pending" | "succeeded" | "failed";
+  loading?: "idle" | "pending" | "succeeded" | "failed";
   token?: string;
   username?: string;
   password?: string;
+  email?: string
 }
 
 const initialState: UserState = {
@@ -38,6 +39,39 @@ export const authLoginThunk = createAsyncThunk(
       };
     });
   },
+);
+
+
+
+export const authSignUpThunk = createAsyncThunk(
+    "authLogin",
+    async (payload: UserState) => {
+      return new Promise<UserState>((resolve, reject) => {
+        console.log('process.env.REACT_APP_LOGIN_WS ||', process.env.REACT_APP_LOGIN_WS)
+        const ws = new WebSocket( process.env.REACT_APP_LOGIN_WS || 'wss://localhost:3331');
+        ws.onopen = () => {
+          // Send signup command when WebSocket connection is opened
+          ws.send(
+              JSON.stringify({
+                username: payload.username,
+                password: payload.password,
+                email: payload.email,
+                cmd:'signup'
+              }),
+          );
+        };
+
+        ws.onmessage = (event) => {
+          const response: UserState = JSON.parse(event.data);
+          resolve(response);
+          ws.close(); // Close WebSocket connection after receiving response
+        };
+
+        ws.onerror = (error) => {
+          reject(new Error("WebSocket connection error"));
+        };
+      });
+    },
 );
 
 //const token = window.localStorage.getItem("token");
