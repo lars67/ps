@@ -262,3 +262,8 @@ export const divideArray = <T>(
 export function isErrorType(variable: any): variable is ErrorType {
   return (typeof variable === 'object') && (typeof variable.error === 'string');
 }
+
+
+export function isCurrency(symbol:string) {
+  return symbol.indexOf(':FX') > 0
+}

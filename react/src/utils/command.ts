@@ -144,8 +144,7 @@ export const preprocessCommand = (
   s: string,
   variables: Record<string, object>,
 ) => {
- // console.log('process', s)
-  //s = replaceCalculationWithResult(s, variables)
+
   const isCalc = s.indexOf('calc(')>=0;
   const matches = findValidVar(s);
   //console.log("matches", matches);
@@ -197,7 +196,7 @@ export function findValidVar(text: string) {
   const matches0 = text.match(regex0);
   console.log('matches0', matches0);
   matches0?.forEach((m,i)=> {
-    text = text.replace(m, `_$_m${i}`);
+    text = text.replace(m, `_$_m${i}`);//skip []
   })
   const matches = text.match(regexVar) || [];
   console.log('matches', matches);

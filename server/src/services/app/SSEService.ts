@@ -1,5 +1,6 @@
 import { sendEvent } from "../../services/app/eventEmiter";
 import testLogger from "../../utils/testLogger";
+import {extractUniqueValues} from "../../utils";
 const EventSource = require("eventsource");
 
 export interface SSEServiceInst {
@@ -31,11 +32,12 @@ export default class SSEService implements SSEServiceInst {
     this.onData = onData;
     this.onOpen = onOpen;
     this.eventName = eventName;
-
     this.start(symbols);
   }
 
   public start(symbols:string, restart:boolean=false): void {
+    symbols = extractUniqueValues(symbols.split(',')).join(',');
+    console.log('SYMBOLS', symbols);
     if (!restart && this.symbols === symbols) {
       return ;
     }
@@ -60,10 +62,10 @@ export default class SSEService implements SSEServiceInst {
       const data: object = JSON.parse(event.data);
       if (this.onData) this.onData(data);
 
-      console.log(this.isFirst, 'ONMESSAGE SSE EVENT QUOTES', data)
+      console.log(this.isFirst, 'ONMESSAGE SSE EVENT QUOTES')//, data)
       // @ts-ignore
       const actualData = this.isFirst  ?  data : actualizeData(data);
-      console.log('actualdata', actualData)
+      //console.log('actualdata', actualData)
       this.isFirst= false;
       if (actualData) {
         testLogger.log(JSON.stringify(actualData));
@@ -114,7 +116,9 @@ function actualizeData(ar: QuoteData[]) {
         country,
         ...actual
       } = d;
-      if (Object.keys(actual).length >= 2) return actual as Partial<QuoteData>;
+      const aa =  actual as Partial<QuoteData>;
+      console.log(Object.keys(aa).length)
+      if (Object.keys(aa).length >= 2) return aa;
       return null;
     })
     .filter(Boolean);

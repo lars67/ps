@@ -386,3 +386,25 @@ export async function getPortfolioTrades(_id: string, from?:string, filterAdditi
     }
     return trades;
 }
+
+
+export const actualizeTrades = (trades:Trade[]) => {
+    //process fx trades
+    const fxTrades: Trade[] = [];
+   // console.log('actualizeTrades', trades)
+    trades.filter(t=> (t.symbol && t.symbol.indexOf(':FX')>0)).forEach(t=> {
+        const part1 = t.symbol.substring(0,3);
+        const part2 = t.symbol.substring(3,6);
+        const newTrade =
+            {...t, side:'P',tradeType:'31',volume:0,price: (t.side==='B' ? 1 :-1)*t.volume-t.fee/t.price, currency:part1}
+        fxTrades.push(newTrade )
+        t.fee=0
+    })
+    //console.log('fxTrades', fxTrades)
+
+    if (fxTrades.length>0 ) {
+        trades.push(...fxTrades)
+    }
+    console.log('/trades', trades);
+    return trades;
+}

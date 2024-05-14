@@ -94,7 +94,7 @@ export function checkDo(
      return Boolean(object)
   } else if ("$sub" in condition) {
     return Math.abs(Number(leftPart)-(condition as { $sub: number }).$sub) <1
-}
+  }
   return false; // Default to false if condition is not recognized
 }
 

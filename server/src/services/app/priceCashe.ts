@@ -228,7 +228,7 @@ export const getRate = (
   const rate1 = getDateSymbolPrice(date, `${currency}${balanceCurrency}`);
   const rate2 = getDateSymbolPrice(date, `${balanceCurrency}${currency}`);
   const r = rate1 ? rate1 : rate2 ? 1 / rate2 : 0;
-  //console.log(`RATES '${currency}${balanceCurrency}' '${date}'`, rate1, rate2, '=>', r)
+  console.log(`RATES '${currency}${balanceCurrency}' '${date}'`, rate1, rate2, '=>', r)
   return Number(r.toFixed(4));
 };
 

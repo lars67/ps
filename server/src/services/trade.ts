@@ -6,7 +6,7 @@ import { CommandDescription } from "../types/custom";
 import eventEmitter, { sendEvent } from "./app/eventEmiter";
 import { PortfolioModel } from "../models/portfolio";
 import { isTradeType } from "../utils/dictionary";
-import {getRealId, isErrorType, isISODate, validateRequired} from "../utils";
+import {getRealId, isCurrency, isErrorType, isISODate, validateRequired} from "../utils";
 import { CurrencyModel } from "../models/currency";
 import {ErrorType} from "../types/other";
 import {errorMsgs} from "../constants";
@@ -43,8 +43,12 @@ export async function add(
   userModif: string,
   userId: string,
 ): Promise<Trade | ErrorType | null> {
-  console.log("T", trade);
-  let err_required = validateRequired<Trade>(validationsAddRequired, trade)
+  //console.log("T", trade);
+  if (isCurrency(trade.symbol)){
+    trade.currency= trade.symbol.substring(3,6)
+  }
+
+    let err_required = validateRequired<Trade>(validationsAddRequired, trade)
   if (err_required) {
     return errorMsgs.required(err_required);
   }
