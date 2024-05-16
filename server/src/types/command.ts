@@ -10,6 +10,8 @@ export type Command = {
   extended?: object[];
   createdAt?: Date;
   updatedAt?: Date;
+  access?: string;
 };
 
 //export type CommandWithID = Command & { _id: string | ObjectId };
+

@@ -19,6 +19,7 @@ import {fixRate, PutCash, putSpecialTrade, summationFlatPortfolios} from "../ser
 import {TradeModel} from "../models/trade";
 import {getCurrentPosition, getPortfolioTrades} from "../utils/portfolio";
 import {checkPriceCurrency} from "../services/app/priceCashe";
+import {UserData} from "@/services/websocket";
 
 export  {history} from './portfolio/history';
 export  {positions} from './portfolio/positions';
@@ -41,8 +42,9 @@ export async function add(
   sendResponse: (data: object) => void,
   msgId: string,
   userModif: string,
-  userId: string,
+  {userId}:UserData,
 ): Promise<Portfolio | ErrorType | null> {
+  console.log('ADDDDDD', msgId, userModif, userId);
   let err_required = validateRequired<Portfolio>(validationsAddRequired, portfolio)
   if (err_required) {
     return errorMsgs.required(err_required);
@@ -122,7 +124,7 @@ export async function putCash(
     sendResponse: (data: any) => void,
     msgId: string,
     userModif: string,
-    userId: string,
+    {userId}:UserData,
 ): Promise<Trade | ErrorType | undefined> {
 
   return await putSpecialTrade(
@@ -139,7 +141,7 @@ export async function putDividends(
     sendResponse: (data: any) => void,
     msgId: string,
     userModif: string,
-    userId: string,
+    {userId}:UserData,
 ): Promise<Trade | ErrorType | undefined> {
 
   return await putSpecialTrade(
@@ -157,7 +159,7 @@ export async function current(
     sendResponse: (data: any) => void,
     msgId: string,
     userModif: string,
-    userId: string,
+
 ){
 
   return await getCurrentPosition(_id);

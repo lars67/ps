@@ -8,15 +8,20 @@ import {
   validateRequired,
 } from "../utils";
 import customCommands from "./custom";
-import testsCommands from "./tests"
+import testsCommands from "./tests";
 import { ErrorType } from "../types/other";
 import { errorMsgs } from "../constants";
+import {UserData} from "@/services/websocket";
 //standart collection with standart handlers
 const collections = ["currencies", "portfolios", "plays", "sectors", "trades"];
 
 export const validationsAddRequired: string[] = ["label", "value"];
 export async function list(
   filter: Partial<Command> = {},
+  sendResponse: (data: object) => void,
+  msgId: string,
+  userModif: string,
+  {userId,role,name}:UserData,
 ): Promise<Command[] | null> {
   const maps = collectionNameToComPar(getMongoose());
   //  console.log('MAPS', maps)
@@ -57,11 +62,33 @@ export async function list(
 
     ///
     // console.log('tableCommands.length', tableCommands.length)
+    const filter = role === 'admin' ? {} : {
+      $or: [
+        {
+          ownerId: {
+            $eq: userId,
+          },
+        },
+        {
+          access: {
+            $exists: false,
+          },
+        },
+        {
+          access: {
+            $eq: "",
+          },
+        },
+      ],
+    };
+    const userCommands = await CommandModel.find(filter).lean();
 
-    const userCommands = await CommandModel.find().lean();
-
-    const commands: { label: string; value: string; commandType: string; extended?:object[] }[] =
-      [];
+    const commands: {
+      label: string;
+      value: string;
+      commandType: string;
+      extended?: object[];
+    }[] = [];
 
     collections.forEach((col) => {
       const modelName = getModelNameByCollectionName(col);
@@ -86,7 +113,7 @@ export async function list(
     Object.keys(customCommands).map((g) => {
       // @ts-ignore
       const { description, ...rest } = customCommands[g];
-       if (description) {
+      if (description) {
         Object.keys(description).map((c) => {
           commands.push({
             label: description[c].label,
@@ -97,7 +124,7 @@ export async function list(
       }
     });
 
- /*   Object.keys(testsCommands).map((g) => {
+    /*   Object.keys(testsCommands).map((g) => {
       // @ts-ignore
       const { description, ...rest } = testsCommands[g];
 //      console.log(description, rest);
@@ -112,18 +139,13 @@ export async function list(
       }
     });
 */
-  /*  console.log('COMMANDS',
+    /*  console.log('COMMANDS',
        [ ...userCommands,
         ...commands,
         ...tableCommands,]
     );*/
 
-    return [
-      ...userCommands,
-      ...commands,
-      ...tableCommands,
-
-    ];
+    return [...userCommands, ...commands, ...tableCommands];
   } catch (err) {
     console.log("ERR", err);
   }
@@ -135,7 +157,7 @@ export async function add(
   sendResponse: (data: object) => void,
   msgId: string,
   userModif: string,
-  userId: string,
+  {userId,role,name}:UserData,
 ): Promise<Command | ErrorType | null> {
   command.ownerId = userId;
 
@@ -147,7 +169,13 @@ export async function add(
   if (!command.ownerId) {
     command.ownerId = userId;
   }
-
+  const findExistingName = await CommandModel.findOne({
+    label: command.label,
+    ownerId: userId,
+  });
+  if (findExistingName) {
+    return errorMsgs.error("Command with this name alreay exists");
+  }
   if (typeof command.value === "string") {
     command.value = JSON.parse(command.value);
   }
@@ -166,9 +194,13 @@ export async function update(
   if (typeof other.value === "string") {
     other.value = JSON.parse(other.value);
   }
-  return await CommandModel.findByIdAndUpdate(_id, other, {new: true});
+  return await CommandModel.findByIdAndUpdate(_id, other, { new: true });
 }
 
-export async function remove({ _id }: { _id: string }): Promise<Command | null> {
+export async function remove({
+  _id,
+}: {
+  _id: string;
+}): Promise<Command | null> {
   return await CommandModel.findByIdAndDelete(_id);
 }

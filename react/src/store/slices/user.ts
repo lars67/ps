@@ -1,12 +1,14 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
-
+import {optionsSlice} from "./options";
 
 export interface UserState {
   loading?: "idle" | "pending" | "succeeded" | "failed";
   token?: string;
-  username?: string;
+  name?: string;
   password?: string;
-  email?: string
+  email?: string;
+  role?: string;
+  userId?: string
 }
 
 const initialState: UserState = {
@@ -16,13 +18,18 @@ export const authLoginThunk = createAsyncThunk(
   "authLogin",
   async (loginPayload: UserState) => {
     return new Promise<UserState>((resolve, reject) => {
-      console.log('process.env.REACT_APP_LOGIN_WS ||', process.env.REACT_APP_LOGIN_WS)
-      const ws = new WebSocket( process.env.REACT_APP_LOGIN_WS || 'wss://localhost:3331');
+      console.log(
+        "process.env.REACT_APP_LOGIN_WS ||",
+        process.env.REACT_APP_LOGIN_WS,
+      );
+      const ws = new WebSocket(
+        process.env.REACT_APP_LOGIN_WS || "wss://localhost:3331",
+      );
       ws.onopen = () => {
         // Send login command when WebSocket connection is opened
         ws.send(
           JSON.stringify({
-            username: loginPayload.username,
+            name: loginPayload.name,
             password: loginPayload.password,
           }),
         );
@@ -41,40 +48,41 @@ export const authLoginThunk = createAsyncThunk(
   },
 );
 
-
-
 export const authSignUpThunk = createAsyncThunk(
-    "authLogin",
-    async (payload: UserState) => {
-      return new Promise<UserState>((resolve, reject) => {
-        console.log('process.env.REACT_APP_LOGIN_WS ||', process.env.REACT_APP_LOGIN_WS)
-        const ws = new WebSocket( process.env.REACT_APP_LOGIN_WS || 'wss://localhost:3331');
-        ws.onopen = () => {
-          // Send signup command when WebSocket connection is opened
-          ws.send(
-              JSON.stringify({
-                username: payload.username,
-                password: payload.password,
-                email: payload.email,
-                cmd:'signup'
-              }),
-          );
-        };
+  "authLogin",
+  async (payload: UserState) => {
+    return new Promise<UserState>((resolve, reject) => {
+      console.log(
+        "process.env.REACT_APP_LOGIN_WS ||",
+        process.env.REACT_APP_LOGIN_WS,
+      );
+      const ws = new WebSocket(
+        process.env.REACT_APP_LOGIN_WS || "wss://localhost:3331",
+      );
+      ws.onopen = () => {
+        // Send signup command when WebSocket connection is opened
+        ws.send(
+          JSON.stringify({
+            name: payload.name,
+            password: payload.password,
+            email: payload.email,
+            cmd: "signup",
+          }),
+        );
+      };
 
-        ws.onmessage = (event) => {
-          const response: UserState = JSON.parse(event.data);
-          resolve(response);
-          ws.close(); // Close WebSocket connection after receiving response
-        };
+      ws.onmessage = (event) => {
+        const response: UserState = JSON.parse(event.data);
+        resolve(response);
+        ws.close(); // Close WebSocket connection after receiving response
+      };
 
-        ws.onerror = (error) => {
-          reject(new Error("WebSocket connection error"));
-        };
-      });
-    },
+      ws.onerror = (error) => {
+        reject(new Error("WebSocket connection error"));
+      };
+    });
+  },
 );
-
-//const token = window.localStorage.getItem("token");
 
 export const userSlice = createSlice({
   name: "user",
@@ -84,8 +92,9 @@ export const userSlice = createSlice({
      */
     token: "",
     hasFetchedToken: false,
-    username: "",
-
+    name: "",
+    role: "member",
+    userId:undefined
     // ---------
   },
   reducers: {
@@ -93,21 +102,21 @@ export const userSlice = createSlice({
       state,
       action: PayloadAction<{
         token?: string;
-        username?: string;
+        name?: string;
         password?: string;
+        role?: string;
+        userId?: string;
       }>,
     ) {
-      state.token = action.payload.token || "777";
-      state.username = action.payload.username || "";
+      console.log("store.updateUser", action.payload, ">", state);
+      Object.assign(state, action.payload);
     },
-    /*changeLanguage(state, action) {
-			state.lng = action.payload;
-		},*/
   },
   extraReducers: (builder) => {
     builder.addCase(authLoginThunk.fulfilled, (state, action) => ({
       ...state,
       token: `${action.payload.token}`,
+      role: `${action.payload.role}`
     }));
   },
   /*extraReducers: (builder) => {
@@ -130,3 +139,5 @@ export const userSlice = createSlice({
 		}));
 	},*/
 });
+
+export const { updateUser } = userSlice.actions;

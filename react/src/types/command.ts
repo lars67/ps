@@ -8,6 +8,7 @@ export type Command = {
     ownerId?: string | null;
     commandType?: string;
     extended?: object[];
+    access?: string;
 }
 
 

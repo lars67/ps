@@ -57,7 +57,7 @@ export async function signup(
     const added = await newDoc.save();
     return added;
   } catch (err) {
-    //  console.log(err);
+     console.log(err);
   }
   return {error:'User account is not created'}
 }

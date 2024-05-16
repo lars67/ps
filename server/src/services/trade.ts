@@ -13,6 +13,7 @@ import {errorMsgs} from "../constants";
 import {DeleteResult} from "mongodb";
 import {checkPriceCurrency, getDateSymbolPrice} from "../services/app/priceCashe";
 import {Portfolio} from "../types/portfolio";
+import {UserData} from "@/services/websocket";
 
 interface Subscribers {
   [msgId: string]: (data: any) => void;
@@ -41,7 +42,7 @@ export async function add(
   sendResponse: (data: object) => void,
   msgId: string,
   userModif: string,
-  userId: string,
+  {userId}: UserData,
 ): Promise<Trade | ErrorType | null> {
   //console.log("T", trade);
   if (isCurrency(trade.symbol)){

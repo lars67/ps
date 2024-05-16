@@ -828,7 +828,7 @@ function addNotTradesItems(
         const rate = getRate(pi.currency, portfolioCurrency, currentDay);
         if (!price || !rate) {
           throw `No price(rate)=${price}|rate=${rate} ${symbol} ${currentDay}`;
-          return 0;
+          //return 0;
         }
         const invested = rate * pi.volume * price; //investedSymbol
         changes.push({

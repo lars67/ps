@@ -51,7 +51,7 @@ type WSMsg = {
 
 const Console = ({ tabIndex }: { tabIndex: number }) => {
   const [loading, setLoading] = useState(false);
-  const token = useAppSelector((state) => state.user.token);
+  const {userId, token} = useAppSelector((state) => state.user);
   const modif = useRef(Math.round(100000 * Math.random()));
   const url = `${process.env.REACT_APP_WS}?${encodeURIComponent(token)}@${modif.current}`;
   const fragments = useRef<{ [key: string]: string[] }>({});
@@ -88,7 +88,8 @@ const Console = ({ tabIndex }: { tabIndex: number }) => {
   const testObservers = useRef<Record<string, (value: string) => void>>(
     {} as Record<string, (value: string) => void>,
   );
-
+  const [shouldConnect, setShouldConnect] = useState(true);
+  //const [shouldReconnect, setShouldReconnect] = useState(false);
   const onMessageCallback = (event: MessageEvent<string>) => {
     if (event.data !== "undefined") {
       const message = JSON.parse(event.data) as WSMsg;
@@ -142,17 +143,13 @@ const Console = ({ tabIndex }: { tabIndex: number }) => {
 
   const { sendJsonMessage, readyState, getWebSocket} = useWebSocket(url, {
     onMessage: onMessageCallback,
-    // retryOnError: true,
-    // shouldReconnect: (event: WebSocketEventMap["close"]) => {
-    //console.log('REEEEEEEEEEEEEEEEEEE22EEEEEEEEEECONNECT', needReconnect.current)
-    //  return false; //needReconnect.current
-    // },
-    //reconnectInterval: 5000,
-    //reconnectAttempts: 3,
-  });
+   // shouldReconnect: (closeEvent) => shouldReconnect,
+
+  })//,  shouldConnect);
 
   useEffect(() => {
     return () => {
+      setShouldConnect(false);
       //needReconnect.current = false;
       //console.log("RECONNNECT TO FALS2222E");
     };
@@ -613,11 +610,14 @@ const Console = ({ tabIndex }: { tabIndex: number }) => {
         //disconnect()
       } else if (connectionStatusText === "Closed") {
         // reconnect()
+        // reconnect()Remove
       }
     },
     [connectionStatusText],
   );
 
+  const notOwnerCommand = (commandOption as Command)?.commandType === 'user' ?
+      userId!=(commandOption as Command)?.ownerId : false
   return (
     <div className="playground-container">
       {displayPanes[0] && (
@@ -655,8 +655,9 @@ const Console = ({ tabIndex }: { tabIndex: number }) => {
                     extended={option.extended}
                     _id={option._id}
                     label={option.label}
+                    ownerId={option.ownerId}
                   >
-                    {option.label}
+                    <Tooltip title={option.description}>{userId === option.ownerId ? (<b>{option.label}</b>) : option.label}</Tooltip>
                   </Select.Option>
                 ))}
               </Select>
@@ -672,7 +673,7 @@ const Console = ({ tabIndex }: { tabIndex: number }) => {
             </Button>
             <Button
               size="middle"
-              disabled={!canWork}
+              disabled={!canWork || notOwnerCommand}
               onClick={handleSave}
               className="button-margin"
             >
@@ -681,6 +682,7 @@ const Console = ({ tabIndex }: { tabIndex: number }) => {
             <ButtonRemoveUserCommand
               commandOption={commandOption as Command}
               onRemove={handleRemove}
+              disabled={notOwnerCommand}
             />
             <OptionsPopup />
             <UpDownBtn

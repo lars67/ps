@@ -8,9 +8,10 @@ import { ExclamationCircleOutlined } from "@ant-design/icons";
 type Props = {
   commandOption: Command;
   onRemove: (commandOption: Command) => void;
+  disabled: boolean;
 };
 
-const ButtonRemoveUserCommand = ({ commandOption, onRemove }: Props) => {
+const ButtonRemoveUserCommand = ({ commandOption, onRemove, disabled}: Props) => {
   const [modal, contextHolder] = Modal.useModal();
 
   const confirm = () => {
@@ -32,7 +33,7 @@ const ButtonRemoveUserCommand = ({ commandOption, onRemove }: Props) => {
   }
   return (
     <>
-      <Button danger onClick={handleClick} style={{marginRight:'5px'}}>
+      <Button disabled={disabled} danger onClick={handleClick} style={{marginRight:'5px'}}>
         Remove
       </Button>
       {contextHolder}

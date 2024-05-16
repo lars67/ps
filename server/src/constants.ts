@@ -6,6 +6,7 @@ export const errorMsgs  = {
     failed: (text:string) => ({error: `operation ${text} failed`}),
     notAllowed: (text:string) =>  ({error: `${text}  is not allowed`}),
     unknown: (field: string, value:string) => ({error: `unknonown value '${value}' for ${field}`}),
+    error: (error:string)=> ({error})
 }
 
 export const  formatYMD = 'YYYY-MM-DD';

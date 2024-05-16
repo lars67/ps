@@ -1,17 +1,19 @@
 import {
-    Button, Drawer,
-    Dropdown,
-    Flex,
-    FloatButton,
-    Input,
-    Layout,
-    MenuProps,
-    message,
-    theme,
-    Tooltip,
-} from 'antd';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { ReactNode, useEffect, useRef, useState } from 'react';
+  Avatar,
+  Button,
+  Drawer,
+  Dropdown,
+  Flex,
+  FloatButton,
+  Input,
+  Layout,
+  MenuProps,
+  message,
+  theme,
+  Tooltip,
+} from "antd";
+import { useLocation, useNavigate } from "react-router-dom";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import {
   AppstoreOutlined,
   LogoutOutlined,
@@ -21,20 +23,22 @@ import {
   QuestionOutlined,
   SettingOutlined,
   UserOutlined,
-} from '@ant-design/icons';
+} from "@ant-design/icons";
 import {
   CSSTransition,
   SwitchTransition,
   TransitionGroup,
-} from 'react-transition-group';
-import { useMediaQuery } from 'react-responsive';
-import SideNav from './SideNav';
-import HeaderNav from './HeaderNav';
-import FooterNav from './FooterNav';
-import { Nprogress } from '../../components/Nprogress';
-import { PATH_LANDING } from '../../constants';
+} from "react-transition-group";
+import { useMediaQuery } from "react-responsive";
+import SideNav from "./SideNav";
+import HeaderNav from "./HeaderNav";
+import FooterNav from "./FooterNav";
+import { Nprogress } from "../../components/Nprogress";
+import { PATH_LANDING } from "../../constants";
 import CloseBtn from "../../components/CloseBtn";
 import HelpViewer from "../../components/HelpViewer";
+import { PATH_LOGIN } from "../../constants/routes";
+import { useAppSelector } from "../../store/useAppSelector";
 
 const { Content } = Layout;
 
@@ -54,39 +58,39 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const navigate = useNavigate();
   const nodeRef = useRef(null);
   const floatBtnRef = useRef(null);
-
-  const items: MenuProps['items'] = [
+  const user = useAppSelector((state) => state.user);
+  const items: MenuProps["items"] = [
     {
-      key: 'user-profile-link',
-      label: 'profile',
+      key: "user-profile-link",
+      label: "profile",
       icon: <UserOutlined />,
     },
     {
-      key: 'user-settings-link',
-      label: 'settings',
+      key: "user-settings-link",
+      label: "settings",
       icon: <SettingOutlined />,
     },
-    {
-      key: 'user-help-link',
-      label: 'help center',
+   /* {
+      key: "user-help-link",
+      label: "help center",
       icon: <QuestionOutlined />,
+    },*/
+    {
+      type: "divider",
     },
     {
-      type: 'divider',
-    },
-    {
-      key: 'user-logout-link',
-      label: 'logout',
+      key: "user-logout-link",
+      label: "logout",
       icon: <LogoutOutlined />,
       danger: true,
       onClick: () => {
         message.open({
-          type: 'loading',
-          content: 'signing you out',
+          type: "loading",
+          content: "signing you out",
         });
 
         setTimeout(() => {
-          navigate(PATH_LANDING.root);
+          navigate(PATH_LOGIN);
         }, 1000);
       },
     },
@@ -97,7 +101,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   }, [isMobile]);
 
   useEffect(() => {
-    window.addEventListener('scroll', () => {
+    window.addEventListener("scroll", () => {
       if (window.scrollY > 5) {
         setNavFill(true);
       } else {
@@ -106,84 +110,98 @@ const AppLayout = ({ children }: AppLayoutProps) => {
     });
   }, []);
 
-    const [drawerVisible, setDrawerVisible] = useState(false);
+  const [drawerVisible, setDrawerVisible] = useState(false);
 
-    const showDrawer = () => {
-        setDrawerVisible(true);
-    };
+  const showDrawer = () => {
+    setDrawerVisible(true);
+  };
 
-    const closeDrawer = () => {
-        setDrawerVisible(false);
-    };
+  const closeDrawer = () => {
+    setDrawerVisible(false);
+  };
 
-    return (
+  return (
     <>
       <Nprogress isAnimating={isLoading} key={location.key} />
       <Layout
         style={{
-          minHeight: '100vh',
-          backgroundColor: 'rgba(52, 152, 219, 0.1)',
+          minHeight: "100vh",
+          backgroundColor: "rgba(52, 152, 219, 0.1)",
           backgroundImage:
-            'radial-gradient(at 47% 33%, hsl(197.95, 0%, 100%) 0, transparent 59%),\n' +
-            'radial-gradient(at 82% 65%, hsl(204.07, 70%, 75%) 0, transparent 55%)',
+            "radial-gradient(at 47% 33%, hsl(197.95, 0%, 100%) 0, transparent 59%),\n" +
+            "radial-gradient(at 82% 65%, hsl(204.07, 70%, 75%) 0, transparent 55%)",
         }}
       >
-              <SideNav
+        <SideNav
           trigger={null}
           collapsible
           collapsed={collapsed}
           onCollapse={(value) => setCollapsed(value)}
           style={{
-            overflow: 'auto',
-            position: 'fixed',
+            overflow: "auto",
+            position: "fixed",
             left: 0,
             top: 0,
             bottom: 0,
-            background: 'none',
-            border: 'none',
-            transition: 'all .2s',
+            background: "none",
+            border: "none",
+            transition: "all .2s",
           }}
         />
 
-          <Drawer
-              size={'large'}
-              title="Help"
-              placement="right"
-              closable={true}
-              onClose={closeDrawer}
-              mask={false}
-              open={drawerVisible} // Use 'open' instead of 'visible'
-              style={{overflow:'hidden', padding:'4px'}}
-              bodyStyle={{padding:'0px'}}
-              headerStyle={{ backgroundColor: '#DFD' }}>
+        <Drawer
+          size={"large"}
+          title="Help"
+          placement="right"
+          closable={true}
+          onClose={closeDrawer}
+          mask={false}
+          open={drawerVisible} // Use 'open' instead of 'visible'
+          style={{ overflow: "hidden", padding: "4px" }}
+          bodyStyle={{ padding: "0px" }}
+          headerStyle={{ backgroundColor: "#DFD" }}
+        >
           <HelpViewer />
-          </Drawer>
+        </Drawer>
 
         <Layout
           style={{
-            background: 'none',
+            background: "none",
           }}
         >
           <HeaderNav
             style={{
-              marginLeft: 0,// collapsed ? 0 : '200px',
-              padding: '0 2rem 0 0',
-              background: navFill ? '#0af5fc' : 'none',
-              backdropFilter: navFill ? 'blur(8px)' : 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              position: 'sticky',
+              marginLeft: 0, // collapsed ? 0 : '200px',
+              padding: "0 2rem 0 0",
+              background: navFill ? "#0af5fc" : "none",
+              backdropFilter: navFill ? "blur(8px)" : "none",
+              display: "flex",
+              alignItems: "center",
+              //justifyContent: 'space-between',
+              position: "sticky",
               top: 0,
               zIndex: 1,
               gap: 8,
-                flexDirection:'row-reverse',
-              transition: 'all .25s',
+              flexDirection: "row-reverse",
+              transition: "all .25s",
             }}
           >
-              <Button type="link" onClick={showDrawer}>Help</Button>
+            <Dropdown menu={{ items }} trigger={["click"]}>
+              <Flex>
+                <Tooltip title={user.name}>
+                  <Avatar
+                    style={{ color: "#eff3fc", backgroundColor: "#112e96" }}
+                  >
+                    {user.name.toUpperCase().substring(0, 2)}
+                  </Avatar>
+                </Tooltip>
+              </Flex>
+            </Dropdown>
+            <Button type="link" onClick={showDrawer}>
+                Help
+            </Button>
 
-              {/*     <Flex align="center">
+            {/*     <Flex align="center">
               <Tooltip title={`${collapsed ? 'Expand' : 'Collapse'} Sidebar`}>
                 <Button
                   type="text"
@@ -214,26 +232,14 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               <Tooltip title="Messages">
                 <Button icon={<MessageOutlined />} type="text" size="large" />
               </Tooltip>*/}
-                {/*   <Dropdown menu={{ items }} trigger={['click']}>
-                <Flex>
-                  <img
-                    src="/me.jpg"
-                    alt="user profile photo"
-                    height={36}
-                    width={36}
-                    style={{ borderRadius, objectFit: 'cover' }}
-                  />
-                </Flex>
-              </Dropdown>
-            </Flex>*/}
           </HeaderNav>
           <Content
             style={{
-              margin: `0 0 0 0`,//${collapsed ? 0 : '200px'}`,
-              background: 'rgba(52, 152, 219, 0.35)',
+              margin: `0 0 0 0`, //${collapsed ? 0 : '200px'}`,
+              background: "rgba(52, 152, 219, 0.35)",
               borderRadius: collapsed ? 0 : borderRadius,
-              transition: 'all .25s',
-              padding: '4px',
+              transition: "all .25s",
+              padding: "4px",
               minHeight: 360,
             }}
           >
@@ -253,22 +259,22 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                   unmountOnExit
                 >
                   {() => (
-                    <div ref={nodeRef} style={{ background: 'none' }}>
+                    <div ref={nodeRef} style={{ background: "none" }}>
                       {children}
                     </div>
                   )}
                 </CSSTransition>
               </SwitchTransition>
             </TransitionGroup>
-              {/*<div ref={floatBtnRef}>
+            {/*<div ref={floatBtnRef}>
               <FloatButton.BackTop />
             </div>*/}
           </Content>
           <FooterNav
             style={{
-              textAlign: 'center',
-              marginLeft: 0,//collapsed ? 0 : '200px',
-              background: 'none',
+              textAlign: "center",
+              marginLeft: 0, //collapsed ? 0 : '200px',
+              background: "none",
             }}
           />
         </Layout>

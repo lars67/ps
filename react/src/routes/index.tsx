@@ -8,6 +8,7 @@ import {SignUpPage} from "../pages/authentication";
 import {BASE_NAME} from "../constants/routes";
 
 
+
 export const ScrollToTop: React.FC = () => {
   const { pathname } = useLocation();
 
@@ -39,17 +40,18 @@ const PageWrapper = ({ children }: PageProps) => {
 // Create the router
 const router = createBrowserRouter([
   {
-    path: "login",
+    path: "/login",
     element: <SignInPage />,
   },
   {
-    path: "signup",
+    path: "/signup",
     element: <SignUpPage />,
   },
   {
     path: "/test",
     element: <Test />,
   },
+
   {
     element: <ProtectedRoute />,
     children: [
@@ -83,3 +85,5 @@ const router = createBrowserRouter([
 ], { basename: BASE_NAME });
 
 export default router;
+
+///

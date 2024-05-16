@@ -24,7 +24,7 @@ import { useState } from 'react';
 import {authLoginThunk, authSignUpThunk, UserState} from "../../store";
 import {useAppDispatch} from "../../store/useAppDispatch";
 import {PATH_LOGIN} from "../../constants/routes";
-
+import { Link as Link2 } from 'react-router-dom'
 const { Title, Text, Link } = Typography;
 
 type FieldType = {
@@ -49,14 +49,14 @@ const SignUpPage = () => {
     setLoading(true);
     const rez = await dispatch(
         authSignUpThunk({
-          username: values.name,
+          name: values.name,
           password: values.password,
           email:values.email,
         })
     );
     console.log("R", rez);
     setLoading(false);
-    if ((rez.payload as UserState).username) {
+    if ((rez.payload as UserState).name) {
       message.open({
         type: 'success',
         content: 'Account signup successful',
@@ -106,7 +106,7 @@ const SignUpPage = () => {
           <Title className="m-0">Create an account</Title>
           <Flex gap={4}>
             <Text>Already have an account?</Text>
-            <Link href={PATH_AUTH.signin}>Sign in here</Link>
+            <Link2 to="PATH_LOGIN">Sign in here</Link2>
           </Flex>
 
           <Form

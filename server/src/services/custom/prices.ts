@@ -6,6 +6,7 @@ import moment from "moment";
 import {sendEvent} from "@/services/app/eventEmiter";
 import {QuoteData} from "../../services/app/SSEService";
 import {formatYMD} from "../../constants";
+import {UserData} from "@/services/websocket";
 
 
 type Par = {
@@ -30,7 +31,7 @@ export const historical = async (
     sendResponse: (data: object) => void,
     msgId: string,
     userModif: string,
-    userId: string,
+    userData:UserData,
 ) => {
     const symbols = par.symbols?.split(',');
     const precision= par.precision || 4;

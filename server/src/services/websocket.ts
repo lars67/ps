@@ -10,6 +10,12 @@ import {ErrorType} from "../types/other";
 const secretKey = "ps2-secret-key";
 
 type UserWebSocket = WebSocket & { userId: string };
+
+export type UserData = {
+  userId:string,
+  name: string,
+  role: string
+}
 interface ClientType {
   socket: WebSocket;
   token: string | JwtPayload | undefined; //wtPayload//{userId: string, username: string}
@@ -21,21 +27,22 @@ export const initWS = (serverLogin: https.Server, serverApp: https.Server) => {
   console.log("-------------------- SOCKET SERVER -------------");
   loginServer.on("connection", (socket) => {
     socket.on("message", async (data) => {
-      const { username, password, email='', cmd='login' } = JSON.parse(data.toString());
+      const { name, password, email='', cmd='login' } = JSON.parse(data.toString());
       if (cmd === 'signup') {
-        const user = await signup(username, password, email);
+        const user = await signup(name, password, email);
         console.log('signup', user);
         socket.send(JSON.stringify(user));
       } else {
-        const user = await login(username, password);
+        const user = await login(name, password);
         if (user) {
+          console.log('UUUUUUUUUUUUUUUUUUUU', user)
           const token = jwt.sign(
-              {userId: user?._id, name: user?.name},
+              { name: user?.name, role: user?.role,  userId: user?._id?.toString()},
               secretKey,
           );
-          socket.send(JSON.stringify({token}));
+          socket.send(JSON.stringify({token,role:user.role, userId: user?._id?.toString()}));
         } else {
-          socket.send(JSON.stringify({error: "Invalid username or password"}));
+          socket.send(JSON.stringify({error: "Invalid user name or password"}));
         }
       }
     });
@@ -52,7 +59,7 @@ export const initWS = (serverLogin: https.Server, serverApp: https.Server) => {
     const fullQuery = req.url?.split("?")[1] || ""; // Get query parameters from URL
     const [query, modif = ""] = fullQuery.split("@");
     const token = req.headers["authorization"] || query;
-    let userId: string;
+    let userData:UserData;
     console.log("client connected", token, modif);
 
     if (!token) {
@@ -67,7 +74,8 @@ export const initWS = (serverLogin: https.Server, serverApp: https.Server) => {
       //? socket.decoded = decoded;
       console.log("decoded", decoded);
       (socket as UserWebSocket).userId = (decoded as JwtPayload)?.userId;
-      userId = (decoded as JwtPayload)?.userId;
+      userData = (decoded as UserData);
+      console.log('decoded as UserData', userData);
       clients.push({ socket, token: decoded });
       logger.log(`  connection open with token ${token}`);
     });
@@ -79,7 +87,7 @@ export const initWS = (serverLogin: https.Server, serverApp: https.Server) => {
         msg,
         sendResponse(socket, msg),
         modif,
-        userId,
+        userData,
       );
       //sendFragmented(socket, JSON.stringify({ command: msg.command, msgId:msg.msgId, ...(response.error ? response.error : {data:response})}), msg.msgId)
     });

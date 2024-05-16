@@ -1,9 +1,19 @@
 import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
 
-import { Button, Card, Modal, Col, Form, Input, Row, message } from "antd";
+import {
+  Button,
+  Card,
+  Modal,
+  Col,
+  Form,
+  Input,
+  Row,
+  message,
+  Select,
+} from "antd";
 
 import { Command } from "../../types/command";
-import {getCommands} from "../../utils/command";
+import { getCommands } from "../../utils/command";
 
 const { TextArea } = Input;
 
@@ -11,6 +21,7 @@ type FieldType = {
   label: string;
   description?: string;
   value: string;
+  access?: string;
 };
 type Params = {
   open: boolean;
@@ -41,20 +52,25 @@ const UserCommand = ({
     );
     form.setFieldsValue({
       value,
-      label: isUserType ? commandOption?.label ?? "" : "New command",
+      label: isUserType ? commandOption?.label ?? "" : undefined,
       description: isUserType ? commandOption?.description ?? "" : "",
+      access: isUserType ? commandOption?.access ?? "" : "",
     });
   }, [commandOption, value]);
 
   const handleOk = useCallback(async () => {
     try {
-      const parsedValue = getCommands(value, );
+      const parsedValue = getCommands(value);
     } catch (err) {
       message.error("JSON format is wrong");
       return;
     }
-    const r = await form.validateFields();
-    console.log("VALIDATION $$$$$", r);
+    let r;
+    try {
+      r = await form.validateFields();
+
+      console.log("VALIDATION $$$$$", r);
+    } catch (err) {}
     if (r) {
       setSaving(true);
       const formValues = form.getFieldsValue();
@@ -66,25 +82,31 @@ const UserCommand = ({
       const cmd = {
         command,
         label: formValues.label,
-        value: JSON.stringify(value.replace(/^\s+|\s+$/g, '')),
+        value: JSON.stringify(value.replace(/^\s+|\s+$/g, "")),
         commandType: "user",
-        _id: (isAdd ? undefined : commandOption._id),
+        access: formValues.access,
+        description: formValues.description,
+        _id: isAdd ? undefined : commandOption._id,
       };
-      const successMsg = isAdd ? `New command successfully added` : `Command successfully updated`
-      const unSuccessMsg = isAdd ? `New command is not added` : `Command is not updated`
+      const successMsg = isAdd
+        ? `New command successfully added`
+        : `Command successfully updated`;
+      const unSuccessMsg = isAdd
+        ? `New command is not added`
+        : `Command is not updated`;
       try {
         const rez = await sendMsg(cmd);
         const rezParsed = JSON.parse(rez);
-       // console.log("RRRRRRRRRRRRRRRRRRRRRRRRRRREZ", rezParsed.data);
+        // console.log("RRRRRRRRRRRRRRRRRRRRRRRRRRREZ", rezParsed.data);
         const msg = rezParsed.data; //JSON.parse(rez.data)
-      //  console.log("data", msg);
+        //  console.log("data", msg);
         setSaving(false);
         if (msg?._id) {
           message.success(successMsg);
           form.resetFields();
           onClose(msg, isAdd);
         } else {
-          message.error(unSuccessMsg);
+          message.error(rez.error || unSuccessMsg);
         }
       } catch (err) {
         console.log(err);
@@ -131,12 +153,20 @@ const UserCommand = ({
                   { required: true, message: "Please input command label" },
                 ]}
               >
-                <Input />
+                <Input placeholder="Command name" />
               </Form.Item>
               <div style={{ color: "#888", margin: "-22px 0px 24px 0px" }}>
                 {commandOption?.commandType === "user" &&
                   "You can select another name if want to save this  user command as another user command"}
               </div>
+            </Col>
+            <Col sm={24} lg={24}>
+              <Form.Item<FieldType> label="Access" name="access">
+                <Select>
+                  <Select.Option value="">Public</Select.Option>
+                  <Select.Option value="private">Private</Select.Option>
+                </Select>
+              </Form.Item>
             </Col>
             <Col sm={24} lg={24}>
               <Form.Item<FieldType> label="Command" name="value">

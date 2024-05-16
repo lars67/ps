@@ -21,14 +21,14 @@ import { useMediaQuery } from 'react-responsive';
 import { PATH_AUTH, PATH_CONSOLE } from '../../constants';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
-import {authLoginThunk, UserState} from "../../store";
+import {authLoginThunk, updateUser, UserState} from "../../store";
 import {useAppDispatch} from "../../store/useAppDispatch";
-
+import { Link as Link2 } from 'react-router-dom';
 
 const { Title, Text, Link } = Typography;
 
 type FieldType = {
-  username?: string;
+  name?: string;
   password?: string;
   remember?: boolean;
 };
@@ -47,20 +47,21 @@ const SignInPage = () => {
     setLoading(true);
     const rez = await dispatch(
         authLoginThunk({
-          username: values.username,
+          name: values.name,
           password: values.password,
           loading: "pending",
         })
     );
     console.log("R", rez);
     setLoading(false);
-    const token = rez.payload ? (rez.payload as UserState).token : '';
-    if (token) {
+    const {token,userId, role} = rez.payload as UserState
+     if (token) {
       message.open({
         type: 'success',
         content: 'Login successful',
       });
-      navigate(PATH_CONSOLE);
+       dispatch(updateUser({name:values.name, userId,role}))
+       navigate(PATH_CONSOLE);
     } else {
       message.open({
         type: 'error',
@@ -107,7 +108,8 @@ const SignInPage = () => {
           <Title className="m-0">Login</Title>
           <Flex gap={4}>
             <Text>Don't have an account?</Text>
-            <Link href={PATH_AUTH.signup}>Create an account here</Link>
+            <Link2 to="/signup">Create an account here</Link2>
+
           </Flex>
           <Form
             name="sign-up-form"
@@ -124,7 +126,7 @@ const SignInPage = () => {
               <Col xs={24}>
                 <Form.Item<FieldType>
                   label="User Name"
-                  name="username"
+                  name="name"
                   rules={[
                     { required: true, message: 'Please input your email' },
                   ]}
