@@ -1,6 +1,7 @@
 import Console from './console';
 import Home from './Home';
 import Test from './test'
+import QuoteGrid from './grid';
 import {
 
   SignInPage,
@@ -15,5 +16,6 @@ export {
   Home,
    SignInPage,
     ErrorPage,
-    Test
+    Test,
+    QuoteGrid
 };

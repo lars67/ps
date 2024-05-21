@@ -35,6 +35,7 @@ export const PATH_LANDING = {
 export const PATH_CONSOLE ='/console'
 export const PATH_TEST ='/test'
 export const PATH_LOGIN = '/login'
+export const PATH_PORTFOLIO = '/grid'
 export const PATH_SITEMAP = {
   root: ROOTS_SITEMAP,
 };

@@ -1,5 +1,5 @@
 import { createBrowserRouter, useLocation } from "react-router-dom";
-import { Home, Console, ErrorPage, SignInPage, Test } from "../pages";
+import { Home, Console, ErrorPage, SignInPage, QuoteGrid,Test } from "../pages";
 import { DashboardLayout, GuestLayout } from "../layouts";
 
 import React, { ReactNode, useEffect } from "react";
@@ -51,6 +51,10 @@ const router = createBrowserRouter([
     path: "/test",
     element: <Test />,
   },
+  {
+    path: "/grid",
+    element: <QuoteGrid />,
+  },
 
   {
     element: <ProtectedRoute />,
@@ -80,6 +84,7 @@ const router = createBrowserRouter([
           },
         ],
       },
+
     ],
   },
 ], { basename: BASE_NAME });

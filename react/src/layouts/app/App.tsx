@@ -37,7 +37,7 @@ import { Nprogress } from "../../components/Nprogress";
 import { PATH_LANDING } from "../../constants";
 import CloseBtn from "../../components/CloseBtn";
 import HelpViewer from "../../components/HelpViewer";
-import { PATH_LOGIN } from "../../constants/routes";
+import { PATH_LOGIN, PATH_PORTFOLIO } from "../../constants/routes";
 import { useAppSelector } from "../../store/useAppSelector";
 
 const { Content } = Layout;
@@ -70,7 +70,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
       label: "settings",
       icon: <SettingOutlined />,
     },
-   /* {
+    /* {
       key: "user-help-link",
       label: "help center",
       icon: <QuestionOutlined />,
@@ -172,12 +172,12 @@ const AppLayout = ({ children }: AppLayoutProps) => {
           <HeaderNav
             style={{
               marginLeft: 0, // collapsed ? 0 : '200px',
-              padding: "0 2rem 0 0",
+              padding: "0 12px 0 0",
               background: navFill ? "#0af5fc" : "none",
               backdropFilter: navFill ? "blur(8px)" : "none",
               display: "flex",
               alignItems: "center",
-              //justifyContent: 'space-between',
+              justifyContent: "space-between",
               position: "sticky",
               top: 0,
               zIndex: 1,
@@ -186,19 +186,25 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               transition: "all .25s",
             }}
           >
-            <Dropdown menu={{ items }} trigger={["click"]}>
-              <Flex>
-                <Tooltip title={user.name}>
-                  <Avatar
-                    style={{ color: "#eff3fc", backgroundColor: "#112e96" }}
-                  >
-                    {user.name.toUpperCase().substring(0, 2)}
-                  </Avatar>
-                </Tooltip>
-              </Flex>
-            </Dropdown>
-            <Button type="link" onClick={showDrawer}>
+            <div>
+              <Dropdown menu={{ items }} trigger={["click"]}>
+                <Flex>
+                  <Tooltip title={user.name}>
+                    <Avatar
+                      style={{ color: "#eff3fc", backgroundColor: "#112e96" }}
+                    >
+                      {user.name.toUpperCase().substring(0, 2)}
+                    </Avatar>
+                  </Tooltip>
+                </Flex>
+              </Dropdown>
+              <Button type="link" onClick={showDrawer}>
                 Help
+              </Button>
+
+            </div>
+            <Button type="link" onClick={() => navigate(PATH_PORTFOLIO)}>
+              Portfolio
             </Button>
 
             {/*     <Flex align="center">

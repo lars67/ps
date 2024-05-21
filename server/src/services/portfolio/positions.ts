@@ -20,16 +20,11 @@ import {
 } from "../../utils";
 import SSEService, {
   QuoteData,
-  SSEServiceInst,
 } from "../../services/app/SSEService";
 import eventEmitter, { sendEvent } from "../../services/app/eventEmiter";
 import { getCompanyField } from "../../services/app/companies";
-import { TradeFilter } from "@/services/trade";
-import { summationFlatPortfolios } from "../../services/portfolio/helper";
 import {actualizeTrades, getPortfolioTrades} from "../../utils/portfolio";
 import { SubscribeMsgs } from "../../types/other";
-//type SubscribeObj = { handler: (o: object) => void; sseService: SSEService };
-//type SubscribeMsgs = Record<string, SubscribeObj>
 const subscribers: Record<string, SubscribeMsgs> = {}; //userModif-> SubscribeMsgs
 
 type QuoteData2 = {
@@ -69,8 +64,7 @@ type PortfolioPositionFull = PortfolioPosition & QuoteData2 &{
   total?: number;
   totalSymbol?: number
 };
-
-type QuoteChange = PortfolioPositionFull;
+export type QuoteChange = PortfolioPositionFull;
 /*QuoteData2 & {
   name: string;
   volume: number;
@@ -117,7 +111,9 @@ export async function positions(
         subscriber.sseService.getEventName(),
         subscriber.handler,
       );
+
     });
+
     return { msg: "Stop all positions" };
   }
   if (!_id) {
@@ -221,10 +217,9 @@ export async function positions(
       (o, p) => ({ ...o, [p.symbol as string]: p }),
       {} as Record<string, Partial<PortfolioPositionFull>>,
     );
-    console.log("portfolioPositions", portfolioPositions);
+   // console.log("portfolioPositions", portfolioPositions);
     isFirst = true;
-    console.log("/subscriberOnTrades get event==========");
-    //
+     //
   };
   /////
 
@@ -246,24 +241,7 @@ export async function positions(
       return { error: `subscribeId=${subscribeId} is unknown` };
     }
   }
-  /*
-  let portfolioFilter={}
-  if (portfolio.portfolioType=== 'summation') {
-   // const {portfolioRateMap,portfolioFilterItems, flatPortfolios:sumPortfolios} =
-   //     await processSumation(portfolio)
-    const portfolioFilterItems = await summationFlatPortfolios(portfolio);
-    portfolioFilter = {portfolioId:{$in: portfolioFilterItems}}
-    console.log('>>>>>>>> portfolioFilter=', portfolioFilter);// 'portfolioRateMap', portfolioRateMap);
-  } else {
-    portfolioFilter = {portfolioId: realId}
-  }
-  const allTrades = await TradeModel.find({
-    ...portfolioFilter,
-    state: { $in: [1, 21] },
-  })
-    .sort({ tradeTime: 1 })
-    .lean();
-*/
+
   const allTrades = await getPortfolioTrades(realId, undefined, {
     state: { $in: [1, 21] },
   });
@@ -311,13 +289,13 @@ export async function positions(
         subscribers[userModif][msgId].handler,
       );
     }
-    console.log("isFirst--------------------->", isFirst);
+    //console.log("isFirst--------------------->", isFirst);
     const q2Rates = prepareQuoteData2(
       currencyData,
       marketPrice,
       basePrice,
     ).filter(Boolean);
-    console.log("isFirst", isFirst, "currencyData", q2Rates);
+    //console.log("isFirst", isFirst, "currencyData", q2Rates);
 
     const newRates = {} as Record<string, number>;
     q2Rates.forEach((r) => {
@@ -339,12 +317,12 @@ export async function positions(
       marketPrice,
       basePrice,
     ).filter(Boolean);
-    console.log("isFirst", isFirst, "q2Symbols", q2Symbols);
+  //  console.log("isFirst", isFirst, "q2Symbols", q2Symbols);
 
     const changes: QuoteChange[] = [];
     q2Symbols.forEach((p) => {
       const { symbol, marketPrice, marketClose } = p as QuoteData2;
-      console.log('symbol', symbol, Object.keys(portfolioPositions));
+    //  console.log('symbol', symbol, Object.keys(portfolioPositions));
       let change = {} as QuoteChange;
       const cur = portfolioPositions[symbol].currency as string;
       const volume = Number(portfolioPositions[symbol].volume);
@@ -407,9 +385,9 @@ export async function positions(
         ["marketClose", "marketPrice", "bprice"].forEach((fld) => {
           const field = fld as keyof QuoteChange;
 
-          console.log(
-            `compare ${symbol} ${field} => ${portfolioPositions[symbol][field]} ${(p as QuoteChange)[field]}`,
-          );
+        //  console.log(
+         //   `compare ${symbol} ${field} => ${portfolioPositions[symbol][field]} ${(p as QuoteChange)[field]}`,
+        //  );
           // @ts-ignore
           if (p[field] && portfolioPositions[symbol][field] !== p[field]) {
             // @ts-ignore
@@ -418,7 +396,7 @@ export async function positions(
             portfolioPositions[symbol][field] = p[field as string];
           }
         });
-        console.log("change by fields ", change, rates[cur], fees[symbol]);
+       // console.log("change by fields ", change, rates[cur], fees[symbol]);
         if (change.marketRate || change.marketPrice) {
           change.marketValue =
             (rates[cur] || change.marketRate) *
@@ -460,11 +438,11 @@ export async function positions(
 
   const calcChanges = (data: object) => {
     let changes = processQuoteData(data as QuoteData[]);
-    console.log("changes ==>", changes);
+    //console.log("changes ==>", changes);
     if (changes.length === 0) {
       return undefined;
     }
-    console.log('$#$ portfolioPositions', portfolioPositions)
+   // console.log('$#$ portfolioPositions', portfolioPositions)
     const marketValue = Object.keys(portfolioPositions).reduce(
       (sum, symbol) => sum + Number(portfolioPositions[symbol].marketValue),
       0,
@@ -529,21 +507,19 @@ export async function positions(
     return changes;
 
   };
-
-  //--
   subscribers[userModif][msgId] = {
     sseService,
     handler: (data: object) => {
-      console.log("handler event");
+      //console.log("handler event");
       const changes = calcChanges(data);
       console.log(
-        moment().format("HH:mm:ss SSS"),
-        "subscriber SSE-> ",
-        userModif,
-        msgId,
-        data,
-        "===>",
-        changes,
+          moment().format("HH:mm:ss SSS"),
+          "subscriber SSE-> ",
+          userModif,
+          msgId,
+          //data,
+          "===>",
+          changes?.length,
       );
       changes?.length && sendResponse(changes);
     },
@@ -554,12 +530,14 @@ export async function positions(
   return { msg: requestType === "1" ? "subscribed" : "snapshot", eventName };
 }
 
+  //--
+
 async function getPositions(allTrades0: Trade[], portfolio: Portfolio, closed:string) {
-  console.log('getPositions....');
+  //console.log('getPositions....');
   const allTrades = actualizeTrades(allTrades0);
   const { startDate, endDate, uniqueSymbols, uniqueCurrencies } =
     await checkPortfolioPricesCurrencies(allTrades, portfolio.currency);
-  console.log("positions.467", startDate, uniqueSymbols, uniqueCurrencies);
+  //console.log("positions.467", startDate, uniqueSymbols, uniqueCurrencies);
   let currencyInvested: Record<
     string,
     { invested: number; investedSymbol: number, fee:number, feeSymbol:number }
@@ -577,7 +555,6 @@ async function getPositions(allTrades0: Trade[], portfolio: Portfolio, closed:st
       `tradeTime, symbol, side, price,volume, rate, volumeOld,volumeNew,avgPrice, realizedPnL,realized,totalCost`);
 
   for (const trade of allTrades) {
-    const rate = getRate(trade.currency, portfolio.currency, trade.tradeTime);
     switch (trade.tradeType) {
       case "1":
         const { symbol } = trade;
@@ -654,9 +631,9 @@ async function getPositions(allTrades0: Trade[], portfolio: Portfolio, closed:st
           symbolRealized[symbol].totalCost -= avgPrice * trade.volume;
         }
         //console.log('RRRRRRRRRRR', trade.tradeTime, symbol, symbolRealized[symbol], '|', trade.side, o.volume, newVolume, '|',trade.volume, trade.price);
-        console.log(
-          `${trade.tradeTime}, ${symbol},  ${trade.side}, ${trade.price},${trade.volume}, ${trade.rate}, ${o.volume || 0},${newVolume},${avgPrice.toFixed(4)}, ${realizedPnL.toFixed(4)},${symbolRealized[symbol].realized.toFixed(4)},${symbolRealized[symbol].totalCost.toFixed(4)}`,
-        );
+       // console.log(
+       //   `${trade.tradeTime}, ${symbol},  ${trade.side}, ${trade.price},${trade.volume}, ${trade.rate}, ${o.volume || 0},${newVolume},${avgPrice.toFixed(4)}, ${realizedPnL.toFixed(4)},${symbolRealized[symbol].realized.toFixed(4)},${symbolRealized[symbol].totalCost.toFixed(4)}`,
+       // );
         //}
         break;
       case "31":
@@ -682,7 +659,7 @@ async function getPositions(allTrades0: Trade[], portfolio: Portfolio, closed:st
   let currentDay = endDate.split("T")[0];
   const nowDay = moment().format(formatYMD); //!!!!!!!!!!!!!!!!!!!!!!!!
   const allSymbols = Object.keys(oldPortfolio);
-  console.log('oldPortfolio', oldPortfolio);
+  //console.log('oldPortfolio', oldPortfolio);
   const actualSymbols = allSymbols.filter((s) => {
     switch (closed) {
       case 'no':
@@ -694,7 +671,7 @@ async function getPositions(allTrades0: Trade[], portfolio: Portfolio, closed:st
     }
   });
 
-  console.log("positions.OOOO", currentDay, nowDay, actualSymbols);
+  //console.log("positions.OOOO", currentDay, nowDay, actualSymbols);
   const positions: Record<string, Partial<Trade>> = actualSymbols.reduce(
     (p, s) => ({ ...p, /*positionType:1,*/ [s]: oldPortfolio[s] }),
     {},
@@ -706,7 +683,7 @@ async function getPositions(allTrades0: Trade[], portfolio: Portfolio, closed:st
   // console.log("tradedSymbols", tradedSymbols, "positions", positions);
   let invested = 0;
   const curentPositions = tradedSymbols.map((s) => positions[s]);
-  console.log("symbolRealized", symbolRealized, 'traded.length:', curentPositions.length, 'positions.length',Object.keys(positions).length);
+  //console.log("symbolRealized", symbolRealized, 'traded.length:', curentPositions.length, 'positions.length',Object.keys(positions).length);
   if (curentPositions.length < Object.keys(positions).length) {
     let { inv, notTradeChanges } = addNotTradesItems(
       nowDay,
@@ -715,7 +692,7 @@ async function getPositions(allTrades0: Trade[], portfolio: Portfolio, closed:st
       positions,
     );
     //invested += inv;
-    console.log("notTradeChanges", notTradeChanges);
+  //  console.log("notTradeChanges", notTradeChanges);
     curentPositions.push(...Object.values(notTradeChanges));
   }
   let realized = allSymbols.reduce(
@@ -724,9 +701,9 @@ async function getPositions(allTrades0: Trade[], portfolio: Portfolio, closed:st
   );
   for (const p of curentPositions) {
     const symbol = p.symbol as string;
-    console.log(`getCompanyField(${symbol})`);
+
     p.name = await getCompanyField(symbol);
-    console.log(`/getCompanyField(${symbol})`);
+
 
     (p as PortfolioPosition).investedFull = symbolFullInvested[symbol];
     (p as PortfolioPosition).investedFullSymbol =
@@ -739,7 +716,7 @@ async function getPositions(allTrades0: Trade[], portfolio: Portfolio, closed:st
     invested: currencyInvested[cur].invested,
     currencyInvestedSymbol: currencyInvested[cur].investedSymbol,
   }));
-  console.log('getPositiins.curentPositions ', curentPositions )
+  //console.log('getPositiins.curentPositions ', curentPositions )
 
 
   return {
@@ -778,7 +755,7 @@ function prepareQuoteData2(
   })
   const qData2 = data.map((q) => {
     const { symbol, currency, volume, close, country } = q;
-    console.log('qData2', q)
+    //console.log('qData2', q)
     if (symbol) {
       const qt: Partial<QuoteData2> = {};
       const marketPrice = getMarketPrice(q, marketPriceModel) || close;
@@ -799,7 +776,7 @@ function prepareQuoteData2(
       );*/
 
       if (marketPrice) qt.marketPrice = marketPrice;
-  console.log('qt',symbol,  qt)
+  //console.log('qt',symbol,  qt)
       return Object.keys(qt).length > 0 ? { symbol, ...qt } : undefined;
     }
   });
@@ -854,7 +831,7 @@ function getMarketPrice(
   q: QuoteData,
   marketPrice?: string,
 ): number | undefined {
-  console.log("marketPrice", marketPrice, q.iexBidPrice, q.iexAskPrice);
+ // console.log("marketPrice", marketPrice, q.iexBidPrice, q.iexAskPrice);
   switch (marketPrice) {
     case "0":
       return q.iexBidPrice;
@@ -876,7 +853,7 @@ function getMarketPrice(
         q.iexBidPrice > 0 &&
         q.iexAskPrice > 0
       ) {
-        console.log(q.iexBidPrice, q.iexAskPrice, typeof q.iexBidPrice);
+        //console.log(q.iexBidPrice, q.iexAskPrice, typeof q.iexBidPrice);
         return 0.5 * (q.iexBidPrice + q.iexAskPrice);
       }
       if (q.iexBidPrice && q.iexBidPrice > 0) {
@@ -926,6 +903,7 @@ function getBasePrice(q: QuoteData, basePrice?: string): number | undefined {
       return q.close;
   }
 }
+
 
 /*
 async function processSumation(portfolio:Portfolio)  {

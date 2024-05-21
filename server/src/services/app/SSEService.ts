@@ -62,7 +62,7 @@ export default class SSEService implements SSEServiceInst {
       const data: object = JSON.parse(event.data);
       if (this.onData) this.onData(data);
 
-      console.log(this.isFirst, 'ONMESSAGE SSE EVENT QUOTES')//, data)
+      //console.log('isFirst', this.isFirst, 'ONMESSAGE SSE EVENT QUOTES FROM TOP')//, data)
       // @ts-ignore
       const actualData = this.isFirst  ?  data : actualizeData(data);
       //console.log('actualdata', actualData)
@@ -83,6 +83,7 @@ export default class SSEService implements SSEServiceInst {
     if (!this.stopped && this.source) {
       console.log("SSEServicce CLOSE", this.url);
       this.source.close();
+      this.source = null;
       this.stopped = true;
     }
   }
@@ -117,7 +118,7 @@ function actualizeData(ar: QuoteData[]) {
         ...actual
       } = d;
       const aa =  actual as Partial<QuoteData>;
-      console.log(Object.keys(aa).length)
+     // console.log(Object.keys(aa).length)
       if (Object.keys(aa).length >= 2) return aa;
       return null;
     })

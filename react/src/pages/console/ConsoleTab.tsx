@@ -1,35 +1,19 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {memo, useCallback, useEffect, useMemo, useRef, useState} from "react";
 
-import {
-  Alert,
-  Badge,
-  Button,
-  Flex,
-  message,
-  Row,
-  Select,
-  Typography,
-  Switch,
-  Tooltip,
-  Popover,
-} from "antd";
-import useWebSocket, { ReadyState } from "react-use-websocket";
-import { useAppSelector } from "../../store/useAppSelector";
+import {Button, message, Select, Switch, Tooltip,} from "antd";
+import useWebSocket, {ReadyState} from "react-use-websocket";
+import {useAppSelector} from "../../store/useAppSelector";
 
-import CodeMirror, {
-  EditorView,
-  ReactCodeMirrorRef,
-} from "@uiw/react-codemirror";
-import { json } from "@codemirror/lang-json";
+import CodeMirror, {EditorView,} from "@uiw/react-codemirror";
+import {json} from "@codemirror/lang-json";
 import "./style.css";
-import { commandTypes } from "./helper";
-import { Command } from "../../types/command";
-import { JsonToTable } from "react-json-to-table";
-import { LabelValue } from "../../types/LabelValue";
+import {commandTypes} from "./helper";
+import {Command} from "../../types/command";
+import {JsonToTable} from "react-json-to-table";
+import {LabelValue} from "../../types/LabelValue";
 import UserCommand from "./UserCommand";
 import Forms from "./forms";
-import { isUserCommand } from "../../utils";
-import { historyCommands } from "./index";
+import {historyCommands} from "./index";
 
 import HistoryCommands from "../../components/HistoryCommands";
 import OptionsPopup from "../../components/OptionsPopup";
@@ -38,16 +22,12 @@ import CommandBar from "../../components/CommandBar";
 import WindowExtend from "../../components/WindowExtend";
 import themeCodeMirror from "./themeCodeMirror";
 import UpDownBtn from "../../components/UpDownBtn";
-import { processTestCommand, testCommands } from "../../testCommands";
-import TestResults, { TestItem } from "../../components/TestResults";
-import { getCommands, preprocessCommand } from "../../utils/command";
+import {processTestCommand, testCommands} from "../../testCommands";
+import TestResults, {TestItem} from "../../components/TestResults";
+import {getCommands, preprocessCommand} from "../../utils/command";
+import {WSMsg} from "../../types/other";
+import SocketConnectionIndicator from "../../SocketConnectionIndicator";
 
-type WSMsg = {
-  data: string;
-  msgId?: string;
-  total: string;
-  index: number;
-};
 
 const Console = ({ tabIndex }: { tabIndex: number }) => {
   const [loading, setLoading] = useState(false);
@@ -281,25 +261,8 @@ const Console = ({ tabIndex }: { tabIndex: number }) => {
     }
   }, [value, commandLabel, clearAlwaysResult, setHistoryMsgId]);
 
-  const [connectionStatusText, connectionStatus]: [
-    string,
-    "processing" | "success" | "warning" | "default" | "error" | undefined,
-  ] = useMemo(() => {
-    const statusMap: {
-      [key in ReadyState]?: [
-        string,
-        "processing" | "success" | "warning" | "default" | "error" | undefined,
-      ];
-    } = {
-      [ReadyState.CONNECTING]: ["Connecting", "processing"],
-      [ReadyState.OPEN]: ["Open", "success"],
-      [ReadyState.CLOSING]: ["Closing", "warning"],
-      [ReadyState.CLOSED]: ["Closed", "warning"],
-      [ReadyState.UNINSTANTIATED]: ["Uninstantiated", "warning"],
-    };
-    return statusMap[readyState] || ["Unknown", undefined]; // Handle undefined case
-  }, [readyState]);
-  const canWork = connectionStatus === "success" && value !== "";
+
+  const canWork = readyState===ReadyState.OPEN && value !== "";
 
   const onChange = useCallback((val: string) => {
     setValue(val);
@@ -602,19 +565,7 @@ const Console = ({ tabIndex }: { tabIndex: number }) => {
     link.click();
     URL.revokeObjectURL(url);
   };
-  const handleBadgeClick = useCallback(
-    (event: React.MouseEvent<HTMLAnchorElement>) => {
-      event.preventDefault();
-      if (connectionStatusText === "Open") {
 
-        //disconnect()
-      } else if (connectionStatusText === "Closed") {
-        // reconnect()
-        // reconnect()Remove
-      }
-    },
-    [connectionStatusText],
-  );
 
   const notOwnerCommand = (commandOption as Command)?.commandType === 'user' ?
       userId!=(commandOption as Command)?.ownerId : false
@@ -693,18 +644,7 @@ const Console = ({ tabIndex }: { tabIndex: number }) => {
             {commandBar && <CommandBar commandbar={commandBar} />}
 
             <div className="spacer" />
-            <Tooltip title={connectionStatusText}>
-              <>
-                Server:
-                <a href="#" onClick={handleBadgeClick}>
-                  <Badge
-                    className="connection-badge"
-                    status={connectionStatus}
-                    text={""}
-                  />
-                </a>
-              </>
-            </Tooltip>
+           <SocketConnectionIndicator readyState={readyState}/>
             <Button type="default" size="middle" onClick={handleClear}>
               Clear
             </Button>

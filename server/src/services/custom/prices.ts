@@ -1,12 +1,13 @@
 import { CommandDescription } from "../../types/custom";
 import {checkPrices, getDatesSymbols, getDateSymbolPrice} from "../../services/app/priceCashe";
-import {isValidDateFormat} from "../../utils";
+import {divideArray, isValidDateFormat, toNum} from "../../utils";
 import {SubscribeMsgs} from "../../types/other";
 import moment from "moment";
-import {sendEvent} from "@/services/app/eventEmiter";
-import {QuoteData} from "../../services/app/SSEService";
+import eventEmitter, {sendEvent} from "../../services/app/eventEmiter";
+import SSEService, {QuoteData} from "../../services/app/SSEService";
 import {formatYMD} from "../../constants";
-import {UserData} from "@/services/websocket";
+import {UserData} from "../../services/websocket";
+import {QuoteChange} from "@/services/portfolio/positions";
 
 
 type Par = {
@@ -22,6 +23,7 @@ type ParQuotes = {
     changes?:Partial<QuoteData[]>,
     eventName?: string,
     precision: number;
+    subscribeId?: string;
 }
 
 const subscribers: Record<string,SubscribeMsgs> = {}; //userModif-> SubscribeMsgs
@@ -55,9 +57,9 @@ export const historical = async (
 
     }
     const date = par?.from ? par?.from  : par.date;
-    console.log('date', date)
+    //console.log('date', date)
     const dateShift = moment(date, formatYMD).add(-7, 'day').format(formatYMD)
-    console.log('date,dateShift', date,dateShift);
+   // console.log('date,dateShift', date,dateShift);
     await checkPrices(symbols, dateShift);
     if (par?.from) {
         return getDatesSymbols(symbols, par.from, par?.till)
@@ -66,7 +68,8 @@ export const historical = async (
           ({...o, [symbol]:Number(getDateSymbolPrice(date as string, symbol)?.toFixed(precision))}), {})
 
 };
-/*
+
+let sseServiceNumber=0;
 export const quotes = async (
     par: ParQuotes,
     sendResponse: (data: object) => void,
@@ -81,9 +84,14 @@ export const quotes = async (
     }
     const symbols = par.symbols?.split(',');
     const precision= par.precision || 4;
+    const {subscribeId} = par;
     if (symbols.length<1) {
         return {error: 'No symbols'}
     }
+
+    sseServiceNumber++;
+    const eventName = `SSE_PRICES_${sseServiceNumber}`;
+
     if (requestType === "3") {
         let err;
         if (!SSEEventName) {
@@ -105,19 +113,72 @@ export const quotes = async (
         console.log(moment().format('HH:mm:ss SSS'),'emulator send respomse', SSEEventName)
         return {emulated: true, eventName:SSEEventName, changes};
     }
-   // return symbols.reduce((o, symbol)=>
-   //     ({...o, [symbol]:Number(getDateSymbolPrice(date, symbol)?.toFixed(precision))}), {})
+    if (requestType === "2") {
+        if (!subscribeId) {
+            return { error: "subscribeId is required  in unsubscrube command" };
+        }
+        if (subscribers[userModif][subscribeId]) {
+            subscribers[userModif][subscribeId].sseService.stop();
+            eventEmitter.removeListener(
+                subscribers[userModif][subscribeId].sseService.getEventName(),
+                subscribers[userModif][subscribeId].handler,
+            );
+            return {
+                msg: `unsubscribed from symbols'${par.symbols}'`,
+            };
+        } else {
+            return { error: `subscribeId=${subscribeId} is unknown` };
+        }
+    }
 
-};
-*/
+    const sseService = new SSEService("quotes", par.symbols, eventName);
+//--
+
+
+
+
+    //-
+    subscribers[userModif][msgId] = {
+        sseService,
+        handler: (data: object) => {
+           // console.log("handler event",data);
+            const changes = Object.values(data);
+            if (requestType === "0") {
+                subscribers[userModif][msgId].sseService.stop();
+                eventEmitter.removeListener(
+                    subscribers[userModif][msgId].sseService.getEventName(),
+                    subscribers[userModif][msgId].handler,
+                );
+            }
+
+            console.log(
+                moment().format("HH:mm:ss SSS"),
+                "subscriber SSE-> ",
+                userModif,
+                msgId,
+                data,
+                "===>",
+                changes?.length,
+            );
+            changes?.length && sendResponse(changes);
+        },
+    };
+
+    eventEmitter.on(eventName, subscribers[userModif][msgId].handler);
+    //const { positions , fees,...rest } = positions;
+    return { msg: requestType === "1" ? "subscribed" : "snapshot", eventName };
+}
+
+
+
 
 export const description: CommandDescription = {
     historical: {
         label: "Get historical prices",
         value: JSON.stringify({ command: "prices.historical", symbols: "?", "date":"?", "from": "", "till":"", "precision":4 }),
     },
-  /*  quotes: {
+    quotes: {
         label: "Get quotes prices",
-        value: JSON.stringify({ command: "prices.quotes", symbols: "?",  "precision":4 }),
-    },*/
+        value: JSON.stringify({ command: "prices.quotes", symbols: "?", "requestType":"0", "subscribeId":"","precision":4 }),
+    },
 };

@@ -5,11 +5,12 @@ import controller from "../controllers/websocket";
 import logger from "../utils/logger";
 import * as https from "https";
 import {ErrorType} from "../types/other";
-
+import cookie from 'cookie';
+import {ReadyState} from "eventsource";
 
 const secretKey = "ps2-secret-key";
 
-type UserWebSocket = WebSocket & { userId: string };
+type UserWebSocket = WebSocket & { userId: string, waitNum:number };
 
 export type UserData = {
   userId:string,
@@ -25,7 +26,12 @@ export const initWS = (serverLogin: https.Server, serverApp: https.Server) => {
   const loginServer = new WebSocketServer({ server:serverLogin });
 
   console.log("-------------------- SOCKET SERVER -------------");
-  loginServer.on("connection", (socket) => {
+  loginServer.on("connection", (socket, req) => {
+    const cookies = cookie.parse(req.headers.cookie || '');
+    const token = cookies.ps2token;
+
+    console.log('TTTTTTTTTTTTTTTTTTTTTTTOKEN', token, Object.keys(cookies))
+
     socket.on("message", async (data) => {
       const { name, password, email='', cmd='login' } = JSON.parse(data.toString());
       if (cmd === 'signup') {
@@ -65,6 +71,10 @@ export const initWS = (serverLogin: https.Server, serverApp: https.Server) => {
     if (!token) {
       return socket.close(4001, "Authentication error: Token missing");
     }
+  /*  req.headers.setHeader(
+        'Set-Cookie',
+        cookie.serialize('ps2token', 'your_token_value', cookieOptions)
+    );*/
 
     jwt.verify(token.toString(), secretKey, (err, decoded) => {
       if (err) {
@@ -74,6 +84,7 @@ export const initWS = (serverLogin: https.Server, serverApp: https.Server) => {
       //? socket.decoded = decoded;
       console.log("decoded", decoded);
       (socket as UserWebSocket).userId = (decoded as JwtPayload)?.userId;
+      (socket as UserWebSocket).waitNum = 0
       userData = (decoded as UserData);
       console.log('decoded as UserData', userData);
       clients.push({ socket, token: decoded });
@@ -81,15 +92,23 @@ export const initWS = (serverLogin: https.Server, serverApp: https.Server) => {
     });
     socket.on("message", async (message) => {
       const msg = JSON.parse(message.toString());
-      // console.log("Received message from client:",msg);
       logger.log(`> ${message}`);
+      console.log(`waitNum> ${(socket as UserWebSocket).waitNum}`);
+      if (socket.readyState !== 1) {
+        (socket as UserWebSocket).waitNum++;
+        if((socket as UserWebSocket).waitNum > 5) {
+          console.log(`> close socket`);
+          socket.close();
+        }
+      } else {
+        (socket as UserWebSocket).waitNum = 0;
+      }
       const response = await controller(
         msg,
         sendResponse(socket, msg),
         modif,
         userData,
       );
-      //sendFragmented(socket, JSON.stringify({ command: msg.command, msgId:msg.msgId, ...(response.error ? response.error : {data:response})}), msg.msgId)
     });
 
     socket.on("close", () => {
@@ -138,3 +157,6 @@ function sendFragmented(socket: WebSocket, msg: string, msgId: string) {
     }, 0);
   });
 }
+
+
+

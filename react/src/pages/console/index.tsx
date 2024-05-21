@@ -1,9 +1,12 @@
 
 import React, {memo, useRef, useState} from 'react';
-import { Tabs } from 'antd';
+import {Avatar, Dropdown, MenuProps, message, Tabs} from 'antd';
 import type { TabsProps } from 'antd';
 import ConsoleTab from "./ConsoleTab";
 import {LabelValue} from "../../types/LabelValue";
+import {QuoteGrid} from "../index";
+import {LogoutOutlined, PlusOutlined, SettingOutlined, UnorderedListOutlined, UserOutlined} from "@ant-design/icons";
+import {PATH_LOGIN} from "../../constants/routes";
 
 
 
@@ -21,6 +24,9 @@ export default memo(() => {
   const [activeKey, setActiveKey] = useState(initialItems[0].key);
 
   const [items, setItems] = useState(initialItems);
+
+
+
   //const historyCommands= useRef<LabelValue[]>([])
   const newTabIndex = useRef(0);
   const add = () => {
@@ -32,7 +38,25 @@ export default memo(() => {
     setActiveKey(newActiveKey);
 
   };
+  const addPortfolio = () => {
+    const newActiveKey = `newTab${++newTabIndex.current}`;
+    const newPanes = [...items];
+    const tabIndex= 1+newTabIndex.current
+    newPanes.push({label: `Portfolio`, children: <QuoteGrid/>, key: newActiveKey});
+    setItems(newPanes);
+    setActiveKey(newActiveKey);
+  };
 
+  const tabActions : MenuProps["items"] = [
+    {
+      key: "tab-portfolio",
+      label: "Portfolio",
+      icon: <UnorderedListOutlined />,
+      onClick:addPortfolio
+    },
+
+
+  ];
   const onChange = (key: string) => {
     setActiveKey(key);
   };
@@ -67,7 +91,18 @@ export default memo(() => {
     }
   };
 
+
+
+  const toolPanel = (
+      <div>
+      <Dropdown menu={{items:tabActions}} placement="bottomRight" >
+        <Avatar style={{ backgroundColor: '#3e3c42', marginRight:'10px' }}  size="small" icon={<PlusOutlined />} />
+      </Dropdown>
+      </div>
+  );
+
   return (<Tabs
+      tabBarExtraContent={toolPanel}
       className="custom-tab-bar"
       activeKey={activeKey}
       size={'small'}

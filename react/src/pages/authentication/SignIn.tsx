@@ -25,6 +25,7 @@ import {authLoginThunk, updateUser, UserState} from "../../store";
 import {useAppDispatch} from "../../store/useAppDispatch";
 import { Link as Link2 } from 'react-router-dom';
 
+
 const { Title, Text, Link } = Typography;
 
 type FieldType = {
@@ -60,6 +61,8 @@ const SignInPage = () => {
         type: 'success',
         content: 'Login successful',
       });
+      // document.cookie =`ps2token=${token};httpOnly=true;secure=true;sameSite='strict'`
+       //Cookies.set('ps2token', token, { expires: 5 });
        dispatch(updateUser({name:values.name, userId,role}))
        navigate(PATH_CONSOLE);
     } else {

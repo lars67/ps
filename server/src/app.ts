@@ -2,8 +2,7 @@ import { initWS } from "./services/websocket";
 import { dbConnection } from "./db";
 import { connect } from "mongoose";
 import * as fs from "fs";
-import * as http from "http";
-//import * as https from "https";
+import {initCountries} from "./services/app/countries";
 const express = require('express');
 const cors = require('cors');
 const https = require('https');
@@ -29,6 +28,7 @@ const startServer = async () => {
     cert: cert,
     ca: ca
   };
+  await initCountries();
   const httpsServerLogin = https.createServer(options, app);
   const httpsServerApp = https.createServer(options, app);
   await initWS(httpsServerLogin, httpsServerApp);
