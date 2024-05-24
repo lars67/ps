@@ -405,6 +405,6 @@ export const actualizeTrades = (trades:Trade[]) => {
     if (fxTrades.length>0 ) {
         trades.push(...fxTrades)
     }
-    console.log('/trades', trades);
+   // console.log('/trades', trades);
     return trades;
 }

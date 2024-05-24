@@ -12,7 +12,7 @@ import useWebSocket, { ReadyState } from "react-use-websocket";
 import { useAppSelector } from "../../store/useAppSelector";
 
 import { WSMsg } from "../../types/other";
-import { numberFormattedRender } from "./columnRenderers";
+import {flagRender, numberFormattedRender} from "./columnRenderers";
 
 import GridToolbar from "./GridToolbar";
 import { current } from "@reduxjs/toolkit";
@@ -21,6 +21,7 @@ import EmulatePriceChange from "./EmulatePriceChange";
 import HistoryList from "./HistoryList";
 import ConfigPopup from "./ConfigPopup"; // Import CSS file for styling
 import { useAppDispatch } from "../../store/useAppDispatch";
+import SubscriptionDataIndicator from "./SubscriptionDataIndicator";
 const valueColumns = [
   "volume",
   "marketPrice",
@@ -83,6 +84,7 @@ const QuoteTable = () => {
   });
   const subscribeId = useRef<string>();
   const [selectedPortfolio, setSelectedPortfolio] = useState<Portfolio>();
+  const [countChangeData, setCountChangeData] = useState(0);
   console.log("QuteTable start pid", pid);
 
   //data connect
@@ -242,18 +244,19 @@ const QuoteTable = () => {
        // console.log("useEffect keys=", Object.keys(handlers.current));
         handlers.current[subscribeId.current] = (d: any) => {
           console.log("HANDLER>>>>>>>>>>>", d);
+          //setCountChangeData(Array.isArray(d.data)?d.data.length:0)
           if (Array.isArray(d.data)) {
             setLoading(false);
             setTableData((data) => {
               const newData = [...data];
               const changes = d.data;
-              console.log("changes", changes.length);
+              //console.log("changes", changes.length);
               changes.forEach((t: QuoteData) => {
                 const symbol = t.symbol;
                 const matchIndex = newData.findIndex(
                   (t) => t.symbol === symbol,
                 );
-                console.log(symbol, ":", matchIndex);
+              //  console.log(symbol, ":", matchIndex);
                 if (matchIndex >= 0) {
                   newData[matchIndex] = {
                     ...newData[matchIndex],
@@ -310,7 +313,8 @@ const QuoteTable = () => {
         dataIndex: "name",
         key: "name",
         ellipsis: true,
-        width: '18%'
+        width: '22%',
+        render:flagRender,
       },
       {
         title: "Currency",
@@ -432,6 +436,7 @@ const QuoteTable = () => {
     async (newPid: string) => {
       setPID(newPid);
       setSelectedPortfolio(portfolios.find((p) => p._id === newPid));
+      history.current=[];
     },
     [pid, portfolios],
   );
@@ -453,6 +458,7 @@ const QuoteTable = () => {
   const handleConfig = useCallback(
     (config: ConfigParams) => {
       setConfig(config);
+      history.current=[];
     },
     [setConfig],
   );
@@ -466,6 +472,7 @@ const QuoteTable = () => {
         pid={pid}
         onSelectPortfolio={handleSelectPortfolio}
         canWork={canWork.current}
+       // leftChildren={<SubscriptionDataIndicator count={countChangeData} />}
       >
         <EmulatePriceChange
           disabled={!canWork || !pid}
@@ -490,6 +497,8 @@ const QuoteTable = () => {
             dataSource={tableData}
             pagination={false}
             scroll={{ y: "calc(var(--top-div-height) - 40px)" }}
+            bordered={true}
+            className={'resizable-table'}
           />
         )}
         {initialization && (

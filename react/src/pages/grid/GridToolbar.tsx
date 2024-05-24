@@ -12,6 +12,7 @@ type Props = {
   onSelectPortfolio: (p: string) => void;
   canWork: boolean;
   children: React.ReactNode;
+  leftChildren?: React.ReactNode;
 };
 const GridToolbar = ({
   readyState,
@@ -19,7 +20,8 @@ const GridToolbar = ({
   pid,
   onSelectPortfolio,
   canWork,
-    children
+  children,
+  leftChildren,
 }: Props) => {
   return (
     <div
@@ -40,8 +42,7 @@ const GridToolbar = ({
         options={portfolios}
         disabled={!canWork}
       ></Select>
-
-
+      {leftChildren}
       <div className="spacer" />
       {children}
       <SocketConnectionIndicator readyState={readyState} />

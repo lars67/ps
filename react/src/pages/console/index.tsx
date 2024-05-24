@@ -38,11 +38,11 @@ export default memo(() => {
     setActiveKey(newActiveKey);
 
   };
-  const addPortfolio = () => {
+  const addPositions = () => {
     const newActiveKey = `newTab${++newTabIndex.current}`;
     const newPanes = [...items];
     const tabIndex= 1+newTabIndex.current
-    newPanes.push({label: `Portfolio`, children: <QuoteGrid/>, key: newActiveKey});
+    newPanes.push({label: `Positions`, children: <QuoteGrid/>, key: newActiveKey});
     setItems(newPanes);
     setActiveKey(newActiveKey);
   };
@@ -50,9 +50,9 @@ export default memo(() => {
   const tabActions : MenuProps["items"] = [
     {
       key: "tab-portfolio",
-      label: "Portfolio",
+      label: "Positions",
       icon: <UnorderedListOutlined />,
-      onClick:addPortfolio
+      onClick:addPositions
     },
 
 

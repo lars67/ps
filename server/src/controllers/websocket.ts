@@ -32,7 +32,7 @@ const handlers: { [key: string]: any } = {
 
 const isFunction = (f: any) => typeof f === "function";
 // @ts-ignore
-export default async function handler(data, sendResponse, userModif, userData) {
+export default async function handler(data, sendResponse, userModif, userData, socket) {
   const { command, msgId, ...params } = data;
   if (!command) {
     sendResponse({ error: "Command is absent", msgId });
@@ -54,6 +54,7 @@ export default async function handler(data, sendResponse, userModif, userData) {
           msgId,
           userModif,
           userData,
+          socket
         );
         return sendResponse(resp);
       } else {

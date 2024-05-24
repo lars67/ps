@@ -1,7 +1,7 @@
 import React, { memo, useState } from "react";
 import { List, Button, Modal } from "antd";
 import { MenuOutlined } from "@ant-design/icons";
-import styled from 'styled-components';
+import styled from "styled-components";
 
 const StyledList = styled(List)`
   .ant-list-item {
@@ -13,18 +13,22 @@ const StyledList = styled(List)`
 `;
 
 const StyledListItem = styled.div`
- white-space: nowrap;
- color: ${props => props.color || 'inherit'};
-// overflow: hidden;
-// text-overflow: ellipsis;
+  white-space: nowrap;
+  color: ${(props) => props.color || "inherit"};
+  // overflow: hidden;
+  // text-overflow: ellipsis;
 `;
 
 type Props = {
   history: string[];
-  portfolioName: string| undefined;
-  onClearHistory: ()=> void
+  portfolioName: string | undefined;
+  onClearHistory: () => void;
 };
-const HistoryList = ({ history, portfolioName='', onClearHistory}: Props) => {
+const HistoryList = ({
+  history,
+  portfolioName = "",
+  onClearHistory,
+}: Props) => {
   const [visible, setVisible] = useState(false);
 
   const showModal = () => {
@@ -32,7 +36,6 @@ const HistoryList = ({ history, portfolioName='', onClearHistory}: Props) => {
   };
 
   const handleOk = () => {
-
     onClearHistory();
     setVisible(false);
   };
@@ -50,24 +53,26 @@ const HistoryList = ({ history, portfolioName='', onClearHistory}: Props) => {
         onCancel={handleCancel}
         okText="Clear"
         cancelText={"Close"}
-         width={800}
+        width={800}
+        destroyOnClose={true}
       >
-        <div style={{ maxHeight: "600px", overflow: "auto", }}>
+        <div style={{ maxHeight: "600px", overflow: "auto" }}>
           <StyledList
             dataSource={history}
             renderItem={(item) => {
-                const s = item as string;
-                const clr = s.charAt(0) ==='>' ? '#880f41': '#117207';
+              const s = item as string;
+              const clr = s.charAt(0) === ">" ? "#880f41" : "#117207";
 
-                return (
-              <List.Item>
-                <List.Item.Meta
-                  description={
+              return (
+                <List.Item>
+                  <List.Item.Meta
+                    description={
                       <StyledListItem color={clr}>{s}</StyledListItem>
-                  }
-                />
-              </List.Item>
-            )}}
+                    }
+                  />
+                </List.Item>
+              );
+            }}
           />
         </div>
       </Modal>

@@ -20,6 +20,7 @@ import {TradeModel} from "../models/trade";
 import {getCurrentPosition, getPortfolioTrades} from "../utils/portfolio";
 import {checkPriceCurrency} from "../services/app/priceCashe";
 import {UserData} from "@/services/websocket";
+import {generateAccountID, validateAccountID} from "../utils/idGenerator";
 
 export  {history} from './portfolio/history';
 export  {positions} from './portfolio/positions';
@@ -56,6 +57,11 @@ export async function add(
 
   if (!portfolio.userId) {
     portfolio.userId = userId;
+  }
+  if (!portfolio.accountId) {
+    portfolio.accountId= generateAccountID();
+  } else if (!validateAccountID(portfolio.accountId)){
+    return errorMsgs.error('Incorrect accountId')
   }
   const newPortfolio = new PortfolioModel(portfolio);
   const added = await newPortfolio.save();

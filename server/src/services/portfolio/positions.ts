@@ -13,7 +13,7 @@ import moment, { Moment } from "moment";
 import { formatYMD } from "../../constants";
 import {
   divideArray,
-  extractUniqueFields,
+  extractUniqueFields, findMaxByField,
   getModelInstanceByIDorName, isCurrency,
   isValidDateFormat,
   toNum,
@@ -25,6 +25,9 @@ import eventEmitter, { sendEvent } from "../../services/app/eventEmiter";
 import { getCompanyField } from "../../services/app/companies";
 import {actualizeTrades, getPortfolioTrades} from "../../utils/portfolio";
 import { SubscribeMsgs } from "../../types/other";
+import {WebSocket} from "ws";
+import {UserWebSocket} from "../../services/websocket";
+import {getCountryField} from "../../services/app/countries";
 const subscribers: Record<string, SubscribeMsgs> = {}; //userModif-> SubscribeMsgs
 
 type QuoteData2 = {
@@ -42,6 +45,9 @@ type QuoteData2 = {
   todayResult: number;
   todayResultPercent: number;
   avgPremiumSymbol: number;
+  name:string;
+  a2: string;
+  country:string;
 };
 
 type PortfolioPosition = {
@@ -58,6 +64,8 @@ type PortfolioPosition = {
   investedFullSymbol: number;
   weight: number;
   realized: number;
+  country: string;
+  a2:string;
 };
 
 type PortfolioPositionFull = PortfolioPosition & QuoteData2 &{
@@ -102,6 +110,8 @@ export async function positions(
   sendResponse: (data?: object) => void,
   msgId: string,
   userModif: string,
+  userData: any,
+  socket:WebSocket
 ): Promise<{} | undefined> {
   if (requestType === "77") {
     Object.values(subscribers[userModif]).forEach((subscriber) => {
@@ -172,7 +182,7 @@ export async function positions(
   sseServiceNumber++;
   const eventName = `SSE_QUOTES_${sseServiceNumber}`;
 
-  let rates: Record<string, number>;
+  let rates: Record<string, number>={};
   let fees: Record<string, { fee: number; feeSym: number }>;
 
   let portfolioPositions: Record<string, Partial<PortfolioPositionFull>>;
@@ -281,6 +291,7 @@ export async function positions(
       data,
       (q: QuoteData) => !positions.uniqueSymbols.includes(q.symbol),
     );
+    console.log('processQuoteData rates', rates);
     if (requestType === "0") {
       console.log("stop!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
       subscribers[userModif][msgId].sseService.stop();
@@ -295,7 +306,7 @@ export async function positions(
       marketPrice,
       basePrice,
     ).filter(Boolean);
-    //console.log("isFirst", isFirst, "currencyData", q2Rates);
+  //  console.log( "q2Rates", q2Rates, 'rates', rates);
 
     const newRates = {} as Record<string, number>;
     q2Rates.forEach((r) => {
@@ -305,7 +316,7 @@ export async function positions(
       if (!rates[cur] && newRate) {
         newRates[cur] = newRate;
         rates[cur] = newRate;
-      } else if (newRate !== rates[cur]) {
+      } else if (newRate && newRate !== rates[cur]) {
         newRates[cur] = newRate;
         rates[cur] = newRate;
       }
@@ -316,6 +327,7 @@ export async function positions(
       symbolData,
       marketPrice,
       basePrice,
+      isFirst
     ).filter(Boolean);
   //  console.log("isFirst", isFirst, "q2Symbols", q2Symbols);
 
@@ -342,6 +354,7 @@ export async function positions(
 
         portfolioPositions[symbol] = {
           ...portfolioPositions[symbol],
+
           marketRate: rates[cur],
           marketValue: rates[cur] * marketPrice * volume,
           marketValueSymbol: marketPrice * volume,
@@ -355,6 +368,7 @@ export async function positions(
           ...p,
           fee: fees[symbol].fee,
           feeSymbol: fees[symbol].feeSym,
+
         };
 
         change = portfolioPositions[symbol] as QuoteChange;
@@ -396,13 +410,13 @@ export async function positions(
             portfolioPositions[symbol][field] = p[field as string];
           }
         });
-       // console.log("change by fields ", change, rates[cur], fees[symbol]);
         if (change.marketRate || change.marketPrice) {
           change.marketValue =
-            (rates[cur] || change.marketRate) *
+            (change.marketRate || rates[cur] ) *
             (change.marketPrice ||
               Number(portfolioPositions[symbol].marketPrice)) *
             Number(portfolioPositions[symbol].volume);
+           console.log("change.marketValue=",change.marketValue, cur,  rates[cur], portfolioPositions[symbol]);
 
           change.result =
             (change.marketValue ||
@@ -507,11 +521,16 @@ export async function positions(
     return changes;
 
   };
+
   subscribers[userModif][msgId] = {
     sseService,
     handler: (data: object) => {
       //console.log("handler event");
-      const changes = calcChanges(data);
+      const actualChanges = (data as QuoteData[]).filter((d:QuoteData) => d.lastTradeTime ? Object.keys(d).length > 2 : Object.keys(d).length >= 2)
+      if(actualChanges.length ===0) {
+        return;
+      }
+      const changes = calcChanges(actualChanges);
       console.log(
           moment().format("HH:mm:ss SSS"),
           "subscriber SSE-> ",
@@ -521,7 +540,23 @@ export async function positions(
           "===>",
           changes?.length,
       );
-      changes?.length && sendResponse(changes);
+     changes && sendResponse(changes);
+
+      if (socket.readyState === WebSocket.CLOSED) {
+         if (!(socket as UserWebSocket).waitNum ) {
+          (socket as UserWebSocket).waitNum= Date.now();
+        } else if (Date.now()-(socket as UserWebSocket).waitNum > 30000) {
+           console.log('STOPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP SSE',sseService.getEventName());
+          sseService.stop();
+          eventEmitter.removeListener(
+              sseService.getEventName(),
+              subscribers[userModif][msgId].handler,
+          );
+        }
+      } else if (socket.readyState === WebSocket.OPEN) {
+        (socket as UserWebSocket).waitNum = 0;
+      }
+
     },
   };
 
@@ -535,8 +570,13 @@ export async function positions(
 async function getPositions(allTrades0: Trade[], portfolio: Portfolio, closed:string) {
   //console.log('getPositions....');
   const allTrades = actualizeTrades(allTrades0);
-  const { startDate, endDate, uniqueSymbols, uniqueCurrencies } =
-    await checkPortfolioPricesCurrencies(allTrades, portfolio.currency);
+  const lastTrade=findMaxByField<Trade>(allTrades,'tradeTime')
+  const endDate = lastTrade.tradeTime;
+  const uniqueSymbols = extractUniqueFields(allTrades, "symbol");
+  const uniqueCurrencies = extractUniqueFields(allTrades, "currency");
+
+//  const { startDate, endDate, uniqueSymbols, uniqueCurrencies } =
+//    await checkPortfolioPricesCurrencies(allTrades, portfolio.currency);
   //console.log("positions.467", startDate, uniqueSymbols, uniqueCurrencies);
   let currencyInvested: Record<
     string,
@@ -682,9 +722,9 @@ async function getPositions(allTrades0: Trade[], portfolio: Portfolio, closed:st
   );
   // console.log("tradedSymbols", tradedSymbols, "positions", positions);
   let invested = 0;
-  const curentPositions = tradedSymbols.map((s) => positions[s]);
+  //const curentPositions = tradedSymbols.map((s) => positions[s]);
   //console.log("symbolRealized", symbolRealized, 'traded.length:', curentPositions.length, 'positions.length',Object.keys(positions).length);
-  if (curentPositions.length < Object.keys(positions).length) {
+  /*if (curentPositions.length < Object.keys(positions).length) { !!!!!
     let { inv, notTradeChanges } = addNotTradesItems(
       nowDay,
       portfolio.currency,
@@ -694,7 +734,9 @@ async function getPositions(allTrades0: Trade[], portfolio: Portfolio, closed:st
     //invested += inv;
   //  console.log("notTradeChanges", notTradeChanges);
     curentPositions.push(...Object.values(notTradeChanges));
-  }
+  }*/
+  const curentPositions = Object.values(positions);
+console.log('curentPositions', curentPositions, 'positions', positions)
   let realized = allSymbols.reduce(
     (sum, symbol) => sum + symbolRealized[symbol].realized,
     0,
@@ -702,7 +744,7 @@ async function getPositions(allTrades0: Trade[], portfolio: Portfolio, closed:st
   for (const p of curentPositions) {
     const symbol = p.symbol as string;
 
-    p.name = await getCompanyField(symbol);
+   //use compamyMame from subscr p.name = await getCompanyField(symbol);
 
 
     (p as PortfolioPosition).investedFull = symbolFullInvested[symbol];
@@ -716,7 +758,7 @@ async function getPositions(allTrades0: Trade[], portfolio: Portfolio, closed:st
     invested: currencyInvested[cur].invested,
     currencyInvestedSymbol: currencyInvested[cur].investedSymbol,
   }));
-  //console.log('getPositiins.curentPositions ', curentPositions )
+  console.log('getPositiins.curentPositions ', curentPositions )
 
 
   return {
@@ -728,7 +770,8 @@ async function getPositions(allTrades0: Trade[], portfolio: Portfolio, closed:st
     fees,
     realized,
     currencyInvested,
-    uniqueSymbols
+    uniqueSymbols,
+    uniqueCurrencies
   };
 }
 
@@ -746,6 +789,7 @@ function prepareQuoteData2(
   data: QuoteData[],
   marketPriceModel: string,
   basePrice: string,
+  needAddNameCountry: boolean=false
 ) {
 
   data.forEach(d=> {
@@ -758,11 +802,16 @@ function prepareQuoteData2(
     //console.log('qData2', q)
     if (symbol) {
       const qt: Partial<QuoteData2> = {};
-      const marketPrice = getMarketPrice(q, marketPriceModel) || close;
+      const marketPrice = getMarketPrice(q, marketPriceModel) ;
       const bprice = getBasePrice(q, basePrice);
       if (bprice) qt.bprice = bprice;
       if (close) {
         qt.marketClose = close;
+      }
+      if (needAddNameCountry){
+        qt.name = q.companyName;
+        qt.country =q.country
+        qt.a2= getCountryField(q.country)
       }
       /*console.log(
         symbol,
@@ -775,12 +824,17 @@ function prepareQuoteData2(
         q.close,
       );*/
 
-      if (marketPrice) qt.marketPrice = marketPrice;
+      qt.marketPrice = marketPrice;
   //console.log('qt',symbol,  qt)
       return Object.keys(qt).length > 0 ? { symbol, ...qt } : undefined;
     }
   });
   return qData2;
+}
+/*
+function getRateNow(par1:string, par2:string) {
+  if (par1===par2 return 1.0
+  return rates[par1]
 }
 
 function addNotTradesItems(
@@ -798,11 +852,11 @@ function addNotTradesItems(
         const pi = oldPortfolio[symbol] as Trade;
         let n = getDateSymbolPrice(currentDay, symbol);
         if (!n && isCurrency(symbol)) {
-           n = getRate(symbol.substring(0,3), symbol.substring(3,6),  currentDay)
+           n = getRateNow(symbol.substring(0,3), symbol.substring(3,6))
         }
         const price = toNum({  n : n as number})
 
-        const rate = getRate(pi.currency, portfolioCurrency, currentDay);
+        const rate = getRateNow(pi.currency, portfolioCurrency);
         if (!price || !rate) {
           throw `No price(rate)=${price}|rate=${rate} ${symbol} ${currentDay}`;
           //return 0;
@@ -826,7 +880,7 @@ function addNotTradesItems(
 
   return { inv, notTradeChanges: changes };
 }
-
+*/
 function getMarketPrice(
   q: QuoteData,
   marketPrice?: string,
@@ -861,6 +915,17 @@ function getMarketPrice(
       }
       if (q.iexAskPrice && q.iexAskPrice > 0) {
         return q.iexAskPrice;
+      }
+      return q.close;
+    case '8' :
+      if (q.latestPrice) return q.latestPrice;
+      if (
+          q.iexBidPrice &&
+          q.iexAskPrice &&
+          q.iexBidPrice > 0 &&
+          q.iexAskPrice > 0
+      ) {
+        return 0.5 * (q.iexBidPrice + q.iexAskPrice);
       }
       return q.close;
     default:
@@ -899,96 +964,21 @@ function getBasePrice(q: QuoteData, basePrice?: string): number | undefined {
         return q.iexAskPrice;
       }
       return q.close;
+
+    case '8' :
+      if (q.latestPrice) return q.latestPrice;
+      if (
+          q.iexBidPrice &&
+          q.iexAskPrice &&
+          q.iexBidPrice > 0 &&
+          q.iexAskPrice > 0
+      ) {
+        return 0.5 * (q.iexBidPrice + q.iexAskPrice);
+      }
+      return q.close;
     default:
       return q.close;
   }
+
 }
 
-
-/*
-async function processSumation(portfolio:Portfolio)  {
-  const portfolioRateMap={} as Record<string, string[]>
-  let sumPortfolios: Portfolio[] =[] //flat portfolios im all sum
-  const portfolioFilterItems: string[]=[];
-
-  console.log('processSumation.portfolio', portfolio);
-  const rateMap = async (portfolio:Portfolio,rates:string[]=[]) => {
-
-    console.log('rateMap() portfolioType:',portfolio.portfolioType, portfolio.portfolioIds);
-    if (portfolio.portfolioType==='summation'  && portfolio.portfolioIds) {
-      for (let pid of portfolio.portfolioIds){
-        console.log('pid ', pid);
-        const {
-          _id: childId,
-          error,
-          instance,
-        } = await getModelInstanceByIDorName<Portfolio>(pid, PortfolioModel);
-        if (error) {
-          return {error: "Error processing child portfolio"};
-        }
-        sumPortfolios.push(instance);
-        if (instance.portfolioType!=='summation'){
-          portfolioFilterItems.push(childId)
-
-        }
-         if (instance) {
-          await rateMap(instance, instance.currency==portfolio.currency ? rates : [...rates,`${instance.currency}${portfolio.currency}`])
-        }
-      }
-    } else {
-      portfolioRateMap[portfolio.name]= rates;
-      console.log(portfolio.name, ':',rates);
-    }
-  }
-
-  await  rateMap(portfolio,[])
-  console.log('SUMMATION PROCESS',portfolioRateMap,portfolioFilterItems, sumPortfolios);
-  return {portfolioRateMap,portfolioFilterItems, flatPortfolios:sumPortfolios};
-}
-*/
-
-/*
-
-symbolRealized {
-  FDIS: [
-    [ 94, 7231.420000000001 ],
-    [ 45, 3424.49991 ],
-    [ 185, 14287.550555 ],
-    [ 552, 42255.601656 ]
-  ],
-  XLC: [
-    [ 59, 4354.789882 ],
-    [ 6, 442.85998799999993 ],
-    [ 127, 9503.410253999999 ],
-    [ 71, 5409.490142000001 ]
-  ],
-  AMJ: [
-    [ 25, 644.5000249999999 ],
-    [ 286, 7278.700286 ],
-    [ 7, 185.919993 ],
-    [ 60, 1602.59994 ]
-  ],
-  IYC: [ [ 18, 1369.619928 ] ]
-
-
-totalQuantity = trades.reduce((total, trade) => total + trade.quantity, 0);
-
-// Step 2: Separate buy and sell trades to calculate average cost and realized value
-const buyTrades = trades.filter(trade => trade.type === 'Buy');
-const sellTrades = trades.filter(trade => trade.type === 'Sell');
-
-// Calculate average cost and realized value for buy and sell trades separately
-const averageCostBuy = buyTrades.reduce((total, trade) => total + trade.quantity * trade.price, 0)
-/ buyTrades.reduce((total, trade) => total + trade.quantity, 0);
-const realizedValueBuy = buyTrades.reduce((total, trade) => total + trade.quantity * (trade.price - sellTrades[sellTrades.length - 1].price), 0);
-const averageCostSell = sellTrades.reduce((total, trade) => total + trade.quantity * trade.price, 0) / sellTrades.reduce((total, trade) => total + trade.quantity, 0);
-const realizedValueSell = sellTrades.reduce((total, trade) => total + trade.quantity * (sellTrades[sellTrades.length - 1].price - trade.price), 0);
-
-// Step 3: Calculate the total cost, realized value, and average cost
-totalCost = totalQuantity * averageCostBuy;
-totalRealized = totalCost + realizedValueSell - realizedValueBuy;
-
-console.log({ totalCost, totalRealized, averageCostBuy, averageCostSell });
-
-In thi
- */

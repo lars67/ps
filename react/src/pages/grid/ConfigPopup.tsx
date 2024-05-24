@@ -5,6 +5,7 @@ import { ToolOutlined } from "@ant-design/icons";
 import { ConfigParams } from "./index";
 
 const items = [
+  { label: "Automatic", value: "8" },
   { label: "Bid", value: "0" },
   { label: "Ask", value: "1" },
   { label: "Last", value: "2" },

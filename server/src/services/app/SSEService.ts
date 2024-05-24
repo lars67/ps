@@ -37,7 +37,7 @@ export default class SSEService implements SSEServiceInst {
 
   public start(symbols:string, restart:boolean=false): void {
     symbols = extractUniqueValues(symbols.split(',')).join(',');
-    console.log('SYMBOLS', symbols);
+    console.log('SSESERVICE SYMBOLS', symbols, restart);
     if (!restart && this.symbols === symbols) {
       return ;
     }
@@ -65,7 +65,7 @@ export default class SSEService implements SSEServiceInst {
       //console.log('isFirst', this.isFirst, 'ONMESSAGE SSE EVENT QUOTES FROM TOP')//, data)
       // @ts-ignore
       const actualData = this.isFirst  ?  data : actualizeData(data);
-      //console.log('actualdata', actualData)
+      console.log(this.eventName,'actualdata', actualData)
       this.isFirst= false;
       if (actualData) {
         testLogger.log(JSON.stringify(actualData));

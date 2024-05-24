@@ -6,11 +6,11 @@ import logger from "../utils/logger";
 import * as https from "https";
 import {ErrorType} from "../types/other";
 import cookie from 'cookie';
-import {ReadyState} from "eventsource";
+
 
 const secretKey = "ps2-secret-key";
 
-type UserWebSocket = WebSocket & { userId: string, waitNum:number };
+export type UserWebSocket = WebSocket & { userId: string, waitNum:number};
 
 export type UserData = {
   userId:string,
@@ -93,21 +93,13 @@ export const initWS = (serverLogin: https.Server, serverApp: https.Server) => {
     socket.on("message", async (message) => {
       const msg = JSON.parse(message.toString());
       logger.log(`> ${message}`);
-      console.log(`waitNum> ${(socket as UserWebSocket).waitNum}`);
-      if (socket.readyState !== 1) {
-        (socket as UserWebSocket).waitNum++;
-        if((socket as UserWebSocket).waitNum > 5) {
-          console.log(`> close socket`);
-          socket.close();
-        }
-      } else {
-        (socket as UserWebSocket).waitNum = 0;
-      }
+
       const response = await controller(
         msg,
         sendResponse(socket, msg),
         modif,
         userData,
+        socket
       );
     });
 
@@ -130,7 +122,10 @@ function chunkString(str: string, size: number) {
 }
 
 const sendResponse = (socket: WebSocket, msg: any) => async (response: any) => {
-  //console.log('sendResponse===>',msg, response);
+ console.log('sendResponse===> READYsTATE',socket.readyState,'WAITnUM', (socket as UserWebSocket).waitNum);
+
+
+
   if (response) {
     const cmd = JSON.stringify({
       command: msg.command,

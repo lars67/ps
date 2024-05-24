@@ -8,6 +8,7 @@ export type Portfolio = {
   baseInstrument: string;
   portfolioType?: string; //summation, portfolio
   portfolioIds?:string[]
+  accountId?: string;
 };
 
 export type PortfolioWithID = Portfolio & { _id: string | ObjectId };

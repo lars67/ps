@@ -37,4 +37,7 @@ export type QuoteData = {
     feeSymbol: number;
     change: number;
     blink: boolean;
+    a2: string;
+    country:string;
+    accountId: string;
 };

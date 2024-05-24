@@ -53,7 +53,7 @@ const EmulatePriceChange = ({ positions = [], disabled, onEmulate, config }: Pro
   const handleClick = useCallback(() => {
     let iexField = 'close';
     if (selectedField === 'marketPrice') {
-          getBasePriceFieldName(config.marketPrice);
+      iexField = getBasePriceFieldName(config.marketPrice);
     }
     onEmulate(selectedSymbol, iexField, Number(inputValue));
   }, [selectedField, selectedSymbol, inputValue, onEmulate]);

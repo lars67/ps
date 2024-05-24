@@ -1,5 +1,11 @@
 import React from 'react';
+import ReactCountryFlag from "react-country-flag";
+import styled from "styled-components";
 
+const ReactCountryFlagStyled = styled(ReactCountryFlag)`
+font-size: 18px!important;
+margin-right: 3px;  
+`
 export const formatNumber = (value: number | string, digits: number = 2): string => {
     let numericValue: number;
 
@@ -32,3 +38,7 @@ export const numberFormattedRender =<T extends Record<string, any>>(field:string
 
     return { props:{className}, children: s}
 };
+
+export const flagRender = <T extends {a2:string}>( field:string, record:T) =>
+    <><ReactCountryFlagStyled countryCode={record.a2} />{field}</>
+;
