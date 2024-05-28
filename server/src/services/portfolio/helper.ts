@@ -170,3 +170,24 @@ export async function fixRate(trades:Trade[], portfolioRates: Record<string,stri
   }
   return trades;
 }
+
+const portfolioNameCash: Record<string, {name:string, accountId:string}>={}
+export async function mapKeyToName(portfoliosInvested:Record<
+    string,
+    { invested: number; investedSymbol: number, fee:number, feeSymbol:number }>) {
+   const ids = Object.keys(portfoliosInvested);
+   for (const id of ids) {
+     if (!portfolioNameCash[id]) {
+       const p = await PortfolioModel.findById(id).lean();
+       if (p && p.name) {
+         portfolioNameCash[id] = {name: p.name, accountId: p.accountId as string}
+       }
+     }
+     if (portfolioNameCash[id]) {
+       portfoliosInvested[portfolioNameCash[id].name]= portfoliosInvested[id];
+       delete portfoliosInvested[id]
+     }
+   }
+   return portfoliosInvested;
+
+}

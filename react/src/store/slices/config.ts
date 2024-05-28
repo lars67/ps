@@ -11,7 +11,8 @@ import {
 const defaultState = {
   layout: {
     currencyTotal: true,
-    underlyingTotal: false,
+    //underlyingTotal: false,
+    portfoliosTotal: false,
     industryTotal: false,
     sectorTotal: false,
     subregionTotal: false,
@@ -23,7 +24,13 @@ const defaultState = {
     positions: { color: "#000000", bkg: "#FFFFFF", bold: false, label:'Positions' },
 //    zero: { color: "#BBBBBB", bkg: "#FFFFFF", bold: false, label:'Zero' },
 //    negative: { color: "#800000", bkg: "#FFFFFF", bold: false, label: 'Negative' },
-    underlyingTotal: {
+    /*underlyingTotal: {
+      color: "#000000",
+      bkg: "#FFFF80",
+      bold: true,
+      label: 'Underlying Total'
+    },*/
+    portfoliosTotal: {
       color: "#000000",
       bkg: "#FFFF80",
       bold: true,

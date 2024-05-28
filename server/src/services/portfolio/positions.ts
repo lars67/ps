@@ -17,12 +17,13 @@ import SSEService, {
   QuoteData,
 } from "../../services/app/SSEService";
 import eventEmitter, { sendEvent } from "../../services/app/eventEmiter";
-import {getCompanyField, getSymbolsCountries} from "../../services/app/companies";
+import {getCompanyField, getGICS, getSymbolsCountries} from "../../services/app/companies";
 import {actualizeTrades, getPortfolioTrades} from "../../utils/portfolio";
 import { SubscribeMsgs } from "../../types/other";
 import {WebSocket} from "ws";
 import {UserWebSocket} from "../../services/websocket";
 import {getCountryField, getCountryFields} from "../../services/app/countries";
+import {mapKeyToName} from "../../services/portfolio/helper";
 const subscribers: Record<string, SubscribeMsgs> = {}; //userModif-> SubscribeMsgs
 
 type QuoteData2 = {
@@ -198,7 +199,18 @@ export async function positions(
       string,
       { invested: number; investedSymbol: number,fee:number, feeSymbol:number }
   > = {};
-
+  let sectorInvested: Record<
+      string,
+      { invested: number; investedSymbol: number,fee:number, feeSymbol:number }
+  > = {};
+  let industryInvested: Record<
+      string,
+      { invested: number; investedSymbol: number,fee:number, feeSymbol:number }
+  > = {};
+  let portfoliosInvested: Record<
+      string,
+      { invested: number; investedSymbol: number,fee:number, feeSymbol:number }
+  > = {};
   let currr;
   let isFirst: boolean = true;
   let totalRealized = 0;
@@ -219,7 +231,9 @@ export async function positions(
     currencyInvested = positions.currencyInvested;
     regionInvested= positions.regionInvested;
     subRegionInvested= positions.subRegionInvested;
-
+    sectorInvested= positions.sectorInvested;
+    industryInvested= positions.industryInvested;
+    portfoliosInvested =positions.portfoliosInvested;
     const symbols = [
       ...positions.positions.map((p) => p.symbol),
       ...extractUniqueFields(positions.positions, "currency")
@@ -278,6 +292,10 @@ export async function positions(
   currencyInvested = positions.currencyInvested;
   regionInvested= positions.regionInvested;
   subRegionInvested= positions.subRegionInvested;
+  sectorInvested= positions.sectorInvested;
+  industryInvested= positions.industryInvested;
+  portfoliosInvested =positions.portfoliosInvested;
+
   const symbols = [
     ...positions.positions.map((p) => p.symbol),
     ...extractUniqueFields(positions.positions, "currency")
@@ -341,7 +359,7 @@ export async function positions(
       basePrice,
       isFirst
     ).filter(Boolean);
-  //  console.log("isFirst", isFirst, "q2Symbols", q2Symbols);
+    console.log("isFirst", isFirst, "q2Symbols", q2Symbols);
 
     const changes: QuoteChange[] = [];
     q2Symbols.forEach((p) => {
@@ -513,6 +531,10 @@ export async function positions(
     summationTotal(changes, currencyInvested, 'currencyTotal')
     summationTotal(changes, regionInvested, 'regionTotal')
     summationTotal(changes, subRegionInvested, 'subregionTotal')
+    summationTotal(changes, sectorInvested, 'sectorTotal')
+    summationTotal(changes, industryInvested, 'industryTotal')
+    summationTotal(changes, portfoliosInvested, 'portfoliosTotal')
+
 
     changes.push({
       symbol:'TOTAL',
@@ -586,21 +608,21 @@ const summationFields = (currencyInvested: Record<
   currencyInvested[keyField].feeSymbol += fs;
 }
 
-const summationTotal = (changes:QuoteChange[],  regionInvested: Record<
+const summationTotal = (changes:QuoteChange[],  invested: Record<
     string,
     { invested: number; investedSymbol: number, fee:number, feeSymbol:number }
 >, totalType: string): void => {
 
-  Object.keys(regionInvested).forEach((symbol) => {
+  Object.keys(invested).forEach((symbol) => {
     changes.push({
       symbol: `TOTAL_${symbol}`,
       name: `TOTAL_${symbol}`,
-      investedFull: toNum({n: regionInvested[symbol].invested}),
-      investedFullSymbol: toNum({n: regionInvested[symbol].investedSymbol}),
-      fee: toNum({n: regionInvested[symbol].fee}),
-      feeSymbol: toNum({n: regionInvested[symbol].feeSymbol}),
-      total: toNum({n: regionInvested[symbol].invested - regionInvested[symbol].fee}),
-      totalSymbol: toNum({n: regionInvested[symbol].investedSymbol - regionInvested[symbol].feeSymbol}),
+      investedFull: toNum({n: invested[symbol].invested}),
+      investedFullSymbol: toNum({n: invested[symbol].investedSymbol}),
+      fee: toNum({n: invested[symbol].fee}),
+      feeSymbol: toNum({n: invested[symbol].feeSymbol}),
+      total: toNum({n: invested[symbol].invested - invested[symbol].fee}),
+      totalSymbol: toNum({n: invested[symbol].investedSymbol - invested[symbol].feeSymbol}),
       totalType
     } as PortfolioPositionFull);
   });
@@ -629,6 +651,18 @@ async function getPositions(allTrades0: Trade[], portfolio: Portfolio, closed:st
       string,
       { invested: number; investedSymbol: number, fee:number, feeSymbol:number }
   > = {};
+  let sectorInvested: Record<
+      string,
+      { invested: number; investedSymbol: number, fee:number, feeSymbol:number }
+  > = {};
+  let industryInvested: Record<
+      string,
+      { invested: number; investedSymbol: number, fee:number, feeSymbol:number }
+  > = {};
+  let portfoliosInvested: Record<
+      string,
+      { invested: number; investedSymbol: number, fee:number, feeSymbol:number }
+  > = {};
   let cash = 0;
   const fees: Record<string, { fee: number; feeSym: number }> = {};
   const symbolFullInvestedSymbol: Record<string, number> = {};
@@ -647,6 +681,7 @@ async function getPositions(allTrades0: Trade[], portfolio: Portfolio, closed:st
         const { symbol } = trade;
         const country = symbolCountries[symbol];
         const { region, subRegion} = getCountryFields(country, ['a2','region', 'subRegion'])
+        const {sector, industry} = await getGICS(symbol)
 
         const dir = trade.side === "B" ? -1 : 1;
         const priceN = toNum({ n: trade.price });
@@ -693,6 +728,9 @@ async function getPositions(allTrades0: Trade[], portfolio: Portfolio, closed:st
         summationFields(currencyInvested, trade.currency, v, vs, f, fs)
         summationFields(regionInvested, region as string, v, vs, f, fs)
         summationFields(subRegionInvested, subRegion as string, v, vs, f, fs)        //if (dir > 0) {
+        summationFields(sectorInvested, sector, v, vs, f, fs)
+        summationFields(industryInvested, industry, v, vs, f, fs)
+        summationFields(portfoliosInvested, trade.portfolioId, v, vs, f, fs)
         /*const close = toNum({
             n: getDateSymbolPrice(trade.tradeTime, trade.symbol) as number,
           });
@@ -818,6 +856,9 @@ console.log('curentPositions', curentPositions, 'positions', positions)
     currencyInvested,
     regionInvested,
     subRegionInvested,
+    sectorInvested,
+    industryInvested,
+    portfoliosInvested: await mapKeyToName(portfoliosInvested),
     uniqueSymbols,
     uniqueCurrencies
   };
@@ -858,6 +899,7 @@ function prepareQuoteData2(
       }
       if (needAddNameCountry){
         const {a2, region, subRegion} = getCountryFields(q.country, ['a2','region', 'subRegion'])
+      console.log(q.country, a2,region, subRegion);
         qt.name = q.companyName;
         qt.country =q.country
         qt.a2= a2;//getCountryField(q.country)

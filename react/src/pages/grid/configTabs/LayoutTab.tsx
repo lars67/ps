@@ -7,7 +7,8 @@ import { configSlice } from "../../../store";
 
 const displayLayoutLabels: Record<LayoutKeys, string> = {
   currencyTotal: "Currency Total",
-  underlyingTotal: "Asset type Total",
+  //underlyingTotal: "Asset type Total",
+  portfoliosTotal: 'Portfolios total',
   industryTotal: "Industry Total",
   sectorTotal: "Sector Total",
   subregionTotal: "Subregion Total",

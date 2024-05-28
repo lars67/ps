@@ -1,4 +1,4 @@
-export  type LayoutKeys = 'currencyTotal' | 'underlyingTotal' | 'industryTotal' |
+export  type LayoutKeys = 'portfoliosTotal'| 'currencyTotal' | 'underlyingTotal' | 'industryTotal' |
     'sectorTotal' |'subregionTotal' |    'regionTotal' | 'total' | 'contractPositions'
 
 export type Layout= Record<LayoutKeys, boolean>
@@ -28,7 +28,8 @@ export type BaseConfigParamsKeys = 'marketPrice' | 'basePrice' | 'closed';
 export type Config = {
     layout: {
         currencyTotal: boolean,
-        underlyingTotal: boolean,
+        //underlyingTotal: boolean,
+        portfoliosTotal: boolean,
         industryTotal: boolean,
         sectorTotal: boolean,
         subregionTotal: boolean,
