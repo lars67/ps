@@ -3,7 +3,7 @@ import { List, Avatar, Checkbox, Button, Modal } from "antd";
 import { CheckOutlined, CloseOutlined } from "@ant-design/icons";
 export interface TestItem {
   description: string;
-  result: boolean;
+  result: boolean | string;
 }
 
 interface Props {
@@ -12,6 +12,11 @@ interface Props {
   onClose: () => void;
 }
 
+const Description = ({item}: {item:TestItem}) => {
+    if (typeof item.result === 'string')
+        return <span><b>{item.description}</b></span>
+    return <span>{item.description}</span>
+}
 const ItemList: React.FC<Props> = ({ items, open, onClose }) => {
   return (
     <Modal
@@ -21,7 +26,6 @@ const ItemList: React.FC<Props> = ({ items, open, onClose }) => {
       onCancel={onClose}
       footer={null}
       width="50vw"
-    
     >
       <List
         itemLayout="horizontal"
@@ -35,7 +39,8 @@ const ItemList: React.FC<Props> = ({ items, open, onClose }) => {
               lineHeight: "20px",
             }}
           >
-            <span>{item.description}</span>
+            <Description item={item}/>
+
             {item.result ? (
               <CheckOutlined
                 style={{ color: "green", marginRight: "8px", fontSize: "14px" }}
@@ -47,7 +52,6 @@ const ItemList: React.FC<Props> = ({ items, open, onClose }) => {
             )}
           </List.Item>
         )}
-
       />
     </Modal>
   );

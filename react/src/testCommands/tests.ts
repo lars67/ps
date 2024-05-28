@@ -25,6 +25,7 @@ type Condition =
   | { $has: boolean }
   | { $isArray : boolean }
   | { $isObject: boolean}
+  | { $include: string}
 type FieldCondition = Record<string, Condition>;
 
 
@@ -94,6 +95,8 @@ export function checkDo(
      return Boolean(object)
   } else if ("$sub" in condition) {
     return Math.abs(Number(leftPart)-(condition as { $sub: number }).$sub) <1
+  } else if ("$include" in condition) {
+    return  (leftPart as string).includes((condition as {$include:string}).$include)
   }
   return false; // Default to false if condition is not recognized
 }
@@ -187,6 +190,13 @@ export async function waitMsg(
 
 }
 
+export async function text(
+    {text}: {text:string},
+      variables: Record<string, any>,
+      variablesCallback: (v: object) => void,
+) {
+    return text
+}
 export const description: CommandDescription = {
   delay: {
     label: "Delay",
@@ -229,6 +239,11 @@ export const description: CommandDescription = {
   min: {
     label: "Find object in arrya with minimal field value",
     value: JSON.stringify({ command: "tests.min", "path":"{?}","field":"?" }),
+
+  },
+  text: {
+    label: "Text output in results",
+    value: JSON.stringify({ command: "tests.text", "text":"?" }),
 
   }
 };

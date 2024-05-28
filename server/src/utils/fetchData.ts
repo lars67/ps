@@ -108,6 +108,17 @@ export async function loadCompany(symbol:string) {
     }
 }
 
+export async function loadInstruments(symbols:string) {
+    try {
+        const response = await fetch(getDataUrl(`instruments`,toQueryString({symbols})));
+        const data = await response.json();
+        return  data
+    } catch (err) {
+        console.log('Error getInstruments', err);
+        return null;
+    }
+}
+
 export async function loadCurrenciesList(symbols: StringRecord) {
     try {
         const response = await fetch(getDataUrl(`instruments/currencies`,toQueryString(symbols)));

@@ -168,7 +168,7 @@ export const getModelInstanceByIDorName = async <T >(_id: string, model:Model<T>
       instance = (await model.findById(_id)) ;
     }
     if (!instance) {
-      instance = (await model.findOne({name: _id}));
+      instance = (await model.findOne({$or:[{accountId:_id},{name: _id}]}, ''));
       if (instance) {
         _id = (instance as T & {_id: typeof ObjectId})._id.toString();
       }
@@ -185,7 +185,7 @@ console.log('getModelInstanceByIDorName', _id, instance);
 
 
 
-export const getRealId = async <T>(_id: string, model: Model<T>, nameField: string = 'name') => {
+export const getRealId = async <T>(_id: string, model: Model<T>, nameField: string[] = ['accountId','name']) => {
   let error = null;
   try {
     if (isValidObjectId(_id)) {
@@ -194,12 +194,14 @@ export const getRealId = async <T>(_id: string, model: Model<T>, nameField: stri
         return _id.toString();
       }
     }
-    const filter = {[nameField]:_id} as  FilterQuery<T>
-    const instance = (await model.findOne(filter)) as T;
+    const far = nameField.map(fld=> ({[fld]: _id})) as  FilterQuery<T>;
+    console.log('FAR', far)
+    const filter = {$or: far} as  FilterQuery<T>
+    const instance = (await model.findOne(filter) )as T;
     if (instance) {
       return (instance as T & {_id: string})._id;
     }
-    return { error: "Can't find record with this _id or name" };
+    return { error: "Can't find record with this _id or name or accountId" };
   } catch (err) {
     return { error: "Error during find by _id or name" };
   }

@@ -1,8 +1,19 @@
 import React, { memo, useCallback, useState } from "react";
-import { Popover, Button, Select, Tooltip, Descriptions } from "antd";
-import { ToolOutlined } from "@ant-design/icons";
+import {
+  Popover,
+  Button,
+  Select,
+  Tooltip,
+  Descriptions,
+  Tabs,
+  TabsProps,
+} from "antd";
+import {CloseCircleOutlined, CloseOutlined, ToolOutlined} from "@ant-design/icons";
 
-import { ConfigParams } from "./index";
+
+import LayoutTab from "./configTabs/LayoutTab";
+import { BaseConfigParams } from "../../types/config";
+import ColorsTab from "./configTabs/ColorsTab";
 
 const items = [
   { label: "Automatic", value: "8" },
@@ -22,12 +33,12 @@ const closedItems = [
   { label: "Only", value: "only" },
 ];
 type Props = {
-  config: ConfigParams;
+  config: BaseConfigParams;
   disabled: boolean;
-  onSave: (config: ConfigParams) => void;
+  onSave: (config: BaseConfigParams) => void;
 };
 const ConfigPopup = ({ config, disabled, onSave }: Props) => {
-  const [params, setParams] = useState<ConfigParams>(config);
+  const [params, setParams] = useState<BaseConfigParams>(config);
 
   const [open, setOpen] = useState(false);
 
@@ -46,11 +57,11 @@ const ConfigPopup = ({ config, disabled, onSave }: Props) => {
 
   const handleClose = () => setOpen(false);
 
-  return (
-    <Popover
-      open={open}
-      onOpenChange={handleOpenChange}
-      content={
+  const tabItems: TabsProps["items"] = [
+    {
+      key: "t1",
+      label: "General",
+      children: (
         <div
           style={{
             display: "flex",
@@ -135,7 +146,29 @@ const ConfigPopup = ({ config, disabled, onSave }: Props) => {
             </Button>
           </div>
         </div>
-      }
+      ),
+    },
+    {
+      key: "layoutTab",
+      label: "Layout",
+      children: <LayoutTab />,
+    },
+    {
+      key: "displayTab",
+      label: "Display",
+      children: <ColorsTab />,
+    },
+  ];
+  return (
+    <Popover
+      open={open}
+      onOpenChange={handleOpenChange}
+      content={<Tabs items={tabItems} size="small" tabBarExtraContent={<Button
+          icon={<CloseOutlined style={{ color: 'red' }} />}
+          size={"small"}
+          onClick={handleClose}
+          style={{marginLeft:'4px'}}
+      />} />}
       placement="topRight"
       trigger="click"
     >

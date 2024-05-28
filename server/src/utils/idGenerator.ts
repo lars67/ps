@@ -1,18 +1,19 @@
 export function generateAccountID(): string {
+    return Date.now().toString()
     // Define the allowed characters for the account ID
     //const allowedChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     const allowedChars = '0123456789';
 
     // Generate a random account ID
     let accountID = '';
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 10; i++) {
         accountID += allowedChars.charAt(Math.floor(Math.random() * allowedChars.length));
     }
 
     // Calculate validation characters
-    const validationChars = calculateValidationChars(accountID);
-    accountID += validationChars;
-console.log('accountId==============', accountID, validateAccountID(accountID))
+//    const validationChars = calculateValidationChars(accountID);
+//    accountID += validationChars;
+//console.log('accountId==============', accountID, validateAccountID(accountID))
     return accountID;
 }
 

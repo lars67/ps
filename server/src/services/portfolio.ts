@@ -58,11 +58,8 @@ export async function add(
   if (!portfolio.userId) {
     portfolio.userId = userId;
   }
-  if (!portfolio.accountId) {
-    portfolio.accountId= generateAccountID();
-  } else if (!validateAccountID(portfolio.accountId)){
-    return errorMsgs.error('Incorrect accountId')
-  }
+   portfolio.accountId= generateAccountID();
+
   const newPortfolio = new PortfolioModel(portfolio);
   const added = await newPortfolio.save();
   return added;
@@ -71,7 +68,7 @@ export async function add(
 export async function update(
   Portfolio: Partial<PortfolioWithID>,
 ): Promise<Portfolio | ErrorType | null> {
-  const { _id, ...other } = Portfolio;
+  const { _id, accountId, userId, ...other } = Portfolio;
   if (other.currency) {
     return errorMsgs.notAllowed('change currency')
   }
@@ -121,7 +118,12 @@ export async function trades(
   if (!_id) {
     return errorMsgs.required1('_id')
   }
-  return await getPortfolioTrades(_id, from);
+  const realId = await getRealId<Portfolio>(_id as string,PortfolioModel);
+  console.log('realId',realId, typeof realId , isErrorType(realId));
+  if (  isErrorType(realId)){
+    return realId;//error mean
+  }
+  return await getPortfolioTrades(realId, from);
 
 }
 

@@ -1,12 +1,7 @@
 import { Trade, TradeOp } from "../../types/trade";
 import { TradeModel } from "../../models/trade";
 import { PortfolioModel } from "../../models/portfolio";
-import {
-  checkPortfolioPricesCurrencies,
-  getDateSymbolPrice,
-  getRate,
-  priceToBaseCurrency,
-} from "../../services/app/priceCashe";
+
 import { Portfolio } from "../../types/portfolio";
 
 import moment, { Moment } from "moment";
@@ -22,12 +17,12 @@ import SSEService, {
   QuoteData,
 } from "../../services/app/SSEService";
 import eventEmitter, { sendEvent } from "../../services/app/eventEmiter";
-import { getCompanyField } from "../../services/app/companies";
+import {getCompanyField, getSymbolsCountries} from "../../services/app/companies";
 import {actualizeTrades, getPortfolioTrades} from "../../utils/portfolio";
 import { SubscribeMsgs } from "../../types/other";
 import {WebSocket} from "ws";
 import {UserWebSocket} from "../../services/websocket";
-import {getCountryField} from "../../services/app/countries";
+import {getCountryField, getCountryFields} from "../../services/app/countries";
 const subscribers: Record<string, SubscribeMsgs> = {}; //userModif-> SubscribeMsgs
 
 type QuoteData2 = {
@@ -48,6 +43,8 @@ type QuoteData2 = {
   name:string;
   a2: string;
   country:string;
+  region: string;
+  subRegion: string
 };
 
 type PortfolioPosition = {
@@ -66,11 +63,14 @@ type PortfolioPosition = {
   realized: number;
   country: string;
   a2:string;
+  region: string;
+  subRegion: string;
 };
 
 type PortfolioPositionFull = PortfolioPosition & QuoteData2 &{
   total?: number;
-  totalSymbol?: number
+  totalSymbol?: number;
+  totalType? : string
 };
 export type QuoteChange = PortfolioPositionFull;
 /*QuoteData2 & {
@@ -190,6 +190,14 @@ export async function positions(
     string,
     { invested: number; investedSymbol: number, fee:number, feeSymbol:number }
   > = {};
+  let regionInvested: Record<
+      string,
+      { invested: number; investedSymbol: number,fee:number, feeSymbol:number }
+  > = {};
+  let subRegionInvested: Record<
+      string,
+      { invested: number; investedSymbol: number,fee:number, feeSymbol:number }
+  > = {};
 
   let currr;
   let isFirst: boolean = true;
@@ -209,6 +217,9 @@ export async function positions(
 
     const positions = await getPositions(allTrades, portfolio, closed);
     currencyInvested = positions.currencyInvested;
+    regionInvested= positions.regionInvested;
+    subRegionInvested= positions.subRegionInvested;
+
     const symbols = [
       ...positions.positions.map((p) => p.symbol),
       ...extractUniqueFields(positions.positions, "currency")
@@ -265,7 +276,8 @@ export async function positions(
   }
   const positions = await getPositions(trades, portfolio, closed);
   currencyInvested = positions.currencyInvested;
-
+  regionInvested= positions.regionInvested;
+  subRegionInvested= positions.subRegionInvested;
   const symbols = [
     ...positions.positions.map((p) => p.symbol),
     ...extractUniqueFields(positions.positions, "currency")
@@ -498,24 +510,18 @@ export async function positions(
         break;
     }
 
+    summationTotal(changes, currencyInvested, 'currencyTotal')
+    summationTotal(changes, regionInvested, 'regionTotal')
+    summationTotal(changes, subRegionInvested, 'subregionTotal')
 
-    Object.keys(currencyInvested).forEach((symbol) => {
-      changes.push({
-        symbol: `TOTAL_${symbol}`,
-        investedFull: toNum({n:currencyInvested[symbol].invested}),
-        investedFullSymbol: toNum({n:currencyInvested[symbol].investedSymbol}),
-        fee: toNum({n:currencyInvested[symbol].fee}),
-        feeSymbol: toNum({n:currencyInvested[symbol].feeSymbol}),
-        total:toNum({n:currencyInvested[symbol].invested-currencyInvested[symbol].fee}),
-        totalSymbol:toNum({n:currencyInvested[symbol].investedSymbol-currencyInvested[symbol].feeSymbol}),
-      } as PortfolioPositionFull);
-    });
     changes.push({
-      symbol: "TOTAL",
+      symbol:'TOTAL',
+      name: 'TOTAL',
       marketValue:toNum({n:marketValue}),
       result:toNum({n:result}),
       todayResult:toNum({n:todayResult}),
       realized: toNum({n:totalRealized}),
+      totalType: 'total'
     } as PortfolioPositionFull);
 
     return changes;
@@ -567,6 +573,39 @@ export async function positions(
 
   //--
 
+const summationFields = (currencyInvested: Record<
+    string,
+    { invested: number; investedSymbol: number, fee:number, feeSymbol:number }
+>,keyField: string ,v: number, vs: number, f: number, fs: number): void => {
+  if (!currencyInvested[keyField]) {
+    currencyInvested[keyField] = { invested: 0, investedSymbol: 0, fee:0 , feeSymbol:0 };
+  }
+  currencyInvested[keyField].invested -= v;
+  currencyInvested[keyField].investedSymbol -= vs;
+  currencyInvested[keyField].fee += f;
+  currencyInvested[keyField].feeSymbol += fs;
+}
+
+const summationTotal = (changes:QuoteChange[],  regionInvested: Record<
+    string,
+    { invested: number; investedSymbol: number, fee:number, feeSymbol:number }
+>, totalType: string): void => {
+
+  Object.keys(regionInvested).forEach((symbol) => {
+    changes.push({
+      symbol: `TOTAL_${symbol}`,
+      name: `TOTAL_${symbol}`,
+      investedFull: toNum({n: regionInvested[symbol].invested}),
+      investedFullSymbol: toNum({n: regionInvested[symbol].investedSymbol}),
+      fee: toNum({n: regionInvested[symbol].fee}),
+      feeSymbol: toNum({n: regionInvested[symbol].feeSymbol}),
+      total: toNum({n: regionInvested[symbol].invested - regionInvested[symbol].fee}),
+      totalSymbol: toNum({n: regionInvested[symbol].investedSymbol - regionInvested[symbol].feeSymbol}),
+      totalType
+    } as PortfolioPositionFull);
+  });
+}
+
 async function getPositions(allTrades0: Trade[], portfolio: Portfolio, closed:string) {
   //console.log('getPositions....');
   const allTrades = actualizeTrades(allTrades0);
@@ -574,13 +613,21 @@ async function getPositions(allTrades0: Trade[], portfolio: Portfolio, closed:st
   const endDate = lastTrade.tradeTime;
   const uniqueSymbols = extractUniqueFields(allTrades, "symbol");
   const uniqueCurrencies = extractUniqueFields(allTrades, "currency");
-
+  const symbolCountries = await getSymbolsCountries(uniqueSymbols);
 //  const { startDate, endDate, uniqueSymbols, uniqueCurrencies } =
 //    await checkPortfolioPricesCurrencies(allTrades, portfolio.currency);
   //console.log("positions.467", startDate, uniqueSymbols, uniqueCurrencies);
   let currencyInvested: Record<
     string,
     { invested: number; investedSymbol: number, fee:number, feeSymbol:number }
+  > = {};
+  let regionInvested: Record<
+      string,
+      { invested: number; investedSymbol: number, fee:number, feeSymbol:number }
+  > = {};
+  let subRegionInvested: Record<
+      string,
+      { invested: number; investedSymbol: number, fee:number, feeSymbol:number }
   > = {};
   let cash = 0;
   const fees: Record<string, { fee: number; feeSym: number }> = {};
@@ -598,6 +645,9 @@ async function getPositions(allTrades0: Trade[], portfolio: Portfolio, closed:st
     switch (trade.tradeType) {
       case "1":
         const { symbol } = trade;
+        const country = symbolCountries[symbol];
+        const { region, subRegion} = getCountryFields(country, ['a2','region', 'subRegion'])
+
         const dir = trade.side === "B" ? -1 : 1;
         const priceN = toNum({ n: trade.price });
         const fs = trade.fee;
@@ -639,14 +689,10 @@ async function getPositions(allTrades0: Trade[], portfolio: Portfolio, closed:st
           ? symbolFullInvestedSymbol[symbol] + vs
           : vs;
 
-        if (!currencyInvested[trade.currency]) {
-          currencyInvested[trade.currency] = { invested: 0, investedSymbol: 0, fee:0 , feeSymbol:0 };
-        }
-        currencyInvested[trade.currency].invested -= v;
-        currencyInvested[trade.currency].investedSymbol -= vs;
-        currencyInvested[trade.currency].fee += f;
-        currencyInvested[trade.currency].feeSymbol += fs;
-        //if (dir > 0) {
+
+        summationFields(currencyInvested, trade.currency, v, vs, f, fs)
+        summationFields(regionInvested, region as string, v, vs, f, fs)
+        summationFields(subRegionInvested, subRegion as string, v, vs, f, fs)        //if (dir > 0) {
         /*const close = toNum({
             n: getDateSymbolPrice(trade.tradeTime, trade.symbol) as number,
           });
@@ -753,11 +799,11 @@ console.log('curentPositions', curentPositions, 'positions', positions)
     invested += Number(p.invested);
     (p as PortfolioPosition).realized = symbolRealized[symbol].realized;
   }
-  const currencyTotals = Object.keys(currencyInvested).map((cur) => ({
+ /* const currencyTotals = Object.keys(currencyInvested).map((cur) => ({
     currency: cur,
     invested: currencyInvested[cur].invested,
     currencyInvestedSymbol: currencyInvested[cur].investedSymbol,
-  }));
+  }));*/
   console.log('getPositiins.curentPositions ', curentPositions )
 
 
@@ -770,6 +816,8 @@ console.log('curentPositions', curentPositions, 'positions', positions)
     fees,
     realized,
     currencyInvested,
+    regionInvested,
+    subRegionInvested,
     uniqueSymbols,
     uniqueCurrencies
   };
@@ -809,20 +857,14 @@ function prepareQuoteData2(
         qt.marketClose = close;
       }
       if (needAddNameCountry){
+        const {a2, region, subRegion} = getCountryFields(q.country, ['a2','region', 'subRegion'])
         qt.name = q.companyName;
         qt.country =q.country
-        qt.a2= getCountryField(q.country)
+        qt.a2= a2;//getCountryField(q.country)
+        qt.region = region;
+        qt.subRegion = subRegion;
       }
-      /*console.log(
-        symbol,
-        marketPriceModel,
-        marketPrice,
-        q.iexAskPrice,
-        q.iexBidPrice,
-        q.low,
-        q.high,
-        q.close,
-      );*/
+
 
       qt.marketPrice = marketPrice;
   //console.log('qt',symbol,  qt)

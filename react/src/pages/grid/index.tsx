@@ -6,13 +6,17 @@ import React, {
   useState,
 } from "react";
 
-import { Table, Button, Select, message, Flex, Spin } from "antd";
+import { Table, Button, Select, message, Flex, Spin, RowProps } from "antd";
 import "./styles.css";
 import useWebSocket, { ReadyState } from "react-use-websocket";
 import { useAppSelector } from "../../store/useAppSelector";
 
 import { WSMsg } from "../../types/other";
-import {flagRender, numberFormattedRender} from "./columnRenderers";
+import {
+  flagRender,
+  numberFormattedRender,
+  symbolRender,
+} from "./columnRenderers";
 
 import GridToolbar from "./GridToolbar";
 import { current } from "@reduxjs/toolkit";
@@ -21,7 +25,10 @@ import EmulatePriceChange from "./EmulatePriceChange";
 import HistoryList from "./HistoryList";
 import ConfigPopup from "./ConfigPopup"; // Import CSS file for styling
 import { useAppDispatch } from "../../store/useAppDispatch";
-import SubscriptionDataIndicator from "./SubscriptionDataIndicator";
+
+import styled from "styled-components";
+import { configSlice } from "../../store";
+import {BaseConfigParams, ColorDataItem, DisplayKeys, Layout, LayoutKeys} from "../../types/config";
 const valueColumns = [
   "volume",
   "marketPrice",
@@ -33,11 +40,6 @@ const valueColumns = [
   "avgPremium",
 ];
 
-export type ConfigParams = {
-  marketPrice: string;
-  basePrice: string;
-  closed: string;
-};
 const addChanges = (nowData: QuoteData, newData: Partial<QuoteData>) => {
   const changes = {} as Record<string, number | boolean>;
   if (nowData) {
@@ -52,12 +54,21 @@ const addChanges = (nowData: QuoteData, newData: Partial<QuoteData>) => {
   }
   return changes;
 };
-
+/*
+const StyledRow = styled.tr`
+  background-color: ${(props) => props.bkg};
+  transition: background-color 0.3s ease;
+  color: ${(props) => props.color};
+`;
+*/
 let counterSub: number = 0;
 
 const QuoteTable = () => {
   const dispatch = useAppDispatch();
   const { userId, token } = useAppSelector((state) => state.user);
+  const fullConfig = useAppSelector((state) => state.config);
+  const { layout, config, display } = fullConfig;
+
   const modif = useRef(Math.round(100000 * Math.random()));
   const msgId = useRef(0);
   const url = `${process.env.REACT_APP_WS}?${encodeURIComponent(token)}@${modif.current}`;
@@ -77,17 +88,19 @@ const QuoteTable = () => {
     {} as { msg: string; eventName: string },
   );
   const history = useRef<string[]>([]);
-  const [config, setConfig] = useState<ConfigParams>({
-    basePrice: "4",
-    marketPrice: "4",
-    closed: "no",
-  });
+
   const subscribeId = useRef<string>();
   const [selectedPortfolio, setSelectedPortfolio] = useState<Portfolio>();
-  const [countChangeData, setCountChangeData] = useState(0);
-  console.log("QuteTable start pid", pid);
-
+  const lastData = useRef<QuoteData[]>([]);
   //data connect
+
+  const [hoveredRowKey, setHoveredRowKey] = useState<string|null>(null);
+
+
+
+  const getRowClassName = (record:QuoteData) => {
+    return record.key === hoveredRowKey ? 'hovered-row' : '';
+  };
 
   const addToHistory = (dir: string, s: string) => {
     history.current.push(`${dir} ${s}`);
@@ -160,12 +173,11 @@ const QuoteTable = () => {
           if (fragmentsMsg.current[msgId].length === Number(total)) {
             const assembledMessage = fragmentsMsg.current[msgId].join("");
             delete fragmentsMsg.current[msgId];
-            if (msgId === (o as {msgId: string}).msgId){
+            if (msgId === (o as { msgId: string }).msgId) {
               resolve(assembledMessage);
               // @ts-ignore
               socket.removeEventListener("message", handleMessageMsg); // Remove the event listener
             }
-
           }
         };
 
@@ -235,13 +247,30 @@ const QuoteTable = () => {
       }));
   };
 
+  const prepareData = useCallback(
+    (data: QuoteData[]) => {
+      const layoutActive = Object.keys(layout).filter(
+        (key) => layout[key as LayoutKeys],
+      );
+      return data.filter((c) => {
+        const totalType = c.totalType as string;
+        return (layout.contractPositions && !totalType) || layoutActive.includes(totalType);
+      });
+    },
+    [layout],
+  );
+
+  useEffect(() => {
+    setTableData(prepareData(lastData.current));
+  }, [layout]);
+
   useEffect(() => {
     const process = async () => {
       if (pid) {
         setTableData([]);
         setLoading(true);
         subscribeId.current = `sub${++counterSub}_${pid}`;
-       // console.log("useEffect keys=", Object.keys(handlers.current));
+        // console.log("useEffect keys=", Object.keys(handlers.current));
         handlers.current[subscribeId.current] = (d: any) => {
           console.log("HANDLER>>>>>>>>>>>", d);
           //setCountChangeData(Array.isArray(d.data)?d.data.length:0)
@@ -256,7 +285,7 @@ const QuoteTable = () => {
                 const matchIndex = newData.findIndex(
                   (t) => t.symbol === symbol,
                 );
-              //  console.log(symbol, ":", matchIndex);
+                //  console.log(symbol, ":", matchIndex);
                 if (matchIndex >= 0) {
                   newData[matchIndex] = {
                     ...newData[matchIndex],
@@ -268,13 +297,13 @@ const QuoteTable = () => {
                 }
               });
               console.log("newData", newData);
-              return newData;
+              lastData.current = newData;
+              return prepareData(newData);
             });
           }
         };
 
         console.log("useEffect() SUBSCRIPTIONS", pid, subscribeId.current);
-   ;
         dispatch({ type: "sendJsonMessageSync", pid });
         const resp = (await sendJsonMessageSync({
           command: "portfolios.positions",
@@ -307,14 +336,15 @@ const QuoteTable = () => {
         dataIndex: "symbol",
         key: "symbol",
         ellipsis: true,
+        render: symbolRender,
       },
       {
         title: "Name",
         dataIndex: "name",
         key: "name",
         ellipsis: true,
-        width: '22%',
-        render:flagRender,
+        width: "22%",
+        render: flagRender,
       },
       {
         title: "Currency",
@@ -414,7 +444,7 @@ const QuoteTable = () => {
             ),
         },*/
     ],
-    [],
+    [display],
   );
   /*const handlePriceChange = (key: string, change: number) => {
     const updatedData: QuoteData[] = tableData.map((item) =>
@@ -436,7 +466,7 @@ const QuoteTable = () => {
     async (newPid: string) => {
       setPID(newPid);
       setSelectedPortfolio(portfolios.find((p) => p._id === newPid));
-      history.current=[];
+      history.current = [];
     },
     [pid, portfolios],
   );
@@ -455,15 +485,25 @@ const QuoteTable = () => {
     [pid],
   );
 
-  const handleConfig = useCallback(
-    (config: ConfigParams) => {
-      setConfig(config);
-      history.current=[];
-    },
-    [setConfig],
-  );
+  const handleConfig = useCallback((config: BaseConfigParams) => {
+    dispatch(configSlice.actions.updateBaseConfig(config));
+    history.current = [];
+  }, []);
 
   const handleClearHistory = () => (history.current = []);
+
+  const getRowStyle = useCallback((record:QuoteData) => {
+    const totalType = record.totalType;
+    const d: ColorDataItem = display[(totalType || 'positions') as DisplayKeys];
+    return d ? {
+      backgroundColor: d.bkg,
+      color: d.color,
+      fontWeight: 'bold'
+    }: {}
+
+}, [display])//,hoveredRowKey])
+
+  // @ts-ignore
   return (
     <div className={"playground-container"}>
       <GridToolbar
@@ -472,7 +512,7 @@ const QuoteTable = () => {
         pid={pid}
         onSelectPortfolio={handleSelectPortfolio}
         canWork={canWork.current}
-       // leftChildren={<SubscriptionDataIndicator count={countChangeData} />}
+        // leftChildren={<SubscriptionDataIndicator count={countChangeData} />}
       >
         <EmulatePriceChange
           disabled={!canWork || !pid}
@@ -480,7 +520,7 @@ const QuoteTable = () => {
           onEmulate={handleEmulate}
           config={config}
         />
-        <ConfigPopup config={config} onSave={handleConfig} disabled={false} />
+        <ConfigPopup onSave={handleConfig} disabled={false} config={config} />
         <HistoryList
           history={history.current}
           portfolioName={selectedPortfolio?.name}
@@ -498,7 +538,27 @@ const QuoteTable = () => {
             pagination={false}
             scroll={{ y: "calc(var(--top-div-height) - 40px)" }}
             bordered={true}
-            className={'resizable-table'}
+            className={"resizable-table"}
+            onRow={(record) => ({
+              style: getRowStyle(record),
+              onMouseEnter: () => setHoveredRowKey(record.key),
+              onMouseLeave: () => setHoveredRowKey(null),
+
+            })}
+            /*components={{
+              body: {
+                row: (props: any) => {
+                  console.log("PROPS", props);
+                  return (
+                    <StyledRow
+                      {...props}
+                      bkg={props.record?.bkg}
+                      color={props.record?.color}
+                    />
+                  );
+                },
+              },
+            }}*/
           />
         )}
         {initialization && (

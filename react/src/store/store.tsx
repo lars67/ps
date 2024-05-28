@@ -4,13 +4,15 @@ import { userSlice } from "./slices/user";
 import { globalSlice } from "./slices/global";
 import { optionsSlice } from "./slices/options";
 import { helpSlice} from "./slices/help";
+import { configSlice} from "./slices/config";
 
 export const store = configureStore({
   reducer: {
     user: userSlice.reducer,
     global: globalSlice.reducer,
     options: optionsSlice.reducer,
-    help: helpSlice.reducer
+    help: helpSlice.reducer,
+    config: configSlice.reducer
   },
 });
 

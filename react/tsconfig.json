@@ -18,12 +18,14 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "type-roots": []
   },
   "paths": {
     "@/*": ["./src/*"]
   },
   "include": [
+    "packages/*/src/**/*",
     "src"
   ]
 }

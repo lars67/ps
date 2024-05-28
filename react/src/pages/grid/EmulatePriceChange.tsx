@@ -15,7 +15,8 @@ import {
 import { QuoteData } from "../../types/portfolio";
 import { isSymbol } from "../../utils";
 import {getBasePriceFieldName} from "./helpers";
-import {ConfigParams} from "./index";
+import {BaseConfigParams} from "../../types/config";
+;
 
 const fields = [
   { label: "marketPrice", value: "marketPrice" },
@@ -27,7 +28,7 @@ type Props = {
   positions: QuoteData[];
   disabled: boolean;
   onEmulate: (symbol: string, field: string, value: number) => void;
-  config:ConfigParams
+  config:BaseConfigParams
 };
 const EmulatePriceChange = ({ positions = [], disabled, onEmulate, config }: Props) => {
   const [inputValue, setInputValue] = useState<string>("");

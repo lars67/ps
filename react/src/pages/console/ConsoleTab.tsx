@@ -209,10 +209,10 @@ const Console = ({ tabIndex }: { tabIndex: number }) => {
               break;
             }
 
-            if (parsedValue.command === "tests.check") {
+            if (parsedValue.command === "tests.check" || parsedValue.command === "tests.text") {
               testResults.push({
-                description: parsedValue.description || parsedValue.label,
-                result: resp.data,
+                description: parsedValue.description || parsedValue.label || resp.data,
+                result: resp.data ,
               });
             }
             if ((resp.data as string) === "break") {

@@ -40,4 +40,17 @@ export type QuoteData = {
     a2: string;
     country:string;
     accountId: string;
+
+
+    result: number;
+    resultSymbol: number;
+     todayResult: number;
+    todayResultPercent: number;
+    region: string;
+    subRegion: string
+    tradeTime: string;
+    weight: number;
+    total?: number;
+    totalSymbol?: number;
+    totalType? : string
 };
