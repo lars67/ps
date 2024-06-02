@@ -12,6 +12,7 @@ const displayLayoutLabels: Record<LayoutKeys, string> = {
   industryTotal: "Industry Total",
   sectorTotal: "Sector Total",
   subregionTotal: "Subregion Total",
+  countryTotal: 'Country Total',
   regionTotal: "Region Total",
   total: "Total",
   contractPositions: 'Contract positions'

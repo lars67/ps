@@ -1,5 +1,7 @@
-export  type LayoutKeys = 'portfoliosTotal'| 'currencyTotal' | 'underlyingTotal' | 'industryTotal' |
-    'sectorTotal' |'subregionTotal' |    'regionTotal' | 'total' | 'contractPositions'
+export  type LayoutKeys = 'portfoliosTotal'| 'currencyTotal' | /*'underlyingTotal' |*/ 'industryTotal' |
+    'sectorTotal' | 'countryTotal' |'subregionTotal' |    'regionTotal' | 'total' | 'contractPositions'
+
+export  type GroupKeys = 'nogroup'| 'currency' | 'sector' | 'region'
 
 export type Layout= Record<LayoutKeys, boolean>
 
@@ -37,5 +39,9 @@ export type Config = {
         total: boolean
     },
     display: ColorDataRecord,
-    config: BaseConfigParams
+    config: BaseConfigParams,
+    groups: {
+         group: string
+    }
+
 };

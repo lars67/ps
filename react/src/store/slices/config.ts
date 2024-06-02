@@ -15,6 +15,7 @@ const defaultState = {
     portfoliosTotal: false,
     industryTotal: false,
     sectorTotal: false,
+    countryTotal: false,
     subregionTotal: false,
     regionTotal: false,
     total: true,
@@ -39,6 +40,12 @@ const defaultState = {
     currencyTotal: { color: "#FF0000", bkg: "#AAFFAA", bold: true, label:"Currency Total" },
     industryTotal: { color: "#FF0000", bkg: "#FFAA99", bold: true, label:'Industry Total' },
     sectorTotal: { color: "#FF0000", bkg: "#FFAA40", bold: true, label:'Sector Total' },
+    countryTotal: {
+      color: "#fcfafa",
+      bkg: "#ad4b0b",
+      bold: true,
+      label:'Country Total'
+    },
     subregionTotal: {
       color: "#000000",
       bkg: "#FF9955",
@@ -62,6 +69,9 @@ const defaultState = {
     basePrice: "4",
     marketPrice: "4",
     closed: "no"
+  },
+  groups: {
+    group: 'nogroup'
   }
 /*
   group: "underlying", //'no',
@@ -104,6 +114,12 @@ export const configSlice = createSlice({
           ...action.payload[key as DisplayKeys],
         };
       }
+    },
+    updateGroup(
+        state,
+        action: PayloadAction<string>,
+    ) {
+      state.groups = { ...state.groups, group:action.payload };
     },
   },
 });

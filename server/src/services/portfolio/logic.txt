@@ -1,0 +1,107 @@
+
+allTrades = getPortfolioTrades(realId...)
+
+const positions = await getPositions(allTrades, portfolio);
+                           |
+                      checkPortfolioPricesCurrencies(allTrades, portfolio.currency)
+                      for (trade of allTrades)   {
+                          oldPortfolio[symbol]={}
+                      }
+                      return {
+                          date
+                          invested,
+                          cash,
+                          nav: cash + invested,
+                          positions - actual positions volume >0,
+                          fees,
+                          realized
+                      }
+
+subscribe  ....
+  handler(data) {
+    changes = calcChanges(data);
+  }
+//
+ const subscriberOnTrades = async (ev: TradeOp){
+
+ }
+  const calcChanges = (data: object){
+    return changes with total
+  }
+
+
+////
+positions.467 2024-01-09 [ 'FDIS', 'XLC', 'AMJ', 'IYC' ] [ 'USD' ]
+RRRRRRRRRRR 2024-01-10T00:00:01 FDIS { totalCost: 49960.439999999995, realized: 0 } | B undefined 642 | 642 77.82
+RRRRRRRRRRR 2024-01-10T00:00:02 XLC { totalCost: 42371.75, realized: 0 } | B undefined 575 | 575 73.69
+RRRRRRRRRRR 2024-01-10T00:00:03 AMJ { totalCost: 7562.8, realized: 0 } | B undefined 296 | 296 25.55
+RRRRRRRRRRR 2024-01-12T00:00:04 AMJ { totalCost: 19163.8, realized: 0 } | B 296 746 | 450 25.78
+RRRRRRRRRRR 2024-01-12T00:00:05 FDIS { totalCost: 42645.35999999999, realized: -83.65999999999872 } | S 642 548 | 94 76.93
+RRRRRRRRRRR 2024-01-12T00:00:06 XLC { totalCost: 38024.04, realized: 7.080000000000268 } | S 575 516 | 59 73.81
+RRRRRRRRRRR 2024-01-15T00:00:07 FDIS { totalCost: 43722.37999999999, realized: -83.65999999999872 } | B 548 562 | 14 76.93
+RRRRRRRRRRR 2024-01-15T00:00:08 AMJ { totalCost: 18521.581501340483, realized: 2.2815013404826168 } | S 746 721 | 25 25.78
+RRRRRRRRRRR 2024-01-15T00:00:09 XLC { totalCost: 37581.9, realized: 7.800000000000296 } | S 516 510 | 6 73.81
+RRRRRRRRRRR 2024-01-17T00:00:10 XLC { totalCost: 48304.08, realized: 7.800000000000296 } | B 510 657 | 147 72.94
+RRRRRRRRRRR 2024-01-17T00:00:11 AMJ { totalCost: 11174.601876675602, realized: -65.99812332439677 } | S 721 435 | 286 25.45
+RRRRRRRRRRR 2024-01-17T00:00:12 FDIS { totalCost: 40221.47768683273, realized: -160.06231316725817 } | S 562 517 | 45 76.1
+RRRRRRRRRRR 2024-01-19T00:00:13 FDIS { totalCost: 49345.23768683273, realized: -160.06231316725817 } | B 517 635 | 118 77.32
+RRRRRRRRRRR 2024-01-19T00:00:14 XLC { totalCost: 38966.76164383562, realized: 173.8916438356153 } | S 657 530 | 127 74.83
+RRRRRRRRRRR 2024-01-22T00:00:15 XLC { totalCost: 51188.50164383562, realized: 173.8916438356153 } | B 530 693 | 163 74.98
+RRRRRRRRRRR 2024-01-22T00:00:16 FDIS { totalCost: 34969.06607728304, realized: -248.68392271694864 } | S 635 450 | 185 77.23
+RRRRRRRRRRR 2024-01-24T00:00:17 FDIS { totalCost: 42795.52607728304, realized: -248.68392271694864 } | B 450 552 | 102 76.73
+RRRRRRRRRRR 2024-01-24T00:00:18 XLC { totalCost: 45944.08084049892, realized: 338.96084049892113 } | S 693 622 | 71 76.19
+RRRRRRRRRRR 2024-01-26T00:00:19 IYC { totalCost: 42412.8, realized: 0 } | B undefined 564 | 564 75.2
+RRRRRRRRRRR 2024-01-26T00:00:20 FDIS { totalCost: 0, realized: -788.609999999986 } | S 552 0 | 552 76.55
+RRRRRRRRRRR 2024-01-26T00:00:21 AMJ { totalCost: 10994.780697050937, realized: -59.899302949061656 } | S 435 428 | 7 26.56
+RRRRRRRRRRR 2024-01-29T00:00:22 XLC { totalCost: 47824.00084049892, realized: 338.96084049892113 } | B 622 646 | 24 78.33
+RRRRRRRRRRR 2024-01-29T00:00:23 AMJ { totalCost: 9453.456300268095, realized: 1.37630026809682 } | S 428 368 | 60 26.71
+RRRRRRRRRRR 2024-01-29T00:00:24 IYC { totalCost: 41059.200000000004, realized: 16.02000000000001 } | S 564 546 | 18 76.09
+positions.OOOO 2024-01-29 2024-05-05 [ 'XLC', 'AMJ', 'IYC' ]
+symbolRealized {
+  FDIS: { totalCost: 0, realized: -788.609999999986 },
+  XLC: { totalCost: 47824.00084049892, realized: 338.96084049892113 },
+  AMJ: { totalCost: 9453.456300268095, realized: 1.37630026809682 },
+  IYC: { totalCost: 41059.200000000004, realized: 16.02000000000001 }
+///////////////////
+When buying or selling the GBPUSD currency pair with a fee, the positions in both currencies (GBP and USD) change accordingly. Here's how the positions are affected:
+
+    Buying GBPUSD:
+        When you buy GBPUSD, you are essentially buying the base currency (GBP) and selling the quote currency (USD).
+        Your GBP position will increase, and your USD position will decrease.
+        The amount of GBP you buy is calculated by dividing the total trade value (including the fee) by the current GBPUSD exchange rate.
+        The decrease in your USD position is equal to the total trade value (including the fee).
+    Selling GBPUSD:
+        When you sell GBPUSD, you are selling the base currency (GBP) and buying the quote currency (USD).
+        Your GBP position will decrease, and your USD position will increase.
+        The amount of GBP you sell is calculated by dividing the total trade value (including the fee) by the current GBPUSD exchange rate.
+        The increase in your USD position is equal to the total trade value (including the fee).
+
+Here's an example calculation: Suppose you want to buy GBPUSD with the following details:
+
+    Trade size: 10,000 GBP
+    Exchange rate: 1.2500 (1 GBP = 1.2500 USD)
+    Fee: 5 USD
+
+To calculate the positions:
+
+    Buying GBPUSD:
+        Total trade value in USD = 10,000 GBP × 1.2500 = 12,500 USD
+        Total trade value including fee = 12,500 USD + 5 USD = 12,505 USD
+        Increase in GBP position = 10,000 GBP
+        Decrease in USD position = 12,505 USD
+
+After the trade, your positions will be:
+
+    GBP position: +10,000 GBP
+    USD position: -12,505 USD
+
+If you were to sell GBPUSD with the same details, the positions would be reversed:
+
+    GBP position: -10,000 GBP
+    USD position: +12,505 USD
+
+In summary, when buying GBPUSD, your GBP position increases, and your USD position decreases by the total trade value (including the fee). When selling GBPUSD, your GBP position decreases, and your USD position increases by the total trade value (including the fee).
+Related
+how does the commission fee affect the position of currencies when buying gbpusd
+what is the impact of fees on the position of currencies when selling gbpusd
+can you explain how the position of currencies changes when buying gbpusd with fees

@@ -1,17 +1,17 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { Table, Button, Checkbox } from "antd";
+import React, {useEffect, useState } from "react";
+import { Table } from "antd";
 
 import { colorSelectRender } from "../columnRenderers";
 import { useAppSelector } from "../../../store/useAppSelector";
 import { useDispatch } from "react-redux";
 import {
   ColorDataItem,
-  ColorDataRecord,
+
   DisplayKeys,
-  LayoutKeys,
+
 } from "../../../types/config";
 import { configSlice } from "../../../store";
-import { CheckboxChangeEvent } from "antd/es/checkbox";
+;
 
 type Props = {
   onClose?: () => void;

@@ -3,6 +3,7 @@ import SocketConnectionIndicator from "../../SocketConnectionIndicator";
 import { ReadyState } from "react-use-websocket";
 import { Portfolio } from "../../types/portfolio";
 import EmulatePriceChange from "./EmulatePriceChange";
+import SelectAnimated from "../../components/SelectAnimated/SelectAnimated";
 
 const { Option } = Select;
 type Props = {
@@ -33,7 +34,7 @@ const GridToolbar = ({
       }}
     >
       Portfolio:
-      <Select
+      <SelectAnimated
         fieldNames={{ label: "name", value: "_id" }}
         value={pid}
         onChange={onSelectPortfolio}
@@ -41,7 +42,7 @@ const GridToolbar = ({
         placeholder="Select portfolio"
         options={portfolios}
         disabled={!canWork}
-      ></Select>
+      ></SelectAnimated>
       {leftChildren}
       <div className="spacer" />
       {children}

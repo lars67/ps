@@ -28,7 +28,14 @@ import { useAppDispatch } from "../../store/useAppDispatch";
 
 import styled from "styled-components";
 import { configSlice } from "../../store";
-import {BaseConfigParams, ColorDataItem, DisplayKeys, Layout, LayoutKeys} from "../../types/config";
+import {
+  BaseConfigParams,
+  ColorDataItem,
+  DisplayKeys,
+  Layout,
+  LayoutKeys,
+} from "../../types/config";
+import { extractAndRemoveSubArray, insertBeforeIndex } from "../../utils";
 const valueColumns = [
   "volume",
   "marketPrice",
@@ -39,7 +46,14 @@ const valueColumns = [
   "weight",
   "avgPremium",
 ];
+const _ = require("lodash");
 
+// @ts-ignore
+const StyledTable = styled((props) => <Table {...props} />)`
+  && tbody > tr:hover > td {
+    background: rgba(224, 248, 232, 1);
+  }
+`;
 const addChanges = (nowData: QuoteData, newData: Partial<QuoteData>) => {
   const changes = {} as Record<string, number | boolean>;
   if (nowData) {
@@ -67,7 +81,7 @@ const QuoteTable = () => {
   const dispatch = useAppDispatch();
   const { userId, token } = useAppSelector((state) => state.user);
   const fullConfig = useAppSelector((state) => state.config);
-  const { layout, config, display } = fullConfig;
+  const { layout, config, display, groups } = fullConfig;
 
   const modif = useRef(Math.round(100000 * Math.random()));
   const msgId = useRef(0);
@@ -94,13 +108,19 @@ const QuoteTable = () => {
   const lastData = useRef<QuoteData[]>([]);
   //data connect
 
-  const [hoveredRowKey, setHoveredRowKey] = useState<string|null>(null);
+  const [hoveredRowKey, setHoveredRowKey] = useState<string | null>(null);
 
+  /* const pidRef = useRef(pid)
+  const configRef = useRef(config)
+  const groupsRef = useRef(groups)
 
-
-  const getRowClassName = (record:QuoteData) => {
-    return record.key === hoveredRowKey ? 'hovered-row' : '';
-  };
+ const configChanged = !Object.is(configRef.current, config);
+  const pidChanged = !Object.is(pidRef.current, pid);
+  const groupsChanged = !Object.is(groupsRef.current, groups);
+  dispatch({type:'process...', pidChanged, configChanged, groupsChanged});
+  configRef.current=config;
+  pidRef.current=pid;
+  groupsRef.current=groups;*/
 
   const addToHistory = (dir: string, s: string) => {
     history.current.push(`${dir} ${s}`);
@@ -247,22 +267,76 @@ const QuoteTable = () => {
       }));
   };
 
-  const prepareData = useCallback(
-    (data: QuoteData[]) => {
-      const layoutActive = Object.keys(layout).filter(
-        (key) => layout[key as LayoutKeys],
+  const prepareData = (data: QuoteData[]) => {
+    const layoutActive = Object.keys(layout).filter(
+      (key) => layout[key as LayoutKeys],
+    );
+    const filteredData = data.filter((c) => {
+      const totalType = c.totalType as string;
+      return (
+        (layout.contractPositions && !totalType) ||
+        layoutActive.includes(totalType)
       );
-      return data.filter((c) => {
-        const totalType = c.totalType as string;
-        return (layout.contractPositions && !totalType) || layoutActive.includes(totalType);
-      });
-    },
-    [layout],
-  );
+    });
+
+   // console.log("prepareDATA", groups.group);
+
+    const targetType = `${groups.group}Total`;
+    const [symbolPositions, filteredData1] = extractAndRemoveSubArray(
+      filteredData,
+      "totalType",
+      [undefined],
+    );
+    if (groups.group === "nogroup") {
+      return [...symbolPositions, ...filteredData1];
+    }
+    const arFilter = [targetType];
+    let groupWithSymbols = groups.group;
+
+    if (groups.group === "region") {
+      if (layout.subregionTotal) {
+        arFilter.push("subregionTotal");
+        groupWithSymbols = "subRegion";
+        if (layout.countryTotal) {
+          arFilter.push("countryTotal");
+          groupWithSymbols = "country";
+        }
+      } else if (layout.countryTotal) {
+        arFilter.push("countryTotal");
+        groupWithSymbols = "country";
+      }
+    } else if (groups.group === "sector" && layout.industryTotal) {
+      arFilter.push("industryTotal");
+      groupWithSymbols = "industry";
+    }
+
+    const [targetTotalGroups, filteredData2] = extractAndRemoveSubArray(
+      filteredData1,
+      "totalType",
+      arFilter,
+    );
+
+    const targetGroups = _.groupBy(symbolPositions, groupWithSymbols) as Record<
+      string,
+      QuoteData[]
+    >;
+
+    let groupData = [...targetTotalGroups] as QuoteData[];
+    Object.entries(targetGroups).map(([groupName, items]) => {
+      //insert symbols before totalholderss
+      const trgName = `TOTAL_${groupName}`;
+      const trgIndex = groupData.findIndex((t) => t.name === trgName);
+      groupData = insertBeforeIndex(groupData, trgIndex, items);
+    });
+    return [...groupData, ...filteredData2];
+  };
+  //  [layout, groups],
+  //);
 
   useEffect(() => {
-    setTableData(prepareData(lastData.current));
-  }, [layout]);
+    dispatch({ type: "useEffect.setTabledata" });
+    setTableData(lastData.current);
+  }, [layout, groups]);
 
   useEffect(() => {
     const process = async () => {
@@ -298,7 +372,7 @@ const QuoteTable = () => {
               });
               console.log("newData", newData);
               lastData.current = newData;
-              return prepareData(newData);
+              return newData;
             });
           }
         };
@@ -323,12 +397,23 @@ const QuoteTable = () => {
         console.log("reqParams.current", reqParams.current);
       }
     };
-    pid && process();
+
+    if (pid) {
+      dispatch({ type: "call_process", pid });
+
+      process();
+    }
+
     return () => {
+      dispatch({ type: "clearSubscription" });
       clearSubscription(pid);
     };
   }, [pid, config]);
 
+  const actualTableData = useMemo(
+    () => prepareData(tableData),
+    [tableData, layout, groups],
+  );
   const columns = useMemo(
     () => [
       {
@@ -492,16 +577,25 @@ const QuoteTable = () => {
 
   const handleClearHistory = () => (history.current = []);
 
-  const getRowStyle = useCallback((record:QuoteData) => {
-    const totalType = record.totalType;
-    const d: ColorDataItem = display[(totalType || 'positions') as DisplayKeys];
-    return d ? {
-      backgroundColor: d.bkg,
-      color: d.color,
-      fontWeight: 'bold'
-    }: {}
-
-}, [display])//,hoveredRowKey])
+  const getRowStyle = useCallback(
+    (record: QuoteData) => {
+      const totalType = record.totalType;
+      const d: ColorDataItem =
+        display[(totalType || "positions") as DisplayKeys];
+      return record.name === hoveredRowKey
+        ? {
+            backgroundColor: "#5dd2ec",
+            color: d.color,
+            fontWeight: totalType ? "bold" : "normal",
+          }
+        : {
+            backgroundColor: d.bkg,
+            color: d.color,
+            fontWeight: totalType ? "bold" : "normal",
+          };
+    },
+    [display, hoveredRowKey],
+  );
 
   // @ts-ignore
   return (
@@ -534,16 +628,16 @@ const QuoteTable = () => {
             rowKey={"symbol"}
             loading={loading}
             columns={columns}
-            dataSource={tableData}
+            dataSource={actualTableData}
             pagination={false}
-            scroll={{ y: "calc(var(--top-div-height) - 40px)" }}
+            scroll={{ y: "calc(var(--top-div-height) - 86px)" }}
             bordered={true}
             className={"resizable-table"}
+            rowHoverable={false}
             onRow={(record) => ({
               style: getRowStyle(record),
-              onMouseEnter: () => setHoveredRowKey(record.key),
+              onMouseEnter: () => setHoveredRowKey(record.name),
               onMouseLeave: () => setHoveredRowKey(null),
-
             })}
             /*components={{
               body: {

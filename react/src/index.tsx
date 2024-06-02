@@ -7,7 +7,11 @@ import { ConfigProvider } from "antd";
 import { antdConfig } from "./constants";
 import { Provider } from "react-redux";
 import { store } from "./store";
+//import { polyfillCountryFlagEmojis } from "country-flag-emoji-polyfill";
 
+// ...
+
+//polyfillCountryFlagEmojis();
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement,
 );
