@@ -1,19 +1,18 @@
-import React, { useCallback, useState } from "react";
-import {Checkbox, Radio, RadioChangeEvent, Space} from "antd";
+import React, { useCallback } from "react";
+import { Radio, RadioChangeEvent, Space } from "antd";
 import { useAppSelector } from "../../../store/useAppSelector";
 import { useDispatch } from "react-redux";
 import { configSlice } from "../../../store";
-import {GroupKeys} from "../../../types/config";
 
 const GroupsTab: React.FC = () => {
   const { groups } = useAppSelector((state) => state.config);
   const dispatch = useDispatch();
 
   const handleChange = useCallback((e: RadioChangeEvent) => {
-    const gr = e.target.value ;
+    const gr = e.target.value;
     dispatch(configSlice.actions.updateGroup(gr));
-    if (gr !=='nogroup') {
-      dispatch(configSlice.actions.updateLayout({[`${gr}Total`]:true}))
+    if (gr !== "nogroup") {
+      dispatch(configSlice.actions.updateLayout({ [`${gr}Total`]: true }));
     }
   }, []);
 

@@ -3,10 +3,10 @@ import ReactCountryFlag from "react-country-flag";
 import styled from "styled-components";
 import { Popover } from "antd";
 import { HexColorPicker } from "react-colorful";
-import {ColorDataItem} from "../../types/config";
+import { ColorDataItem } from "../../types/config";
 //const emojiSupport = require('detect-emoji-support');
 
-const withSVG =  {svg:true};
+const withSVG = { svg: true };
 
 const ReactCountryFlagStyled = styled(ReactCountryFlag)`
   font-size: 18px !important;
@@ -18,13 +18,13 @@ export const formatNumber = (
 ): string => {
   let numericValue: number;
 
-      // Check if the input is a number or a string
+  // Check if the input is a number or a string
   if (typeof value === "number") {
     numericValue = value;
-  } else if (typeof value === "string") {
-    numericValue = parseFloat(value);
-  } else {
+  } else if (!value) {
     return "";
+  } else {
+    numericValue = parseFloat(value);
   }
 
   // Format the numeric value with the specified number of digits
@@ -58,14 +58,13 @@ export const flagRender = <T extends { a2: string }>(
   record: T,
 ) => (
   <>
-    <ReactCountryFlagStyled countryCode={record.a2} {...withSVG}/>
+    <ReactCountryFlagStyled countryCode={record.a2} {...withSVG} />
     {field}
   </>
 );
 
 export const symbolRender = (text: string) =>
   text?.startsWith("TOTAL") ? "" : text;
-
 
 export const ColorSelectRenderComp = ({
   field,
@@ -93,7 +92,9 @@ export const ColorSelectRenderComp = ({
       content={
         <HexColorPicker
           color={color}
-          onChange={(color: string) => onColorChange(record.key as string, field, color)}
+          onChange={(color: string) =>
+            onColorChange(record.key as string, field, color)
+          }
         />
       }
     >
@@ -103,7 +104,7 @@ export const ColorSelectRenderComp = ({
           height: "20px",
           backgroundColor: color,
           cursor: "pointer",
-          border: '1px solid #888',
+          border: "1px solid #888",
           color,
         }}
       />

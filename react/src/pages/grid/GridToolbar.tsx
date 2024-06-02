@@ -1,11 +1,9 @@
-import { Select, Button } from "antd";
+import { Select } from "antd";
 import SocketConnectionIndicator from "../../SocketConnectionIndicator";
 import { ReadyState } from "react-use-websocket";
 import { Portfolio } from "../../types/portfolio";
-import EmulatePriceChange from "./EmulatePriceChange";
 import SelectAnimated from "../../components/SelectAnimated/SelectAnimated";
 
-const { Option } = Select;
 type Props = {
   readyState: ReadyState;
   portfolios: Portfolio[];

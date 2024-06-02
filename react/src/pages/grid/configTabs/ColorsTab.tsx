@@ -11,7 +11,7 @@ import {
 
 } from "../../../types/config";
 import { configSlice } from "../../../store";
-;
+
 
 type Props = {
   onClose?: () => void;

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 import { Checkbox } from "antd";
 import { useAppSelector } from "../../../store/useAppSelector";
 import { useDispatch } from "react-redux";
@@ -8,14 +8,14 @@ import { configSlice } from "../../../store";
 const displayLayoutLabels: Record<LayoutKeys, string> = {
   currencyTotal: "Currency Total",
   //underlyingTotal: "Asset type Total",
-  portfoliosTotal: 'Portfolios total',
+  portfoliosTotal: "Portfolios total",
   industryTotal: "Industry Total",
   sectorTotal: "Sector Total",
   subregionTotal: "Subregion Total",
-  countryTotal: 'Country Total',
+  countryTotal: "Country Total",
   regionTotal: "Region Total",
   total: "Total",
-  contractPositions: 'Contract positions'
+  contractPositions: "Contract positions",
 };
 const LayoutTab: React.FC = () => {
   const { layout } = useAppSelector((state) => state.config);
@@ -26,12 +26,12 @@ const LayoutTab: React.FC = () => {
       const v = layout[key];
       dispatch(configSlice.actions.updateLayout({ [key]: !v }));
     },
-    [layout],
+    [layout, dispatch],
   );
 
   return (
     <div>
-      {Object.keys(layout).map((key, index) => (
+      {Object.keys(layout).map((key) => (
         <div key={key} style={{ display: "flex", alignItems: "center" }}>
           <Checkbox
             checked={layout[key as LayoutKeys]}

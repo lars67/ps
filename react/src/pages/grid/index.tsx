@@ -6,7 +6,7 @@ import React, {
   useState,
 } from "react";
 
-import { Table, Button, Select, message, Flex, Spin, RowProps } from "antd";
+import { Table, message, Flex, Spin} from "antd";
 import "./styles.css";
 import useWebSocket, { ReadyState } from "react-use-websocket";
 import { useAppSelector } from "../../store/useAppSelector";
@@ -19,7 +19,7 @@ import {
 } from "./columnRenderers";
 
 import GridToolbar from "./GridToolbar";
-import { current } from "@reduxjs/toolkit";
+
 import { Portfolio, QuoteData } from "../../types/portfolio";
 import EmulatePriceChange from "./EmulatePriceChange";
 import HistoryList from "./HistoryList";
@@ -32,7 +32,7 @@ import {
   BaseConfigParams,
   ColorDataItem,
   DisplayKeys,
-  Layout,
+
   LayoutKeys,
 } from "../../types/config";
 import { extractAndRemoveSubArray, insertBeforeIndex } from "../../utils";
@@ -219,9 +219,7 @@ const QuoteTable = () => {
     msgId.current++;
     //console.log("SendMSG", { ...cmd, msgId: msgId.current });
     try {
-      const r = await sendJsonMessageSync({ ...cmd, msgId: msgId.current });
-      //console.log("SYYYYYYYYYYYYYYNC", r);
-      return r;
+      return await sendJsonMessageSync({ ...cmd, msgId: msgId.current });
     } catch (er) {
       console.log("SendMsg error", er);
     }
