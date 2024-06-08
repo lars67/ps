@@ -8,144 +8,142 @@ import {
   validateRequired,
 } from "../utils";
 import customCommands from "./custom";
-import testsCommands from "./tests";
 import { ErrorType } from "../types/other";
 import { errorMsgs } from "../constants";
-import {UserData} from "@/services/websocket";
+import { UserData } from "@/services/websocket";
+import { FilterQuery } from "mongoose";
+
+type CommandItem = {
+  label: string;
+  value: string;
+  commandType: string;
+  extended?: object[];
+  access?: string;
+};
 //standart collection with standart handlers
-const collections = ["currencies", "portfolios", "plays", "sectors", "trades"];
+const collections = ["currencies", "portfolios", "sectors", "trades"];
 
 export const validationsAddRequired: string[] = ["label", "value"];
+
+let allCustomCommands: CommandItem[] = [];
+let guestAllowedCommands: string[] = [];
 export async function list(
   filter: Partial<Command> = {},
   sendResponse: (data: object) => void,
   msgId: string,
   userModif: string,
-  {userId,role,name}:UserData,
+  { userId, role, name }: UserData,
 ): Promise<Command[] | null> {
   const maps = collectionNameToComPar(getMongoose());
-  //  console.log('MAPS', maps)
-
+  console.log("commands list", userId, role, name);
+  const isGuest = role === "guest";
   try {
-    const tableCommands = [
-      ...[
-        ...collections.map((c) => [
-          {
-            label: `List ${c}`,
-            value: JSON.stringify({ command: `${c}.list`, ...maps[c].list }),
-            commandType: "collection",
-          },
-          {
-            label: `Add ${c}`,
-            value: JSON.stringify({ command: `${c}.add`, ...maps[c].add }),
-            commandType: "collection",
-          },
-          {
-            label: `Update ${c}`,
-            value: JSON.stringify({
-              command: `${c}.update`,
-              ...maps[c].update,
-            }),
-            commandType: "collection",
-          },
-          {
-            label: `Remove ${c}`,
-            value: JSON.stringify({
-              command: `${c}.remove`,
-              ...maps[c].remove,
-            }),
-            commandType: "collection",
-          },
-        ]),
-      ],
-    ].flat();
+    const tableCommands = isGuest
+      ? []
+      : [
+          ...[
+            ...collections.map((c) => [
+              {
+                label: `List ${c}`,
+                value: JSON.stringify({
+                  command: `${c}.list`,
+                  ...maps[c].list,
+                }),
+                commandType: "collection",
+              },
+              {
+                label: `Add ${c}`,
+                value: JSON.stringify({ command: `${c}.add`, ...maps[c].add }),
+                commandType: "collection",
+              },
+              {
+                label: `Update ${c}`,
+                value: JSON.stringify({
+                  command: `${c}.update`,
+                  ...maps[c].update,
+                }),
+                commandType: "collection",
+              },
+              {
+                label: `Remove ${c}`,
+                value: JSON.stringify({
+                  command: `${c}.remove`,
+                  ...maps[c].remove,
+                }),
+                commandType: "collection",
+              },
+            ]),
+          ],
+        ].flat();
 
-    ///
-    // console.log('tableCommands.length', tableCommands.length)
-    const filter = role === 'admin' ? {} : {
-      $or: [
-        {
-          ownerId: {
-            $eq: userId,
-          },
+    const filterConditions: Record<string, FilterQuery<Command>> = {
+      admin: {},
+      guest: {
+        access: {
+          $eq: "public",
         },
-        {
-          access: {
-            $exists: false,
+      },
+      member: {
+        $or: [
+          {
+            ownerId: {
+              $eq: userId,
+            },
           },
-        },
-        {
-          access: {
-            $eq: "",
+          {
+            access: {
+              $eq: "public",
+            },
           },
-        },
-      ],
+        ],
+      },
     };
+    const filter = filterConditions[role] as FilterQuery<Command>;
     const userCommands = await CommandModel.find(filter).lean();
 
-    const commands: {
-      label: string;
-      value: string;
-      commandType: string;
-      extended?: object[];
-    }[] = [];
+    if (allCustomCommands.length === 0) {
+      collections.forEach((col) => {
+        const modelName = getModelNameByCollectionName(col);
+        if (modelName) {
+          const des = require(`./${modelName?.toLowerCase()}`);
+          //console.log('>>>', Object.keys(des));
+          const { description, list, add, update, remove, ...rest } = des;
+          //console.log('description, value', description, Object.keys(rest));
+          if (description) {
+            Object.keys(description).map((c) => {
+              allCustomCommands.push({
+                label: description[c].label,
+                value: description[c].value || `{"command": "${col}.${c}"}`,
+                commandType: "custom",
+                extended: description[c].extended,
+                access: description[c].access,
+              });
+            });
+          }
+        }
+      });
 
-    collections.forEach((col) => {
-      const modelName = getModelNameByCollectionName(col);
-      if (modelName) {
-        const des = require(`./${modelName?.toLowerCase()}`);
-        //console.log('>>>', Object.keys(des));
-        const { description, list, add, update, remove, ...rest } = des;
-        //console.log('description, value', description, Object.keys(rest));
+      Object.keys(customCommands).map((g) => {
+        // @ts-ignore
+        const { description, ...rest } = customCommands[g];
         if (description) {
           Object.keys(description).map((c) => {
-            commands.push({
+            allCustomCommands.push({
               label: description[c].label,
-              value: description[c].value || `{"command": "${col}.${c}"}`,
+              value: description[c].value || `{"command": "${g}.${c}"}`,
               commandType: "custom",
-              extended: description[c].extended,
+              access: description[c].access,
             });
           });
         }
-      }
-    });
+      });
+    }
 
-    Object.keys(customCommands).map((g) => {
-      // @ts-ignore
-      const { description, ...rest } = customCommands[g];
-      if (description) {
-        Object.keys(description).map((c) => {
-          commands.push({
-            label: description[c].label,
-            value: description[c].value || `{"command": "${g}.${c}"}`,
-            commandType: "custom",
-          });
-        });
-      }
-    });
-
-    /*   Object.keys(testsCommands).map((g) => {
-      // @ts-ignore
-      const { description, ...rest } = testsCommands[g];
-//      console.log(description, rest);
-      if (description) {
-        Object.keys(description).map((c) => {
-          commands.push({
-            label: description[c].label,
-            value: description[c].value || `{"command": "${g}.${c}"}`,
-            commandType: "tests",
-          });
-        });
-      }
-    });
-*/
-    /*  console.log('COMMANDS',
-       [ ...userCommands,
-        ...commands,
-        ...tableCommands,]
-    );*/
-
-    return [...userCommands, ...commands, ...tableCommands];
+    if (isGuest) {
+      return [...allCustomCommands.filter((c) => c.access === "public")];
+    } else {
+      return [...userCommands, ...allCustomCommands, ...tableCommands];
+    }
   } catch (err) {
     console.log("ERR", err);
   }
@@ -157,7 +155,7 @@ export async function add(
   sendResponse: (data: object) => void,
   msgId: string,
   userModif: string,
-  {userId,role,name}:UserData,
+  { userId, role, name }: UserData,
 ): Promise<Command | ErrorType | null> {
   command.ownerId = userId;
 
@@ -204,3 +202,21 @@ export async function remove({
 }): Promise<Command | null> {
   return await CommandModel.findByIdAndDelete(_id);
 }
+
+export const getGuestAccessAlowedCommands = () => {
+  if (guestAllowedCommands.length === 0) {
+    guestAllowedCommands.push('commands.list');
+    collections.forEach((col) => {
+      const modelName = getModelNameByCollectionName(col);
+      if (modelName) {
+        const { description } = require(`./${modelName?.toLowerCase()}`);
+        if (description) {
+          Object.keys(description).map((c) => {
+            description[c].access && guestAllowedCommands.push(`${col}.${c}`);
+          });
+        }
+      }
+    });
+  }
+  return guestAllowedCommands;
+};

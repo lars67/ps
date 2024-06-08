@@ -14,6 +14,7 @@ import {DeleteResult} from "mongodb";
 import {checkPriceCurrency, getDateSymbolPrice} from "../services/app/priceCashe";
 import {Portfolio} from "../types/portfolio";
 import {UserData} from "@/services/websocket";
+import {getPortfolioInstanceByIDorName} from "../services/portfolio/helper";
 
 interface Subscribers {
   [msgId: string]: (data: any) => void;
@@ -42,7 +43,7 @@ export async function add(
   sendResponse: (data: object) => void,
   msgId: string,
   userModif: string,
-  {userId}: UserData,
+  userData: UserData,
 ): Promise<Trade | ErrorType | null> {
   //console.log("T", trade);
   if (isCurrency(trade.symbol)){
@@ -56,9 +57,13 @@ export async function add(
   if (!isTradeSide(trade.side)) {
     return { error: `Wrong trade Side` };
   }
-  const realId = await getRealId<Portfolio>(trade.portfolioId as string,PortfolioModel);
-  if (  isErrorType(realId)){
-    return realId;
+  const {
+    _id: realId,
+    error,
+    instance: portfolio,
+  } = await  getPortfolioInstanceByIDorName (trade.portfolioId, userData);
+  if (error) {
+    return error as ErrorType;
   }
   trade.portfolioId= realId;
 
@@ -69,7 +74,7 @@ export async function add(
     return { error: `Wrong tradeType` };
   }
   if (!trade.userId) {
-    trade.userId = userId;
+    trade.userId = userData.userId;
   }
   if (!trade.tradeTime) {
     trade.tradeTime = new Date().toISOString();

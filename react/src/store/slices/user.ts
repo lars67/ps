@@ -1,5 +1,4 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
-import {optionsSlice} from "./options";
 
 export interface UserState {
   loading?: "idle" | "pending" | "succeeded" | "failed";
@@ -22,15 +21,18 @@ export const authLoginThunk = createAsyncThunk(
         "process.env.REACT_APP_LOGIN_WS ||",
         process.env.REACT_APP_LOGIN_WS,
       );
+
+      const isGuest = loginPayload.role === 'guest'
       const ws = new WebSocket(
-        process.env.REACT_APP_LOGIN_WS || "wss://localhost:3331",
+
+          process.env.REACT_APP_LOGIN_WS || "wss://localhost:3331",
       );
       ws.onopen = () => {
         // Send login command when WebSocket connection is opened
         ws.send(
           JSON.stringify({
             name: loginPayload.name,
-            password: loginPayload.password,
+            ...(isGuest ? {role:'guest'} : {password: loginPayload.password}),
           }),
         );
       };

@@ -32,7 +32,7 @@ const GridToolbar = ({
       }}
     >
       Portfolio:
-      <SelectAnimated
+      <Select
         fieldNames={{ label: "name", value: "_id" }}
         value={pid}
         onChange={onSelectPortfolio}
@@ -40,7 +40,7 @@ const GridToolbar = ({
         placeholder="Select portfolio"
         options={portfolios}
         disabled={!canWork}
-      ></SelectAnimated>
+      ></Select>
       {leftChildren}
       <div className="spacer" />
       {children}

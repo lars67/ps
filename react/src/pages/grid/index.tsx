@@ -16,7 +16,7 @@ import {
   flagRender,
   numberFormattedRender,
   symbolRender,
-} from "./columnRenderers";
+} from "../../components/Grid/columnRenderers";
 
 import GridToolbar from "./GridToolbar";
 
@@ -36,6 +36,7 @@ import {
   LayoutKeys,
 } from "../../types/config";
 import { extractAndRemoveSubArray, insertBeforeIndex } from "../../utils";
+import useWSClient from "../../hooks/useWSClient";
 const valueColumns = [
   "volume",
   "marketPrice",
@@ -79,21 +80,17 @@ let counterSub: number = 0;
 
 const QuoteTable = () => {
   const dispatch = useAppDispatch();
-  const { userId, token } = useAppSelector((state) => state.user);
+  const { userId, token, role } = useAppSelector((state) => state.user);
   const fullConfig = useAppSelector((state) => state.config);
   const { layout, config, display, groups } = fullConfig;
 
   const modif = useRef(Math.round(100000 * Math.random()));
   const msgId = useRef(0);
-  const url = `${process.env.REACT_APP_WS}?${encodeURIComponent(token)}@${modif.current}`;
-  const fragments = useRef<{ [key: string]: string[] }>({});
-  const fragmentsMsg = useRef<{ [key: string]: string[] }>({});
+  const ser = (role === 'guest' ? process.env.REACT_APP_GUEST_WS  : process.env.REACT_APP_WS );
+  const url = `${ser}?${encodeURIComponent(token)}@${modif.current}`;
   const [tableData, setTableData] = useState<QuoteData[]>([]);
   const [loading, setLoading] = useState(true);
-  const handlers = useRef<Record<string, (value: string) => void>>(
-    {} as Record<string, (value: string) => void>,
-  );
-  const canWork = useRef(false);
+
   const portfolioRequested = useRef(false);
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [pid, setPID] = useState<string>();
@@ -110,17 +107,6 @@ const QuoteTable = () => {
 
   const [hoveredRowKey, setHoveredRowKey] = useState<string | null>(null);
 
-  /* const pidRef = useRef(pid)
-  const configRef = useRef(config)
-  const groupsRef = useRef(groups)
-
- const configChanged = !Object.is(configRef.current, config);
-  const pidChanged = !Object.is(pidRef.current, pid);
-  const groupsChanged = !Object.is(groupsRef.current, groups);
-  dispatch({type:'process...', pidChanged, configChanged, groupsChanged});
-  configRef.current=config;
-  pidRef.current=pid;
-  groupsRef.current=groups;*/
 
   const addToHistory = (dir: string, s: string) => {
     history.current.push(`${dir} ${s}`);
@@ -129,101 +115,8 @@ const QuoteTable = () => {
     }
   };
 
-  const onMessageCallback = (event: MessageEvent<string>) => {
-    if (event.data !== "undefined") {
-      const message = JSON.parse(event.data) as WSMsg;
+    const {canWork, handlers,sendJsonMessageSync, sendMsg, clearMsgId, readyState} = useWSClient(url)
 
-      const { data, msgId = "", total, index } = message;
-      if (!msgId) {
-        console.log("Wrong command absent msgId");
-        return "";
-      }
-      //  console.log(`msg > ${msgId}, ${total}, ${index}`);
-      if (!fragments.current[msgId]) {
-        fragments.current[msgId] = [];
-      }
-      fragments.current[msgId][index] = data;
-      if (fragments.current[msgId].length === Number(total)) {
-        //setLoading(false);
-        const assembledMessage = fragments.current[msgId].join("");
-        console.log(
-          "Received message msgId:",
-          msgId,
-          "len",
-          assembledMessage.length,
-        );
-        addToHistory("<", assembledMessage);
-        delete fragments.current[msgId];
-        console.log(
-          "call handler msgId",
-          msgId,
-          Boolean(handlers.current[msgId]),
-          handlers.current[msgId],
-        );
-        dispatch({ type: "MESSAGE", assembledMessage });
-        console.log("reqParams.current", reqParams.current);
-        if (Boolean(handlers.current[msgId])) {
-          const resp = JSON.parse(assembledMessage);
-          handlers.current[msgId](resp);
-        }
-      }
-    }
-    console.log("/onMessage");
-  };
-
-  const { sendJsonMessage, readyState, getWebSocket } = useWebSocket(url, {
-    onMessage: onMessageCallback,
-  }); //,  shouldConnect);
-  canWork.current = readyState === ReadyState.OPEN;
-
-  async function sendJsonMessageSync(o: object) {
-    return new Promise((resolve, reject) => {
-      const socket = getWebSocket();
-
-      if (socket) {
-        const handleMessageMsg = (event: MessageEvent) => {
-          const message = JSON.parse(event.data) as WSMsg;
-
-          const { data, msgId = "", total, index } = message;
-          if (!fragmentsMsg.current[msgId]) {
-            fragmentsMsg.current[msgId] = [];
-          }
-
-          fragmentsMsg.current[msgId][index] = data;
-          if (fragmentsMsg.current[msgId].length === Number(total)) {
-            const assembledMessage = fragmentsMsg.current[msgId].join("");
-            delete fragmentsMsg.current[msgId];
-            if (msgId === (o as { msgId: string }).msgId) {
-              resolve(assembledMessage);
-              // @ts-ignore
-              socket.removeEventListener("message", handleMessageMsg); // Remove the event listener
-            }
-          }
-        };
-
-        // @ts-ignore
-        socket.addEventListener("message", handleMessageMsg);
-
-        socket.onerror = (error: Event) => {
-          reject(error);
-        };
-        addToHistory(">", JSON.stringify(o));
-        sendJsonMessage(o);
-      } else {
-        reject({ error: "socket is closed" });
-      }
-    });
-  }
-
-  const sendMsg = async (cmd: object) => {
-    msgId.current++;
-    //console.log("SendMSG", { ...cmd, msgId: msgId.current });
-    try {
-      return await sendJsonMessageSync({ ...cmd, msgId: msgId.current });
-    } catch (er) {
-      console.log("SendMsg error", er);
-    }
-  };
 
   const loadPortfolios = async () => {
     console.log("loadPortfolios");
@@ -491,60 +384,11 @@ const QuoteTable = () => {
         align: "right" as const,
         render: numberFormattedRender("todayResult"),
       },
-      /*{
-            title: 'Price',
-            dataIndex: 'price',
-            key: 'price',
-            align:'right' as const,
 
-            render: (text: number, record: QuoteData) =>  {
-
-                const className = record.blink ? (record.change > 0
-                    ? 'blink price-increase'
-                    : record.change < 0
-                        ? 'blink price-decrease'
-                        : '') : '';
-
-                return { props:{className}, children: text}
-            }
-        }
-        {
-            title: 'Change',
-            dataIndex: 'change',
-            key: 'change',
-            align: 'right' as const,
-            render: (text:number) => (
-                <span style={{ color: text > 0 ? 'green' : 'red' }}>{text}</span>
-            ),
-        },
-        {
-            title: 'Change Price',
-            key: 'changePrice',
-            render: (text: string, record: QuoteData) => (
-                <Button onClick={() => handlePriceChange(record.key,  Math.round(Math.random()*10)-5)}>
-                     Price
-                </Button>
-            ),
-        },*/
     ],
     [display],
   );
-  /*const handlePriceChange = (key: string, change: number) => {
-    const updatedData: QuoteData[] = tableData.map((item) =>
-      item.key === key
-        ? { ...item, price: item.price + change, change, blink: true }
-        : item,
-    );
 
-    setTableData(updatedData);
-
-    setTimeout(() => {
-      const resetBlinkData = updatedData.map((item) =>
-        item.key === key ? { ...item, blink: false } : item,
-      );
-      setTableData(resetBlinkData);
-    }, 1000); // Reset blinking effect after 1 second
-  };*/
   const handleSelectPortfolio = useCallback(
     async (newPid: string) => {
       setPID(newPid);
@@ -630,27 +474,13 @@ const QuoteTable = () => {
             pagination={false}
             scroll={{ y: "calc(var(--top-div-height) - 86px)" }}
             bordered={true}
-            className={"resizable-table"}
             rowHoverable={false}
             onRow={(record) => ({
               style: getRowStyle(record),
               onMouseEnter: () => setHoveredRowKey(record.name),
               onMouseLeave: () => setHoveredRowKey(null),
             })}
-            /*components={{
-              body: {
-                row: (props: any) => {
-                  console.log("PROPS", props);
-                  return (
-                    <StyledRow
-                      {...props}
-                      bkg={props.record?.bkg}
-                      color={props.record?.color}
-                    />
-                  );
-                },
-              },
-            }}*/
+
           />
         )}
         {initialization && (

@@ -13,10 +13,13 @@ import { sendEvent } from "../../services/app/eventEmiter";
 import { Portfolio, PortfolioWithID } from "../../types/portfolio";
 import {
   checkPriceCurrency,
-  getDateSymbolPrice, getRate,
+  getDateSymbolPrice,
+  getRate,
 } from "../../services/app/priceCashe";
 import moment from "moment";
-import { formatYMD } from "../../constants";
+import { errorMsgs, formatYMD } from "../../constants";
+import { UserData } from "../../services/websocket";
+import { Model } from "mongoose";
 
 export type PutCash = {
   portfolioId: string;
@@ -112,12 +115,12 @@ export async function putSpecialTrade(
 }
 
 export async function summationFlatPortfolios(portfolio: Portfolio) {
-  const portfolioRateMap={} as Record<string, string[]>
+  const portfolioRateMap = {} as Record<string, string[]>;
   let sumPortfolios: Portfolio[] = []; //flat portfolios im all sum
   const portfolioFilterItems: string[] = [];
 
   console.log("processSumation.portfolio", portfolio);
-  const processChilds = async (portfolio: Portfolio,rates:string[]=[]) => {
+  const processChilds = async (portfolio: Portfolio, rates: string[] = []) => {
     if (portfolio.portfolioType === "summation" && portfolio.portfolioIds) {
       for (let pid of portfolio.portfolioIds) {
         console.log("pid ", pid);
@@ -131,63 +134,142 @@ export async function summationFlatPortfolios(portfolio: Portfolio) {
         }
         sumPortfolios.push(instance);
         if (instance.portfolioType !== "summation") {
-          console.log('SUMNO', instance.name, instance.currency, portfolio.currency);
-          portfolioRateMap[childId]= [...rates, `${instance.currency}${portfolio.currency}`];
+          console.log(
+            "SUMNO",
+            instance.name,
+            instance.currency,
+            portfolio.currency,
+          );
+          portfolioRateMap[childId] = [
+            ...rates,
+            `${instance.currency}${portfolio.currency}`,
+          ];
           portfolioFilterItems.push(childId);
-
         } else {
-          await processChilds(instance,
-              instance.currency===portfolio.currency ? rates : [...rates,`${instance.currency}${portfolio.currency}`])
+          await processChilds(
+            instance,
+            instance.currency === portfolio.currency
+              ? rates
+              : [...rates, `${instance.currency}${portfolio.currency}`],
+          );
         }
-
       }
-    //} else {
-    //  portfolioRateMap[portfolio._id.toString()]= rates;
-    //  console.log(portfolio.name, ':',rates);
+      //} else {
+      //  portfolioRateMap[portfolio._id.toString()]= rates;
+      //  console.log(portfolio.name, ':',rates);
     }
   };
 
   await processChilds(portfolio, []);
-  console.log("portfolioFilterItems", portfolioFilterItems, 'portfolioRateMap', portfolioRateMap);
-  return {portfolioFilterItems, portfolioRateMap};
+  console.log(
+    "portfolioFilterItems",
+    portfolioFilterItems,
+    "portfolioRateMap",
+    portfolioRateMap,
+  );
+  return { portfolioFilterItems, portfolioRateMap };
 }
 
-export async function fixRate(trades:Trade[], portfolioRates: Record<string,string[]> ):Promise<Trade[]> {
-  for(let trade of trades) {
+export async function fixRate(
+  trades: Trade[],
+  portfolioRates: Record<string, string[]>,
+): Promise<Trade[]> {
+  for (let trade of trades) {
     const rates = portfolioRates[trade.portfolioId];
-    const rateChange = rates.reduce((s,r) => {
+    const rateChange = rates.reduce((s, r) => {
       const c = r.slice(0, 3);
       const pCur = r.slice(3);
       const tCur = trade.currency;
-      const t = trade.tradeTime.split('T').shift();
-      console.log('fixRate',t, r,getRate(c,pCur,t || '2020-01-01'));
-      return s*getRate(c,pCur,t || '2020-01-01') //TO DO FIX
-    },1)
-   console.log('TTT',trade.tradeTime, trade.symbol,trade.currency,trade.price, trade.fee, trade.rate, portfolioRates[trade.portfolioId], rateChange, '>', );
-    trade.rate*=rateChange
-
-
+      const t = trade.tradeTime.split("T").shift();
+      console.log("fixRate", t, r, getRate(c, pCur, t || "2020-01-01"));
+      return s * getRate(c, pCur, t || "2020-01-01"); //TO DO FIX
+    }, 1);
+    console.log(
+      "TTT",
+      trade.tradeTime,
+      trade.symbol,
+      trade.currency,
+      trade.price,
+      trade.fee,
+      trade.rate,
+      portfolioRates[trade.portfolioId],
+      rateChange,
+      ">",
+    );
+    trade.rate *= rateChange;
   }
   return trades;
 }
 
-const portfolioNameCash: Record<string, {name:string, accountId:string}>={}
-export async function mapKeyToName(portfoliosInvested:Record<
+const portfolioNameCash: Record<string, { name: string; accountId: string }> =
+  {};
+export async function mapKeyToName(
+  portfoliosInvested: Record<
     string,
-    { invested: number; investedSymbol: number, fee:number, feeSymbol:number }>) {
-   const ids = Object.keys(portfoliosInvested);
-   for (const id of ids) {
-     if (!portfolioNameCash[id]) {
-       const p = await PortfolioModel.findById(id).lean();
-       if (p && p.name) {
-         portfolioNameCash[id] = {name: p.name, accountId: p.accountId as string}
-       }
-     }
-     if (portfolioNameCash[id]) {
-       portfoliosInvested[portfolioNameCash[id].name]= portfoliosInvested[id];
-       delete portfoliosInvested[id]
-     }
-   }
-   return portfoliosInvested;
-
+    { invested: number; investedSymbol: number; fee: number; feeSymbol: number }
+  >,
+) {
+  const ids = Object.keys(portfoliosInvested);
+  for (const id of ids) {
+    if (!portfolioNameCash[id]) {
+      const p = await PortfolioModel.findById(id).lean();
+      if (p && p.name) {
+        portfolioNameCash[id] = {
+          name: p.name,
+          accountId: p.accountId as string,
+        };
+      }
+    }
+    if (portfolioNameCash[id]) {
+      portfoliosInvested[portfolioNameCash[id].name] = portfoliosInvested[id];
+      delete portfoliosInvested[id];
+    }
+  }
+  return portfoliosInvested;
 }
+
+export function checkAccessByRole(
+  portfolio: Portfolio,
+  userData: UserData,
+): boolean {
+  const { userId, role } = userData;
+  return (
+    portfolio.userId === userId ||
+    role === "admin" ||
+    portfolio.access === "public"
+  );
+}
+
+export const getPortfolioInstanceByIDorName = async (
+  id: string,
+  userData: UserData,
+) => {
+  const {
+    _id: realId,
+    error,
+    instance: portfolio,
+  } = await getModelInstanceByIDorName<Portfolio>(id, PortfolioModel);
+
+  if (error) {
+    return { _id: realId, error, instance: portfolio };
+  }
+
+  if (!portfolio) {
+    return {
+      _id: realId,
+      instance: portfolio,
+      ...errorMsgs.error(`Portfolio with _id=${realId} does not exist`),
+    };
+  }
+
+  const accessDenied = !checkAccessByRole(portfolio, userData);
+  if (accessDenied) {
+    return {
+      _id: realId,
+      instance: portfolio,
+      ...errorMsgs.denied(`portfolio ${portfolio.name}`),
+    };
+  }
+
+  return { _id: realId, error, instance: portfolio };
+};

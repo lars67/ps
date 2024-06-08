@@ -34,14 +34,18 @@ import SideNav from "./SideNav";
 import HeaderNav from "./HeaderNav";
 import FooterNav from "./FooterNav";
 import { Nprogress } from "../../components/Nprogress";
-import { PATH_LANDING } from "../../constants";
-import CloseBtn from "../../components/CloseBtn";
+
 import HelpViewer from "../../components/HelpViewer";
 import { PATH_LOGIN, PATH_PORTFOLIO } from "../../constants/routes";
 import { useAppSelector } from "../../store/useAppSelector";
+import styled from "styled-components";
 
 const { Content } = Layout;
 
+const NameHolder = styled.span`
+  margin: 0 4px 0 16px;
+  text-transform: uppercase;
+`
 type AppLayoutProps = {
   children: ReactNode;
 };
@@ -186,8 +190,12 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               transition: "all .25s",
             }}
           >
-            <div>
-              <Dropdown menu={{ items }} trigger={["click"]}>
+            <Flex align={'center'} >
+                <Button type="link" onClick={showDrawer}>
+                    Help
+                </Button>
+                <NameHolder>{user.name}</NameHolder>
+                <Dropdown menu={{ items }} trigger={["click"]}>
                 <Flex>
                   <Tooltip title={user.name}>
                     <Avatar
@@ -198,14 +206,9 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                   </Tooltip>
                 </Flex>
               </Dropdown>
-              <Button type="link" onClick={showDrawer}>
-                Help
-              </Button>
 
-            </div>
-            <Button type="link" onClick={() => navigate(PATH_PORTFOLIO)}>
-              Portfolio
-            </Button>
+            </Flex>
+
 
             {/*     <Flex align="center">
               <Tooltip title={`${collapsed ? 'Expand' : 'Collapse'} Sidebar`}>

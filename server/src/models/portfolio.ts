@@ -9,7 +9,8 @@ const PortfolioSchema = new Schema<Portfolio>({
   baseInstrument: { type: String, default: "SPY", required: true },
   portfolioType: {type: String}, //summation, portfolio
   portfolioIds:{type: [String]},
-  accountId:{type: String}
+  accountId:{type: String},
+  access:{type: String}
 });
 
 export const PortfolioModel: Model<Portfolio> =

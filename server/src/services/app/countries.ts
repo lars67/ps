@@ -34,7 +34,7 @@ export const initCountries = async () => {
           subregionHolder.get(subRegion).add(name);
       }
   })
-    console.log(regionHolder.forEach((v, k)=> console.log(k, ":",v)));
+    //console.log(regionHolder.forEach((v, k)=> console.log(k, ":",v)));
 }
 
 export const getSubRegions = (region:string) =>

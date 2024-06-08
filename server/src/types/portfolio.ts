@@ -9,6 +9,7 @@ export type Portfolio = {
   portfolioType?: string; //summation, portfolio
   portfolioIds?:string[]
   accountId?: string;
+  access?:string;
 };
 
 export type PortfolioWithID = Portfolio & { _id: string | ObjectId };

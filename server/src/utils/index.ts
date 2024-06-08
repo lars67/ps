@@ -11,6 +11,8 @@ import {errorMsgs} from "../constants";
 import {ErrorType} from "../types/other";
 import {Currency} from "../types/currency";
 import {CurrencyModel} from "../models/currency";
+import {Portfolio} from "../types/portfolio";
+import {UserData} from "../services/websocket";
 const { ObjectId } = require('mongodb');
 
 
@@ -163,21 +165,25 @@ export const isValidObjectId = (str:string) => {
 export const getModelInstanceByIDorName = async <T >(_id: string, model:Model<T>) => {
   let  instance = null;
   let error = null;
+  console.log('start getModelInstanceByIDorName', _id, );
   try {
+    console.log('getModelInstanceByIDorName', _id, );
     if (isValidObjectId(_id)) {
       instance = (await model.findById(_id)) ;
     }
     if (!instance) {
-      instance = (await model.findOne({$or:[{accountId:_id},{name: _id}]}, ''));
-      if (instance) {
-        _id = (instance as T & {_id: typeof ObjectId})._id.toString();
+      instance = (await model.findOne({$or:[{accountId:_id},{name: _id}]}));
+      console.log('instance', Boolean(instance));
+      if (!!instance) {
+        _id = (instance as (T & {_id: typeof ObjectId}))._id.toString();
+        console.log('_id', _id);
       }
     }
     if (!instance) {
       error = {error: "Can't find record with this _id or name"}
     }
   } catch(err) {
-    error = {error: "Error during find by _id or name"}
+    error = {error: "Error during find by _id or name!"}
   }
 console.log('getModelInstanceByIDorName', _id, instance);
   return {_id, error, instance: instance as T}
@@ -269,3 +275,4 @@ export function isErrorType(variable: any): variable is ErrorType {
 export function isCurrency(symbol:string) {
   return symbol.indexOf(':FX') > 0
 }
+

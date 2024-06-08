@@ -6,7 +6,7 @@ import { HexColorPicker } from "react-colorful";
 import { ColorDataItem } from "../../types/config";
 //const emojiSupport = require('detect-emoji-support');
 
-const withSVG = { svg: true };
+const withSVG = { svg: false };
 
 const ReactCountryFlagStyled = styled(ReactCountryFlag)`
   font-size: 18px !important;

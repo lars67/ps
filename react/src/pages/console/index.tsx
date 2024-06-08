@@ -7,6 +7,7 @@ import {LabelValue} from "../../types/LabelValue";
 import {QuoteGrid} from "../index";
 import {LogoutOutlined, PlusOutlined, SettingOutlined, UnorderedListOutlined, UserOutlined} from "@ant-design/icons";
 import {PATH_LOGIN} from "../../constants/routes";
+import PortfoliosTable from "../portfolios";
 
 
 
@@ -27,22 +28,38 @@ export default memo(() => {
 
 
 
+
   //const historyCommands= useRef<LabelValue[]>([])
   const newTabIndex = useRef(0);
   const add = () => {
+   addTab();
+
+  };
+  const addAnonymous = () => addTab('guest');
+
+  const addTab = (role:string='') => {
     const newActiveKey = `newTab${++newTabIndex.current}`;
     const newPanes = [...items];
     const tabIndex= 1+newTabIndex.current
-    newPanes.push({label: `Tab ${tabIndex}`, children: <ConsoleTab tabIndex={tabIndex}/>, key: newActiveKey});
+    newPanes.push({label: role==='guest' ? 'Anonymous' :`Tab ${tabIndex}`, children: <ConsoleTab tabIndex={tabIndex} currentRole={role}/>, key: newActiveKey});
     setItems(newPanes);
     setActiveKey(newActiveKey);
 
   };
+
   const addPositions = () => {
     const newActiveKey = `newTab${++newTabIndex.current}`;
     const newPanes = [...items];
     const tabIndex= 1+newTabIndex.current
     newPanes.push({label: `Positions`, children: <QuoteGrid/>, key: newActiveKey});
+    setItems(newPanes);
+    setActiveKey(newActiveKey);
+  };
+  const addPortfolios = () => {
+    const newActiveKey = `newTab${++newTabIndex.current}`;
+    const newPanes = [...items];
+    const tabIndex= 1+newTabIndex.current
+    newPanes.push({label: `Portfolios`, children: <PortfoliosTable/>, key: newActiveKey});
     setItems(newPanes);
     setActiveKey(newActiveKey);
   };
@@ -54,8 +71,18 @@ export default memo(() => {
       icon: <UnorderedListOutlined />,
       onClick:addPositions
     },
-
-
+    {
+      key: "tab-anonymouse",
+      label: "Anonymous",
+      icon: <UnorderedListOutlined />,
+      onClick:(addAnonymous)
+    },
+    {
+      key: "tab-portfolios",
+      label: "Portfolios",
+      icon: <UnorderedListOutlined />,
+      onClick:(addPortfolios)
+    },
   ];
   const onChange = (key: string) => {
     setActiveKey(key);

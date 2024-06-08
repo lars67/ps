@@ -1,19 +1,19 @@
-import {memo, useCallback, useEffect, useMemo, useRef, useState} from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import {Button, message, Select, Switch, Tooltip,} from "antd";
-import useWebSocket, {ReadyState} from "react-use-websocket";
-import {useAppSelector} from "../../store/useAppSelector";
+import { Button, message, Select, Switch, Tooltip } from "antd";
+import useWebSocket, { ReadyState } from "react-use-websocket";
+import { useAppSelector } from "../../store/useAppSelector";
 
-import CodeMirror, {EditorView,} from "@uiw/react-codemirror";
-import {json} from "@codemirror/lang-json";
+import CodeMirror, { EditorView } from "@uiw/react-codemirror";
+import { json } from "@codemirror/lang-json";
 import "./style.css";
-import {commandTypes} from "./helper";
-import {Command} from "../../types/command";
-import {JsonToTable} from "react-json-to-table";
-import {LabelValue} from "../../types/LabelValue";
+import { commandTypes } from "./helper";
+import { Command } from "../../types/command";
+import { JsonToTable } from "react-json-to-table";
+import { LabelValue } from "../../types/LabelValue";
 import UserCommand from "./UserCommand";
 import Forms from "./forms";
-import {historyCommands} from "./index";
+import { historyCommands } from "./index";
 
 import HistoryCommands from "../../components/HistoryCommands";
 import OptionsPopup from "../../components/OptionsPopup";
@@ -22,18 +22,30 @@ import CommandBar from "../../components/CommandBar";
 import WindowExtend from "../../components/WindowExtend";
 import themeCodeMirror from "./themeCodeMirror";
 import UpDownBtn from "../../components/UpDownBtn";
-import {processTestCommand, testCommands} from "../../testCommands";
-import TestResults, {TestItem} from "../../components/TestResults";
-import {getCommands, preprocessCommand} from "../../utils/command";
-import {WSMsg} from "../../types/other";
+import { processTestCommand, testCommands } from "../../testCommands";
+import TestResults, { TestItem } from "../../components/TestResults";
+import { getCommands, preprocessCommand } from "../../utils/command";
+import { WSMsg } from "../../types/other";
 import SocketConnectionIndicator from "../../SocketConnectionIndicator";
 
-
-const Console = ({ tabIndex }: { tabIndex: number }) => {
+const Console = ({
+  tabIndex,
+  currentRole,
+}: {
+  tabIndex: number;
+  currentRole?: string | undefined;
+}) => {
   const [loading, setLoading] = useState(false);
-  const {userId, token} = useAppSelector((state) => state.user);
+  const { userId, token, role } = useAppSelector((state) => state.user);
   const modif = useRef(Math.round(100000 * Math.random()));
-  const url = `${process.env.REACT_APP_WS}?${encodeURIComponent(token)}@${modif.current}`;
+  const actualRole = currentRole || role;
+  const [isCurrentRoleGuest] = useState<boolean>(actualRole === "guest");
+  const ser =
+    actualRole === "guest"
+      ? process.env.REACT_APP_GUEST_WS
+      : process.env.REACT_APP_WS;
+  const url = `${ser}?${encodeURIComponent(token)}@${modif.current}`;
+  console.log("RRRRRRRRRRRRRRRRRR", actualRole, ser, url);
   const fragments = useRef<{ [key: string]: string[] }>({});
   const fragmentsMsg = useRef<{ [key: string]: string[] }>({});
   const [result, setResult] = useState<string>("");
@@ -97,10 +109,13 @@ const Console = ({ tabIndex }: { tabIndex: number }) => {
         delete fragments.current[msgId];
         if (msgId === "ws_commands") {
           const commands = JSON.parse(assembledMessage).data;
-
-          setCommands([...commands, ...testCommands]);
-
-          console.log("ws_commads");
+          if (isCurrentRoleGuest) {
+            setCommands([...commands.filter((c:Command) => c.access === "public")]);
+            console.log("ws_commads", actualRole);
+          } else {
+            setCommands([...commands, ...testCommands]);
+            console.log("ws_commads", actualRole);
+          }
           return;
         }
         const s = JSON.stringify(JSON.parse(assembledMessage), null, 2);
@@ -121,11 +136,10 @@ const Console = ({ tabIndex }: { tabIndex: number }) => {
     }
   };
 
-  const { sendJsonMessage, readyState, getWebSocket} = useWebSocket(url, {
+  const { sendJsonMessage, readyState, getWebSocket } = useWebSocket(url, {
     onMessage: onMessageCallback,
-   // shouldReconnect: (closeEvent) => shouldReconnect,
-
-  })//,  shouldConnect);
+    // shouldReconnect: (closeEvent) => shouldReconnect,
+  }); //,  shouldConnect);
 
   useEffect(() => {
     return () => {
@@ -162,11 +176,12 @@ const Console = ({ tabIndex }: { tabIndex: number }) => {
       for (const notparsedValue of commands) {
         //
         const com: string = JSON.parse(notparsedValue).command;
-        const preprocessed = preprocessCommand(notparsedValue, variables.current);
-        console.log('consoleTAB preprocessed', preprocessed);
-        const parsedValue = JSON.parse(
-          preprocessed,
+        const preprocessed = preprocessCommand(
+          notparsedValue,
+          variables.current,
         );
+        console.log("consoleTAB preprocessed", preprocessed);
+        const parsedValue = JSON.parse(preprocessed);
         console.log(
           `---------------------${notparsedValue}-------------------------\n`,
           new Date().toISOString(),
@@ -209,10 +224,14 @@ const Console = ({ tabIndex }: { tabIndex: number }) => {
               break;
             }
 
-            if (parsedValue.command === "tests.check" || parsedValue.command === "tests.text") {
+            if (
+              parsedValue.command === "tests.check" ||
+              parsedValue.command === "tests.text"
+            ) {
               testResults.push({
-                description: parsedValue.description || parsedValue.label || resp.data,
-                result: resp.data ,
+                description:
+                  parsedValue.description || parsedValue.label || resp.data,
+                result: resp.data,
               });
             }
             if ((resp.data as string) === "break") {
@@ -261,8 +280,7 @@ const Console = ({ tabIndex }: { tabIndex: number }) => {
     }
   }, [value, commandLabel, clearAlwaysResult, setHistoryMsgId]);
 
-
-  const canWork = readyState===ReadyState.OPEN && value !== "";
+  const canWork = readyState === ReadyState.OPEN && value !== "";
 
   const onChange = useCallback((val: string) => {
     setValue(val);
@@ -566,9 +584,18 @@ const Console = ({ tabIndex }: { tabIndex: number }) => {
     URL.revokeObjectURL(url);
   };
 
+  const [actualCommandTypes] = useMemo(() => {
+    const ctypes = isCurrentRoleGuest ? [commandTypes[0]] : commandTypes;
+    if (isCurrentRoleGuest) {
+      setActualCommands(commands.filter((c) => c.access === "public"));
+    }
+    return [ctypes];
+  }, [isCurrentRoleGuest, commands]);
 
-  const notOwnerCommand = (commandOption as Command)?.commandType === 'user' ?
-      userId!=(commandOption as Command)?.ownerId : false
+  const notOwnerCommand =
+    (commandOption as Command)?.commandType === "user"
+      ? userId != (commandOption as Command)?.ownerId
+      : false;
   return (
     <div className="playground-container">
       {displayPanes[0] && (
@@ -580,7 +607,7 @@ const Console = ({ tabIndex }: { tabIndex: number }) => {
               onChange={handleChangeCommandType}
               className="row-item"
             >
-              {commandTypes.map((option, index) => (
+              {actualCommandTypes.map((option, index) => (
                 <Select.Option key={`cmdt-${index}`} value={option.value}>
                   {option.label}
                 </Select.Option>
@@ -593,7 +620,7 @@ const Console = ({ tabIndex }: { tabIndex: number }) => {
                 className="row-item"
                 showSearch
                 onSearch={handleFilter}
-                 placeholder="Search to Select"
+                placeholder="Search to Select"
                 optionFilterProp="label"
                 filterOption={false}
               >
@@ -608,7 +635,13 @@ const Console = ({ tabIndex }: { tabIndex: number }) => {
                     label={option.label}
                     ownerId={option.ownerId}
                   >
-                    <Tooltip title={option.description}>{userId === option.ownerId ? (<b>{option.label}</b>) : option.label}</Tooltip>
+                    <Tooltip title={option.description}>
+                      {userId === option.ownerId ? (
+                        <b>{option.label}</b>
+                      ) : (
+                        option.label
+                      )}
+                    </Tooltip>
                   </Select.Option>
                 ))}
               </Select>
@@ -644,7 +677,7 @@ const Console = ({ tabIndex }: { tabIndex: number }) => {
             {commandBar && <CommandBar commandbar={commandBar} />}
 
             <div className="spacer" />
-           <SocketConnectionIndicator readyState={readyState}/>
+            <SocketConnectionIndicator readyState={readyState} />
             <Button type="default" size="middle" onClick={handleClear}>
               Clear
             </Button>

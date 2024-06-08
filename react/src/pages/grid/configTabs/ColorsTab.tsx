@@ -1,7 +1,7 @@
 import React, {useEffect, useState } from "react";
 import { Table } from "antd";
 
-import { colorSelectRender } from "../columnRenderers";
+import { colorSelectRender } from "../../../components/Grid/columnRenderers";
 import { useAppSelector } from "../../../store/useAppSelector";
 import { useDispatch } from "react-redux";
 import {

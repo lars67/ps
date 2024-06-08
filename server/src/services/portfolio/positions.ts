@@ -5,7 +5,7 @@ import { PortfolioModel } from "../../models/portfolio";
 import { Portfolio } from "../../types/portfolio";
 
 import moment, { Moment } from "moment";
-import { formatYMD } from "../../constants";
+import {errorMsgs, formatYMD} from "../../constants";
 import {
   divideArray,
   extractUniqueFields,
@@ -25,14 +25,14 @@ import {
 import { actualizeTrades, getPortfolioTrades } from "../../utils/portfolio";
 import { SubscribeMsgs } from "../../types/other";
 import { WebSocket } from "ws";
-import { UserWebSocket } from "../../services/websocket";
+import {UserData, UserWebSocket} from "../../services/websocket";
 import {
   getCountries,
   getCountryField,
   getCountryFields,
   getSubRegions,
 } from "../../services/app/countries";
-import { mapKeyToName } from "../../services/portfolio/helper";
+import {checkAccessByRole, getPortfolioInstanceByIDorName, mapKeyToName} from "../../services/portfolio/helper";
 const subscribers: Record<string, SubscribeMsgs> = {}; //userModif-> SubscribeMsgs
 
 type QuoteData2 = {
@@ -125,7 +125,7 @@ export async function positions(
   sendResponse: (data?: object) => void,
   msgId: string,
   userModif: string,
-  userData: any,
+  userData: UserData,
   socket: WebSocket,
 ): Promise<{} | undefined> {
   if (requestType === "77") {
@@ -162,14 +162,16 @@ export async function positions(
     _id: realId,
     error,
     instance: portfolio,
-  } = await getModelInstanceByIDorName<Portfolio>(_id, PortfolioModel);
+  } = await  getPortfolioInstanceByIDorName (_id, userData);
   if (error) {
     return error;
   }
   if (!portfolio) {
     return { error: `Portfolio with _id=${realId} is not exists` };
   }
-  console.log(
+
+
+    console.log(
     `====================requestType=${requestType}=================`,
   );
 

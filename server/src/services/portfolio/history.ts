@@ -14,10 +14,12 @@ import {
 import { Portfolio } from "../../types/portfolio";
 
 import moment, {Moment, weekdaysShort} from "moment";
-import { formatYMD } from "../../constants";
+import {errorMsgs, formatYMD} from "../../constants";
 import {getModelInstanceByIDorName, isValidDateFormat, toNum} from "../../utils";
 import {getPortfolioTrades} from "../../utils/portfolio";
-import {RealizedData} from "@/services/portfolio/positions";
+import {RealizedData} from "../../services/portfolio/positions";
+import {checkAccessByRole, getPortfolioInstanceByIDorName} from "../../services/portfolio/helper";
+import {UserData} from "../../services/websocket";
 
 
 type Params = {
@@ -32,21 +34,24 @@ export async function history(
   { _id, from, till, detail='0', sample , precision=2}: Params,
   sendResponse: (data: any) => void,
   msgId: string,
+  userModif: string,
+  userData: UserData,
 ): Promise<{}> {
   if (!_id) {
     return { error: "Portolio _id is required" };
   }
-
+  console.log('START HISTORY',_id);
   const toNumLocal = ( n: number) => toNum({n, precision});
 
-
-  const {_id:realId,error, instance:portfolio} = await  getModelInstanceByIDorName<Portfolio>(_id, PortfolioModel);
-
-  console.log('R', realId, 'from', _id) ;
-
+  const {
+    _id: realId,
+    error,
+    instance: portfolio,
+  } = await  getPortfolioInstanceByIDorName (_id, userData);
   if (error) {
     return error;
   }
+
   if (from) {
     if (!isValidDateFormat(from)) {
       return { error: "Wrong 'from'" };
@@ -87,13 +92,7 @@ export async function history(
   }
   const trades = allTrades as Trade[]
 
-  /*const allTrades = await TradeModel.find({
-    portfolioId: realId,
-    state: { $in: [1] },
-    ...(till && { tradeTime: { $lt: till } }),
-  })
-    .sort({ tradeTime: 1 })
-    .lean();*/
+
 //console.log('allTrades', allTrades)
   const withDetail = Number(detail) !== 0;
   if (trades.length <= 0) {
@@ -129,7 +128,7 @@ export async function history(
       symbolRealized[symbol].realized += realizedPnL;
       symbolRealized[symbol].totalCost -= avgPrice * trade.volume;
     }
-    console.log('RRRRRRRRRRR', trade.tradeTime, symbol, symbolRealized[symbol], '|', trade.side, oldVolume,  '|', trade.volume, trade.price, trade.rate);
+   // console.log('RRRRRRRRRRR', trade.tradeTime, symbol, symbolRealized[symbol], '|', trade.side, oldVolume,  '|', trade.volume, trade.price, trade.rate);
   }
 
   for (const trade of trades) {
@@ -231,12 +230,7 @@ export async function history(
         const cashPut =  trade.price* rate
           console.log('CASHPUT',trade.tradeTime,trade.price, rate,'=', cashPut, '+',cash );
         cash += cashPut
-      /*    priceToBaseCurrency(
-            trade.price,
-            trade.tradeTime,
-            trade.currency,
-            portfolio.currency,
-          ) || 0;*/
+
         nav += cashPut;
         rows.push({
           operation: "PUT",
