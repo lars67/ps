@@ -20,11 +20,11 @@ import Logo from "../../components/Logo";
 import { useMediaQuery } from "react-responsive";
 import { PATH_AUTH, PATH_CONSOLE } from "../../constants";
 import { useNavigate } from "react-router-dom";
-import { useState, useRef } from "react";
+import {useState, useRef, useEffect} from "react";
 import { authLoginThunk, updateUser, UserState } from "../../store";
 import { useAppDispatch } from "../../store/useAppDispatch";
 import { Link as Link2 } from "react-router-dom";
-import styled from "styled-components";
+
 
 const { Title, Text, Link } = Typography;
 
@@ -34,9 +34,7 @@ type FieldType = {
   remember?: boolean;
 };
 
-const GuestButton = styled(Button)`
-margin-left: 6px;
-`;
+
 
 const SignInPage = () => {
   const {
@@ -48,6 +46,23 @@ const SignInPage = () => {
   const loginRef = useRef<any>();
 
   const dispatch = useAppDispatch();
+
+  useEffect(()=> {
+
+     fetch(`${process.env.REACT_APP_URL_DATA}/check-cookie`, {credentials: 'include'})
+        .then(async (response) => {
+        console.log('feeeeeeeeetch', response.ok);
+          if (response.ok) {
+            const jsonData = await response.json();
+            console.log('Received JSON data:', jsonData);
+            dispatch(updateUser(jsonData));
+            navigate(PATH_CONSOLE);
+          }
+        })
+        .catch((err:any) => {
+console.log('err', err);
+        })
+  }, []);
   const onFinish = async (values: any) => {
     console.log("Success:", values);
     setLoading(true);
@@ -60,7 +75,7 @@ const SignInPage = () => {
     );
     console.log("R", rez);
     setLoading(false);
-    const { token, userId, role } = rez.payload as UserState;
+    const { token='', userId='', role='' } = rez.payload as UserState || {};
     if (token) {
       message.open({
         type: "success",
@@ -69,6 +84,22 @@ const SignInPage = () => {
       // document.cookie =`ps2token=${token};httpOnly=true;secure=true;sameSite='strict'`
       //Cookies.set('ps2token', token, { expires: 5 });
       dispatch(updateUser({ name: values.name, userId, role }));
+      if (values.remember) {
+        fetch(`${process.env.REACT_APP_URL_DATA}/set-cookie?token=${token}`, {credentials: 'include'})
+            .then(response => {
+              // Check if the cookie was set correctly
+              console.log('COOKIES', document.cookie);
+
+              if (response.ok) {
+                console.log('Logged in successfully');
+              } else {
+                console.error('Login failed');
+              }
+            })
+            .catch(error => {
+              console.error('Error:', error);
+            });
+      }
       navigate(PATH_CONSOLE);
     } else {
       message.open({
@@ -82,35 +113,7 @@ const SignInPage = () => {
     console.log("Failed:", errorInfo);
   };
 
-  const handleAnonymous = async () => {
-    setLoading(true);
-    if (loginRef.current) {
-      const name = loginRef.current.getFieldValue("name") || 'guest';
-      const rez = await dispatch(
-        authLoginThunk({
-          name,
-          role: "guest",
-          loading: "pending",
-        }),
-      );
 
-      setLoading(false);
-      const { token, userId, role } = rez.payload as UserState;
-      if (token) {
-        message.open({
-          type: "success",
-          content: "Guest accessn successful",
-        });
-        dispatch(updateUser({ name, userId, role }));
-        navigate(PATH_CONSOLE);
-      } else {
-        message.open({
-          type: "error",
-          content: "Guest access denied",
-        });
-      }
-    }
-  };
 
   return (
     <Row style={{ minHeight: isMobile ? "auto" : "100vh", overflow: "hidden" }}>
@@ -196,13 +199,7 @@ const SignInPage = () => {
                   >
                     Login
                   </Button>
-                  <GuestButton
-                    onClick={handleAnonymous}
-                    size="middle"
-                    loading={loading}
-                    >
-                    Anonymous access
-                  </GuestButton>
+
                 </div>
                 <Link href={PATH_AUTH.passwordReset}>Forgot password?</Link>
               </Flex>

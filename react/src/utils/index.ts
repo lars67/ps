@@ -1,4 +1,5 @@
 import { Command } from "../types/command";
+import {ErrorType} from "../types/other";
 
 export * from "./is-mobile";
 export * from "./remember-route";
@@ -48,3 +49,12 @@ export function insertBeforeIndex<T>(
 
   return newArr;
 }
+
+
+export function isErrorType(obj: any): obj is ErrorType {
+  return typeof obj === 'object' && obj !== null && 'error' in obj;
+}
+
+
+
+

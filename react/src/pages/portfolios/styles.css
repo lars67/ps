@@ -1,0 +1,91 @@
+.blink {
+    animation: blink-animation 1s linear infinite;
+}
+
+@keyframes blink-animation {
+    0% {
+        background-color: inherit;
+    }
+    50% {
+        background-color: #ff9999; /* Light red color */
+    }
+    100% {
+        background-color: inherit;
+    }
+}
+
+.ant-table {
+    font-size: 12px; /* Adjust the font size for the table */
+}
+
+.ant-table-tbody > tr > td.ant-table-cell {
+    padding: 2px 4px; /* Adjust cell padding */
+}
+
+.ant-table-tbody > tr {
+    height: 30px; /* Adjust row height */
+}
+
+.price-increase {
+    animation: price-increase-animation 1s linear;
+    color:#080;
+}
+
+@keyframes price-increase-animation {
+    0% {
+
+        background-color: #ccffcc; /* Light green color */
+        color: #080;
+    }
+    100% {
+        background-color: inherit;
+        color: #080;
+    }
+}
+
+.price-decrease {
+    animation: price-decrease-animation 1s linear ;
+    color: #D00;
+}
+
+@keyframes price-decrease-animation {
+    0% {
+          background-color: #ff9999; /* Light red color */
+        color:#D00;
+    }
+    100% {
+        background-color: inherit;
+        color:#D00;
+    }
+}
+
+
+.quotegrid-toolbar {
+    height: 64px;
+}
+
+.playground-container {
+    display: flex;
+    flex-direction: column;
+
+    height: calc(100vh - 164px - 8px );
+    --top-div-height: calc(100vh - 164px - 8px );
+}
+
+.table-container {
+    height: calc(100% - 40px);
+    overflow: hidden;
+}
+
+td.ant-table-cell, th.ant-table-cell {
+    padding: 2px 4px!important; /* Adjust the values to your desired padding */
+    border-color: #eee !important;
+    border-width:0.5px !important;
+}
+.spacer {
+    flex-grow: 1;
+}
+.hovered-row {
+    background-color: #0000cc;
+    color: #fff;
+}

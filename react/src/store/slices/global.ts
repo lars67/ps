@@ -3,6 +3,7 @@ import { createSlice } from "@reduxjs/toolkit";
 
 import { isMobile } from '../../utils';
 
+
 export type ThemeType = "dark" | "light" | null;
 
 export const globalSlice = createSlice({
@@ -11,6 +12,7 @@ export const globalSlice = createSlice({
 		globalSpin: false,
 		theme: localStorage.getItem("theme") as ThemeType,
 		isMobile: isMobile(),
+		isActive: true
 	},
 	reducers: {
 		openGlobalSpin(state) {
@@ -34,5 +36,10 @@ export const globalSlice = createSlice({
 		changeWindowSize(state, action: PayloadAction<boolean>) {
 			state.isMobile = action.payload;
 		},
+		changeAppActive(state, action: PayloadAction<boolean>) {
+			state.isActive = action.payload;
+		},
 	},
 });
+
+export const { changeAppActive } = globalSlice.actions;

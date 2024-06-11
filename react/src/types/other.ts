@@ -8,3 +8,6 @@ export type WSMsg = {
 export type JsonObject = {
     [key: string]: any;
 }
+export type ErrorType = {
+    error: string;
+};

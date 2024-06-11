@@ -7,7 +7,8 @@ export interface UserState {
   password?: string;
   email?: string;
   role?: string;
-  userId?: string
+  userId?: string;
+  remember?: boolean;
 }
 
 const initialState: UserState = {
@@ -22,17 +23,18 @@ export const authLoginThunk = createAsyncThunk(
         process.env.REACT_APP_LOGIN_WS,
       );
 
-      const isGuest = loginPayload.role === 'guest'
+      const isGuest = loginPayload.role === "guest";
       const ws = new WebSocket(
-
-          process.env.REACT_APP_LOGIN_WS || "wss://localhost:3331",
+        process.env.REACT_APP_LOGIN_WS || "wss://localhost:3331",
       );
       ws.onopen = () => {
-        // Send login command when WebSocket connection is opened
         ws.send(
           JSON.stringify({
             name: loginPayload.name,
-            ...(isGuest ? {role:'guest'} : {password: loginPayload.password}),
+            remember: loginPayload.remember,
+            ...(isGuest
+              ? { role: "guest" }
+              : { password: loginPayload.password }),
           }),
         );
       };
@@ -96,7 +98,7 @@ export const userSlice = createSlice({
     hasFetchedToken: false,
     name: "",
     role: "member",
-    userId:undefined
+    userId: undefined,
     // ---------
   },
   reducers: {
@@ -118,7 +120,7 @@ export const userSlice = createSlice({
     builder.addCase(authLoginThunk.fulfilled, (state, action) => ({
       ...state,
       token: `${action.payload.token}`,
-      role: `${action.payload.role}`
+      role: `${action.payload.role}`,
     }));
   },
   /*extraReducers: (builder) => {

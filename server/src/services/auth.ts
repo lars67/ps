@@ -27,8 +27,8 @@ export async function login(
       password,
       user.password || "",
     );
-    //   console.log(`credentials.password : ${credentials.password}`)
-    //  console.log(`user.password : ${user.password}`)
+     //  console.log(`credentials.password : ${credentials.password}`)
+      console.log(`isPasswordCorrect : $isPasswordCorrect} ${password}`)
 
     if (!isPasswordCorrect) throw new Error("Wrong credentials!");
 

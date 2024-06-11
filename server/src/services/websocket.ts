@@ -1,27 +1,28 @@
 import { WebSocketServer, WebSocket } from "ws";
 import jwt, { JwtPayload } from "jsonwebtoken";
-import {login, signup} from "./auth";
+import { login, signup } from "./auth";
 import controller from "../controllers/websocket";
 import logger from "../utils/logger";
 import * as https from "https";
-import {ErrorType} from "../types/other";
-import cookie from 'cookie';
-import {guestAccessAllowed} from "../controllers/guestAccessAlowed";
+import { ErrorType } from "../types/other";
+import cookie from "cookie";
+import { guestAccessAllowed } from "../controllers/guestAccessAlowed";
+import * as http from "http";
+import * as process from "process";
 
 
-const secretKey = "ps2-secret-key";
-const expiresIn = '10h'
+const expiresIn = "10h";
 
-export type UserWebSocket = WebSocket & { userId: string, waitNum:number};
+export type UserWebSocket = WebSocket & { userId: string; waitNum: number };
 
 export type UserData = {
-  userId:string,
-  name: string,
-  role: string
-}
+  userId: string;
+  name: string;
+  role: string;
+};
 interface ClientType {
   socket: WebSocket;
-  token: string | JwtPayload |  undefined; //wtPayload//{userId: string, username: string}
+  token: string | JwtPayload | undefined; //wtPayload//{userId: string, username: string}
 }
 
 function verifyJWT(token: string, secret: string): UserData | null {
@@ -29,87 +30,106 @@ function verifyJWT(token: string, secret: string): UserData | null {
     const decoded = jwt.verify(token, secret) as UserData;
     return decoded;
   } catch (error) {
-    console.error('Error verifying JWT:', error);
+    console.error("Error verifying JWT:", error);
     return null;
   }
 }
 
-
 function generateJWT(userData: UserData): string {
-  const token = jwt.sign(userData, secretKey, { expiresIn });
+  const token = jwt.sign(userData, process.env.SECRET_KEY as string, { expiresIn });
   return token;
 }
 
-
-export const initWS = (serverLogin: https.Server, serverApp: https.Server, guestApp: https.Server) => {
-  const loginServer = new WebSocketServer({ server:serverLogin });
+export const initWS = (
+  serverLogin: https.Server,
+  serverApp: https.Server,
+  guestApp: https.Server,
+) => {
+  const loginServer = new WebSocket.Server({server:serverLogin});
 
   console.log("-------------------- SOCKET SERVER -------------");
+
   loginServer.on("connection", (socket, req) => {
-    const cookies = cookie.parse(req.headers.cookie || '');
-    const token = cookies.ps2token;
-
-    console.log('LOGIN CONNECTION TTTTTTTTTTTTTTTTTTTTTTTOKEN', token, Object.keys(cookies), req.headers)
-
-    socket.on("message", async (data) => {
-      const { name, password, email='', cmd='login', role='' } = JSON.parse(data.toString());
-      if (cmd === 'signup') {
+   socket.on("message", async (data) => {
+      const {
+        name,
+        password,
+        email = "",
+        cmd = "login",
+        role = "",
+      } = JSON.parse(data.toString());
+      if (cmd === "signup") {
         const user = await signup(name, password, email);
-        console.log('signup', user);
+        console.log("signup", user);
         socket.send(JSON.stringify(user));
       } else {
-        const user = role ? {
-          name,
-          role:'guest',
-          _id: Date.now().toString()
-        }  : await login(name, password);
+        const user = role
+          ? {
+              name,
+              role: "guest",
+              _id: Date.now().toString(),
+            }
+          : await login(name, password);
         if (user) {
-          console.log('LOGIN RESULTUSER', user)
+          //console.log("LOGIN RESULTUSER", user);
           const token = jwt.sign(
-              { name: user?.name, role: user?.role,  userId: user?._id?.toString()},
-              secretKey,
+            {
+              name: user?.name,
+              role: user?.role,
+              userId: user?._id?.toString(),
+            },
+              process.env.SECRET_KEY as string,
           );
-          socket.send(JSON.stringify({token,role:user.role, userId: user?._id?.toString()}));
+
+          socket.send(
+            JSON.stringify({
+              token,
+              role: user.role,
+              userId: user?._id?.toString(),
+            }),
+          );
         } else {
-          socket.send(JSON.stringify({error: "Invalid user name or password"}));
+          socket.send(
+            JSON.stringify({ error: "Invalid user name or password" }),
+          );
         }
       }
     });
   });
+
   //maxPayload {Number} The maximum allowed message size in bytes. Defaults to 100 MiB (104857600 bytes).
   const mainServer = new WebSocketServer({
     //port: mainServerPort,
-  //  maxPayload: 204857600,
-    server: serverApp
+    //  maxPayload: 204857600,
+    server: serverApp,
   });
 
   let clients: ClientType[] = [];
   mainServer.on("connection", (socket, req) => {
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    console.log(`Client connected with IP: ${ip}`, req.headers["ps2token"]);
+
     const fullQuery = req.url?.split("?")[1] || ""; // Get query parameters from URL
     const [query, modif = ""] = fullQuery.split("@");
-    const token = req.headers["authorization"] || query;
-    let userData:UserData;
-    console.log("client connected", token, modif);
+    const token = req.headers["ps2token"] || query;
+    let userData: UserData;
+
 
     if (!token) {
       return socket.close(4001, "Authentication error: Token missing");
     }
-  /*  req.headers.setHeader(
-        'Set-Cookie',
-        cookie.serialize('ps2token', 'your_token_value', cookieOptions)
-    );*/
 
-    jwt.verify(token.toString(), secretKey, (err, decoded) => {
+    jwt.verify(token.toString(),process.env.SECRET_KEY as string, (err, decoded) => {
       if (err) {
-        console.log("tokeb bad", err);
+        console.log("token bad", err);
         return socket.close(4002, "Authentication error: Invalid token");
       }
       //? socket.decoded = decoded;
-      console.log("decoded", decoded);
+
       (socket as UserWebSocket).userId = (decoded as JwtPayload)?.userId;
-      (socket as UserWebSocket).waitNum = 0
-      userData = (decoded as UserData);
-      console.log('decoded as UserData', userData);
+      (socket as UserWebSocket).waitNum = 0;
+      userData = decoded as UserData;
+      //console.log("decoded as UserData", userData);
       clients.push({ socket, token: decoded });
       logger.log(`  connection open with token ${token}`);
     });
@@ -122,7 +142,7 @@ export const initWS = (serverLogin: https.Server, serverApp: https.Server, guest
         sendResponse(socket, msg),
         modif,
         userData,
-        socket
+        socket,
       );
     });
 
@@ -136,7 +156,7 @@ export const initWS = (serverLogin: https.Server, serverApp: https.Server, guest
   const guestServer = new WebSocketServer({
     //port: mainServerPort,
     //  maxPayload: 204857600,
-    server: guestApp
+    server: guestApp,
   });
 
   let guests: ClientType[] = [];
@@ -154,7 +174,8 @@ export const initWS = (serverLogin: https.Server, serverApp: https.Server, guest
 
     socket.on("message", async (message) => {
       const msg = JSON.parse(message.toString());
-      if (!guestAccessAllowed(socket, msg)) {//access only to public commands
+      if (!guestAccessAllowed(socket, msg)) {
+        //access only to public commands
         return;
       }
 
@@ -174,8 +195,8 @@ export const initWS = (serverLogin: https.Server, serverApp: https.Server, guest
       position >= 0 && guests.splice(position, 1);
     });
   });
-//  console.log(`Login server running on port ${loginPort}`);
-//  console.log(`Main server running on port ${mainServerPort}`);
+  //  console.log(`Login server running on port ${loginPort}`);
+  //  console.log(`Main server running on port ${mainServerPort}`);
 };
 
 function chunkString(str: string, size: number) {
@@ -187,12 +208,12 @@ function chunkString(str: string, size: number) {
 }
 
 const sendResponse = (socket: WebSocket, msg: any) => async (response: any) => {
-// console.log('sendResponse===> READYsTATE',socket.readyState,'WAITnUM', (socket as UserWebSocket).waitNum);
+  // console.log('sendResponse===> READYsTATE',socket.readyState,'WAITnUM', (socket as UserWebSocket).waitNum);
   if (response) {
     const cmd = JSON.stringify({
       command: msg.command,
       msgId: msg.msgId,
-      ...(response.error ? {error: response.error} : {data: response}),
+      ...(response.error ? { error: response.error } : { data: response }),
     });
     logger.log(`< ${cmd}`);
     sendFragmented(socket, cmd, msg.msgId);
@@ -214,6 +235,3 @@ export function sendFragmented(socket: WebSocket, msg: string, msgId: string) {
     }, 0);
   });
 }
-
-
-

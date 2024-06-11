@@ -13,7 +13,7 @@ import {
   Tooltip,
 } from "antd";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   AppstoreOutlined,
   LogoutOutlined,
@@ -39,13 +39,16 @@ import HelpViewer from "../../components/HelpViewer";
 import { PATH_LOGIN, PATH_PORTFOLIO } from "../../constants/routes";
 import { useAppSelector } from "../../store/useAppSelector";
 import styled from "styled-components";
+import { safeFetch } from "../../utils/safeFetch";
+import {changeAppActive, updateUser} from "../../store";
+import { useAppDispatch } from "../../store/useAppDispatch";
 
 const { Content } = Layout;
 
 const NameHolder = styled.span`
   margin: 0 4px 0 16px;
   text-transform: uppercase;
-`
+`;
 type AppLayoutProps = {
   children: ReactNode;
 };
@@ -63,42 +66,51 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const nodeRef = useRef(null);
   const floatBtnRef = useRef(null);
   const user = useAppSelector((state) => state.user);
-  const items: MenuProps["items"] = [
-    {
-      key: "user-profile-link",
-      label: "profile",
-      icon: <UserOutlined />,
-    },
-    {
-      key: "user-settings-link",
-      label: "settings",
-      icon: <SettingOutlined />,
-    },
-    /* {
+  const dispatch = useAppDispatch();
+  const items: MenuProps["items"] = useMemo(
+    () => [
+      {
+        key: "user-profile-link",
+        label: "profile",
+        icon: <UserOutlined />,
+      },
+      {
+        key: "user-settings-link",
+        label: "settings",
+        icon: <SettingOutlined />,
+      },
+      /* {
       key: "user-help-link",
       label: "help center",
       icon: <QuestionOutlined />,
     },*/
-    {
-      type: "divider",
-    },
-    {
-      key: "user-logout-link",
-      label: "logout",
-      icon: <LogoutOutlined />,
-      danger: true,
-      onClick: () => {
-        message.open({
-          type: "loading",
-          content: "signing you out",
-        });
-
-        setTimeout(() => {
-          navigate(PATH_LOGIN);
-        }, 1000);
+      {
+        type: "divider",
       },
-    },
-  ];
+      {
+        key: "user-logout-link",
+        label: "logout",
+        icon: <LogoutOutlined />,
+        danger: true,
+        onClick: async () => {
+          message.open({
+            type: "loading",
+            content: "signing you out",
+          });
+
+          const rez = await safeFetch("clear-cookie", {method:'POST', credentials: 'include'});
+          if (rez.success) {
+            dispatch(changeAppActive(false))
+            dispatch(updateUser({}));
+            setTimeout(() => navigate(PATH_LOGIN),0);
+          } else {
+            message.error(rez.error);
+          }
+        },
+      },
+    ],
+    [],
+  );
 
   useEffect(() => {
     setCollapsed(isMobile);
@@ -190,12 +202,12 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               transition: "all .25s",
             }}
           >
-            <Flex align={'center'} >
-                <Button type="link" onClick={showDrawer}>
-                    Help
-                </Button>
-                <NameHolder>{user.name}</NameHolder>
-                <Dropdown menu={{ items }} trigger={["click"]}>
+            <Flex align={"center"}>
+              <Button type="link" onClick={showDrawer}>
+                Help
+              </Button>
+              <NameHolder>{user.name}</NameHolder>
+              <Dropdown menu={{ items }} trigger={["click"]}>
                 <Flex>
                   <Tooltip title={user.name}>
                     <Avatar
@@ -206,9 +218,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                   </Tooltip>
                 </Flex>
               </Dropdown>
-
             </Flex>
-
 
             {/*     <Flex align="center">
               <Tooltip title={`${collapsed ? 'Expand' : 'Collapse'} Sidebar`}>
