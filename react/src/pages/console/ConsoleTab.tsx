@@ -45,7 +45,7 @@ const Console = ({
       ? process.env.REACT_APP_GUEST_WS
       : process.env.REACT_APP_WS;
   const url = `${ser}?${encodeURIComponent(token)}@${modif.current}`;
-  console.log("RRRRRRRRRRRRRRRRRR", actualRole, ser, url);
+ // console.log("RRRRRRRRRRRRRRRRRR", actualRole, ser, url);
   const fragments = useRef<{ [key: string]: string[] }>({});
   const fragmentsMsg = useRef<{ [key: string]: string[] }>({});
   const [result, setResult] = useState<string>("");

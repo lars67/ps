@@ -167,8 +167,12 @@ export async function checkPriceCurrency(
 export async function checkPortfolioPricesCurrencies(
   trades: Trade[],
   balanceCurrency: string,
+  baseInstrument?: string
 ) {
   const uniqueSymbols = extractUniqueFields(trades, "symbol");
+  if (baseInstrument && !uniqueSymbols.includes(baseInstrument)) {
+    uniqueSymbols.push(baseInstrument)
+  }
   const uniqueCurrencies = extractUniqueFields(trades, "currency");
   //  console.log('TRADES', trades)
   const startDate = findMinByField<Trade>(trades, "tradeTime").tradeTime.split(
@@ -228,10 +232,15 @@ export const getRate = (
   const rate1 = getDateSymbolPrice(date, `${currency}${balanceCurrency}`);
   const rate2 = getDateSymbolPrice(date, `${balanceCurrency}${currency}`);
   const r = rate1 ? rate1 : rate2 ? 1 / rate2 : 0;
-  console.log(`RATES '${currency}${balanceCurrency}' '${date}'`, rate1, rate2, '=>', r)
+  //console.log(`RATES '${currency}${balanceCurrency}' '${date}'`, rate1, rate2, '=>', r)
   return Number(r.toFixed(4));
 };
 
+export const getSymbolPrices =(symbol:string, from?: string, till?:string) => {
+
+  const prices = Object.keys(dateHistory).sort().map(d=> dateHistory[d].symbol)
+  return prices;
+}
 /*
 export function findSymbolDatePrices(date, symbol) {
     if (dateHistory[date] && dateHistory[date][symbol]) {

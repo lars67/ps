@@ -115,7 +115,7 @@ const QuoteTable = () => {
     }
   };
 
-    const {canWork, handlers,sendJsonMessageSync, sendMsg, clearMsgId, readyState} = useWSClient(url)
+    const {canWork, handlers,sendJsonMessageSync, sendMsg, clearMsgId, readyState} = useWSClient(url, addToHistory)
 
 
   const loadPortfolios = async () => {

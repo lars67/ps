@@ -178,3 +178,2633 @@ Parameter _as can be added to any comand and his reponse will be saved in variab
 {"command":"portfolios.positions","_id":"_testPortfolioHistory","requestType":"3","changes": [{"symbol":"XLC","close":82.62} }]}
 {"command":"tests.delay", "delay":1000}
 {"command":"portfolios.positions","_id":"_testPortfolioHistory","requestType":"2","subscribeId":1, "marketPrice":"4","basePrice":"4", "_as":"response"}
+/* People also watch */
+
+box-sizing: border-box;
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: center;
+padding: 24px 32px 32px;
+gap: 24px;
+
+position: relative;
+width: 392px;
+height: 568px;
+left: 616px;
+top: 731px;
+
+/* Main Colors / White */
+background: #FFFFFF;
+/* Neutral/200
+
+Lightness = 90
+*/
+border-top: 1px solid #E3E3E8;
+
+
+/* Title */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 0px;
+
+width: 328px;
+height: 28px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* People also watch */
+
+width: 150px;
+height: 28px;
+
+/* Body/Large - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 18px;
+line-height: 155%;
+/* identical to box height, or 28px */
+font-feature-settings: 'ss06' on;
+
+/* Neutral/900 */
+color: #131316;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Listing */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+align-items: flex-start;
+padding: 0px;
+
+width: 328px;
+height: 460px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* Header */
+
+box-sizing: border-box;
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+align-items: flex-start;
+padding: 0px;
+gap: 11px;
+
+width: 328px;
+height: 28px;
+
+/* Neutral/200
+
+Lightness = 90
+*/
+border-bottom: 1px solid #E3E3E8;
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Frame 39921 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: flex-start;
+padding: 0px 0px 12px;
+
+width: 328px;
+height: 28px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Symbol */
+
+width: 165px;
+height: 16px;
+
+/* Body/XSmall - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 12px;
+line-height: 135%;
+/* or 16px */
+display: flex;
+align-items: center;
+letter-spacing: 0.005em;
+font-feature-settings: 'ss06' on;
+
+/* Neutral/500 */
+color: #717184;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 1;
+
+
+/* Frame 39920 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: flex-start;
+padding: 0px;
+
+width: 163px;
+height: 16px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Last Price */
+
+width: 105px;
+height: 16px;
+
+/* Body/XSmall - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 12px;
+line-height: 135%;
+/* or 16px */
+display: flex;
+align-items: center;
+letter-spacing: 0.005em;
+font-feature-settings: 'ss06' on;
+
+/* Neutral/500 */
+color: #717184;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 1;
+
+
+/* Change % */
+
+width: 58px;
+height: 16px;
+
+/* Body/XSmall - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 12px;
+line-height: 135%;
+/* or 16px */
+display: flex;
+align-items: center;
+letter-spacing: 0.005em;
+font-feature-settings: 'ss06' on;
+
+/* Neutral/500 */
+color: #717184;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* People Watch Item */
+
+box-sizing: border-box;
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 16px 0px;
+
+width: 328px;
+height: 72px;
+
+/* Main Colors / White */
+background: #FFFFFF;
+/* Neutral/200
+
+Lightness = 90
+*/
+border-bottom: 1px solid #E3E3E8;
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Crypto */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: flex-start;
+padding: 0px;
+gap: 12px;
+
+width: 165px;
+height: 40px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 1;
+
+
+/* Crypto */
+
+width: 40px;
+height: 40px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Ellipse 1 */
+
+position: absolute;
+left: 0%;
+right: 0%;
+top: 0%;
+bottom: 0%;
+
+/* Main Colors/Primary */
+background: #5235E8;
+
+
+/* ETH */
+
+position: absolute;
+left: 29.17%;
+right: 27.06%;
+top: 12.5%;
+bottom: 16.08%;
+
+
+
+/* eth */
+
+position: absolute;
+left: 29.17%;
+right: 27.06%;
+top: 12.5%;
+bottom: 16.08%;
+
+
+
+/* Shape */
+
+position: absolute;
+left: 29.21%;
+right: 48.86%;
+top: 12.5%;
+bottom: 51.11%;
+
+background: #F3F3F3;
+
+
+/* Shape */
+
+position: absolute;
+left: 51.03%;
+right: 27.06%;
+top: 38.92%;
+bottom: 38.23%;
+
+background: #8A8DA7;
+
+
+/* Shape */
+
+position: absolute;
+left: 29.2%;
+right: 48.86%;
+top: 53.11%;
+bottom: 16.08%;
+
+background: #F3F3F3;
+
+
+/* Path */
+
+position: absolute;
+left: 29.17%;
+right: 48.93%;
+top: 38.91%;
+bottom: 38.15%;
+
+background: #C5C8D9;
+
+
+/* Path */
+
+position: absolute;
+left: 51.07%;
+right: 27.13%;
+top: 53.11%;
+bottom: 16.18%;
+
+background: #C5C8D9;
+
+
+/* Shape */
+
+position: absolute;
+left: 51%;
+right: 27.1%;
+top: 12.64%;
+bottom: 51.11%;
+
+background: #C5C8D9;
+
+
+/* Text */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+align-items: flex-start;
+padding: 0px;
+gap: 2px;
+
+width: 62px;
+height: 38px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Frame 14271 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 0px;
+gap: 8px;
+
+width: 62px;
+height: 20px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Bitcoin */
+
+width: 62px;
+height: 20px;
+
+/* Body/Small - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 14px;
+line-height: 145%;
+/* or 20px */
+font-feature-settings: 'ss06' on;
+
+/* Neutral/900 */
+color: #131316;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* BTC */
+
+width: 23px;
+height: 16px;
+
+/* Body/XSmall - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 12px;
+line-height: 135%;
+/* or 16px */
+letter-spacing: 0.005em;
+font-feature-settings: 'ss06' on;
+
+/* Neutral/400 */
+color: #9C9CAB;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Frame 39919 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 0px;
+
+width: 163px;
+height: 38px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Price */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+align-items: flex-start;
+padding: 0px;
+gap: 2px;
+
+width: 103px;
+height: 38px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 1;
+
+
+/* Frame 14271 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 0px;
+gap: 8px;
+
+width: 103px;
+height: 20px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* $1,236.21 */
+
+width: 61px;
+height: 20px;
+
+/* Body/Small - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 14px;
+line-height: 145%;
+/* or 20px */
+font-feature-settings: 'ss06' on;
+
+/* Neutral/900 */
+color: #131316;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* 1.4363 BTC */
+
+width: 103px;
+height: 16px;
+
+/* Body/XSmall - Regular */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 400;
+font-size: 12px;
+line-height: 135%;
+/* or 16px */
+letter-spacing: 0.005em;
+font-feature-settings: 'ss06' on;
+
+/* Neutral/500 */
+color: #717184;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* Badge */
+
+box-sizing: border-box;
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 4px 6px;
+gap: 4px;
+
+width: 60px;
+height: 24px;
+
+background: #ECFDF7;
+border: 1px solid #DAFBEF;
+border-radius: 100px;
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Icon */
+
+width: 12px;
+height: 12px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Vector */
+
+position: absolute;
+left: 0%;
+right: 0%;
+top: 0%;
+bottom: 0%;
+
+
+
+/* Vector */
+
+position: absolute;
+left: 25%;
+right: 25%;
+top: 37.5%;
+bottom: 37.5%;
+
+/* States/Success */
+background: #11CF8B;
+/* States/Success */
+border: 1.5px solid #11CF8B;
+
+
+/* 1.37% */
+
+width: 32px;
+height: 16px;
+
+/* Body/XSmall - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 12px;
+line-height: 135%;
+/* or 16px */
+display: flex;
+align-items: center;
+letter-spacing: 0.005em;
+font-feature-settings: 'ss06' on;
+
+/* States/Success */
+color: #11CF8B;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* People Watch Item */
+
+box-sizing: border-box;
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 16px 0px;
+
+width: 328px;
+height: 72px;
+
+/* Main Colors / White */
+background: #FFFFFF;
+/* Neutral/200
+
+Lightness = 90
+*/
+border-bottom: 1px solid #E3E3E8;
+
+/* Inside auto layout */
+flex: none;
+order: 2;
+flex-grow: 0;
+
+
+/* Crypto */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: flex-start;
+padding: 0px;
+gap: 12px;
+
+width: 165px;
+height: 40px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 1;
+
+
+/* Crypto */
+
+width: 40px;
+height: 40px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Vector */
+
+position: absolute;
+left: 0%;
+right: 0%;
+top: 0%;
+bottom: 0%;
+
+background: linear-gradient(180deg, #F9AA4B -0.02%, #F7931A 99.99%);
+
+
+/* Vector */
+
+position: absolute;
+left: 26.07%;
+right: 26.07%;
+top: 18.34%;
+bottom: 18.34%;
+
+/* Neutral / White */
+background: #FFFFFF;
+
+
+/* Text */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+align-items: flex-start;
+padding: 0px;
+gap: 2px;
+
+width: 44px;
+height: 38px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Frame 14271 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 0px;
+gap: 8px;
+
+width: 44px;
+height: 20px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Bitcoin */
+
+width: 44px;
+height: 20px;
+
+/* Body/Small - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 14px;
+line-height: 145%;
+/* or 20px */
+font-feature-settings: 'ss06' on;
+
+/* Neutral/900 */
+color: #131316;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* BTC */
+
+width: 23px;
+height: 16px;
+
+/* Body/XSmall - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 12px;
+line-height: 135%;
+/* or 16px */
+letter-spacing: 0.005em;
+font-feature-settings: 'ss06' on;
+
+/* Neutral/400 */
+color: #9C9CAB;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Frame 39919 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 0px;
+
+width: 163px;
+height: 38px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Price */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+align-items: flex-start;
+padding: 0px;
+gap: 2px;
+
+width: 103px;
+height: 38px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 1;
+
+
+/* Frame 14271 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 0px;
+gap: 8px;
+
+width: 103px;
+height: 20px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* $1,236.21 */
+
+width: 58px;
+height: 20px;
+
+/* Body/Small - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 14px;
+line-height: 145%;
+/* or 20px */
+font-feature-settings: 'ss06' on;
+
+/* Neutral/900 */
+color: #131316;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* 1.4363 BTC */
+
+width: 103px;
+height: 16px;
+
+/* Body/XSmall - Regular */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 400;
+font-size: 12px;
+line-height: 135%;
+/* or 16px */
+letter-spacing: 0.005em;
+font-feature-settings: 'ss06' on;
+
+/* Neutral/500 */
+color: #717184;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* Badge */
+
+box-sizing: border-box;
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 4px 6px;
+gap: 4px;
+
+width: 60px;
+height: 24px;
+
+background: #ECFDF7;
+border: 1px solid #DAFBEF;
+border-radius: 100px;
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Icon */
+
+width: 12px;
+height: 12px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Vector */
+
+position: absolute;
+left: 0%;
+right: 0%;
+top: 0%;
+bottom: 0%;
+
+
+
+/* Vector */
+
+position: absolute;
+left: 25%;
+right: 25%;
+top: 37.5%;
+bottom: 37.5%;
+
+/* States/Success */
+background: #11CF8B;
+/* States/Success */
+border: 1.5px solid #11CF8B;
+
+
+/* 1.37% */
+
+width: 32px;
+height: 16px;
+
+/* Body/XSmall - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 12px;
+line-height: 135%;
+/* or 16px */
+display: flex;
+align-items: center;
+letter-spacing: 0.005em;
+font-feature-settings: 'ss06' on;
+
+/* States/Success */
+color: #11CF8B;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* People Watch Item */
+
+box-sizing: border-box;
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 16px 0px;
+
+width: 328px;
+height: 72px;
+
+/* Main Colors / White */
+background: #FFFFFF;
+/* Neutral/200
+
+Lightness = 90
+*/
+border-bottom: 1px solid #E3E3E8;
+
+/* Inside auto layout */
+flex: none;
+order: 3;
+flex-grow: 0;
+
+
+/* Crypto */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: flex-start;
+padding: 0px;
+gap: 12px;
+
+width: 165px;
+height: 40px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 1;
+
+
+/* Crypto */
+
+width: 40px;
+height: 40px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Oval */
+
+position: absolute;
+left: 0%;
+right: 0%;
+top: 0%;
+bottom: 0%;
+
+background: #E2BD23;
+mix-blend-mode: normal;
+opacity: 0.2;
+
+
+/* Object */
+
+position: absolute;
+width: 40px;
+height: 40px;
+left: 0px;
+top: 0px;
+
+
+
+/* Oval */
+
+position: absolute;
+left: 0%;
+right: 0%;
+top: 0%;
+bottom: 0%;
+
+background: #32A4BE;
+mix-blend-mode: normal;
+
+
+/* Oval */
+
+position: absolute;
+left: 0%;
+right: 0%;
+top: 0%;
+bottom: 0%;
+
+background: #F0C30B;
+mix-blend-mode: normal;
+
+
+/* Oval */
+
+position: absolute;
+left: 0%;
+right: 0%;
+top: 0%;
+bottom: 0%;
+
+background: #C2A633;
+mix-blend-mode: normal;
+
+
+/* Combined Shape */
+
+position: absolute;
+left: 28.85%;
+right: 25%;
+top: 29.95%;
+bottom: 27.75%;
+
+/* Neutral / White */
+background: #FFFFFF;
+
+
+/* D */
+
+position: absolute;
+left: 37.18%;
+right: 25%;
+top: 29.95%;
+bottom: 27.75%;
+
+background: #FFFFFF;
+
+
+/* Path */
+
+position: absolute;
+left: 37.18%;
+right: 25%;
+top: 29.95%;
+bottom: 27.75%;
+
+
+
+/* Path */
+
+position: absolute;
+left: 47.32%;
+right: 35.27%;
+top: 37.98%;
+bottom: 35.79%;
+
+
+
+/* Rectangle */
+
+position: absolute;
+left: 28.85%;
+right: 42.97%;
+top: 48.08%;
+bottom: 45.88%;
+
+background: #FFFFFF;
+
+
+/* Text */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+align-items: flex-start;
+padding: 0px;
+gap: 2px;
+
+width: 62px;
+height: 38px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Frame 14271 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 0px;
+gap: 8px;
+
+width: 62px;
+height: 20px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Bitcoin */
+
+width: 62px;
+height: 20px;
+
+/* Body/Small - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 14px;
+line-height: 145%;
+/* or 20px */
+font-feature-settings: 'ss06' on;
+
+/* Neutral/900 */
+color: #131316;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* BTC */
+
+width: 34px;
+height: 16px;
+
+/* Body/XSmall - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 12px;
+line-height: 135%;
+/* or 16px */
+letter-spacing: 0.005em;
+font-feature-settings: 'ss06' on;
+
+/* Neutral/400 */
+color: #9C9CAB;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Frame 39919 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 0px;
+
+width: 163px;
+height: 38px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Price */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+align-items: flex-start;
+padding: 0px;
+gap: 2px;
+
+width: 103px;
+height: 38px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 1;
+
+
+/* Frame 14271 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 0px;
+gap: 8px;
+
+width: 103px;
+height: 20px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* $1,236.21 */
+
+width: 42px;
+height: 20px;
+
+/* Body/Small - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 14px;
+line-height: 145%;
+/* or 20px */
+font-feature-settings: 'ss06' on;
+
+/* Neutral/900 */
+color: #131316;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* 1.4363 BTC */
+
+width: 103px;
+height: 16px;
+
+/* Body/XSmall - Regular */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 400;
+font-size: 12px;
+line-height: 135%;
+/* or 16px */
+letter-spacing: 0.005em;
+font-feature-settings: 'ss06' on;
+
+/* Neutral/500 */
+color: #717184;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* Badge */
+
+box-sizing: border-box;
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 4px 6px;
+gap: 4px;
+
+width: 60px;
+height: 24px;
+
+background: #ECFDF7;
+border: 1px solid #DAFBEF;
+border-radius: 100px;
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Icon */
+
+width: 12px;
+height: 12px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Vector */
+
+position: absolute;
+left: 0%;
+right: 0%;
+top: 0%;
+bottom: 0%;
+
+
+
+/* Vector */
+
+position: absolute;
+left: 25%;
+right: 25%;
+top: 37.5%;
+bottom: 37.5%;
+
+/* States/Success */
+background: #11CF8B;
+/* States/Success */
+border: 1.5px solid #11CF8B;
+
+
+/* 1.37% */
+
+width: 32px;
+height: 16px;
+
+/* Body/XSmall - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 12px;
+line-height: 135%;
+/* or 16px */
+display: flex;
+align-items: center;
+letter-spacing: 0.005em;
+font-feature-settings: 'ss06' on;
+
+/* States/Success */
+color: #11CF8B;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* People Watch Item */
+
+box-sizing: border-box;
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 16px 0px;
+
+width: 328px;
+height: 72px;
+
+/* Main Colors / White */
+background: #FFFFFF;
+/* Neutral/200
+
+Lightness = 90
+*/
+border-bottom: 1px solid #E3E3E8;
+
+/* Inside auto layout */
+flex: none;
+order: 4;
+flex-grow: 0;
+
+
+/* Crypto */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: flex-start;
+padding: 0px;
+gap: 12px;
+
+width: 165px;
+height: 40px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 1;
+
+
+/* Crypto */
+
+width: 40px;
+height: 40px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Cjdowner-Cryptocurrency-Flat-Bitcoin-Diamond-BCD */
+
+position: absolute;
+width: 40px;
+height: 40px;
+left: 0px;
+top: 0px;
+
+
+
+/* Oval */
+
+position: absolute;
+left: 0%;
+right: 0%;
+top: 0%;
+bottom: 0%;
+
+background: #00CBA0;
+mix-blend-mode: normal;
+opacity: 0.2;
+
+
+/* digibyte */
+
+position: absolute;
+width: 39.91px;
+height: 39.91px;
+left: 0.04px;
+top: 0.04px;
+
+
+
+/* Oval */
+
+position: absolute;
+left: 0.09%;
+right: 0.14%;
+top: 0.09%;
+bottom: 0.14%;
+
+background: #2774DB;
+
+
+/* Path */
+
+position: absolute;
+left: 29.6%;
+right: 29.14%;
+top: 30.28%;
+bottom: 29.65%;
+
+/* Neutral / White */
+background: #FFFFFF;
+
+
+/* Text */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+align-items: flex-start;
+padding: 0px;
+gap: 2px;
+
+width: 52px;
+height: 38px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Frame 14271 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 0px;
+gap: 8px;
+
+width: 52px;
+height: 20px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Bitcoin */
+
+width: 52px;
+height: 20px;
+
+/* Body/Small - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 14px;
+line-height: 145%;
+/* or 20px */
+font-feature-settings: 'ss06' on;
+
+/* Neutral/900 */
+color: #131316;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* BTC */
+
+width: 25px;
+height: 16px;
+
+/* Body/XSmall - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 12px;
+line-height: 135%;
+/* or 16px */
+letter-spacing: 0.005em;
+font-feature-settings: 'ss06' on;
+
+/* Neutral/400 */
+color: #9C9CAB;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Frame 39919 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 0px;
+
+width: 163px;
+height: 38px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Price */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+align-items: flex-start;
+padding: 0px;
+gap: 2px;
+
+width: 103px;
+height: 38px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 1;
+
+
+/* Frame 14271 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 0px;
+gap: 8px;
+
+width: 103px;
+height: 20px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* $1,236.21 */
+
+width: 42px;
+height: 20px;
+
+/* Body/Small - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 14px;
+line-height: 145%;
+/* or 20px */
+font-feature-settings: 'ss06' on;
+
+/* Neutral/900 */
+color: #131316;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* 1.4363 BTC */
+
+width: 103px;
+height: 16px;
+
+/* Body/XSmall - Regular */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 400;
+font-size: 12px;
+line-height: 135%;
+/* or 16px */
+letter-spacing: 0.005em;
+font-feature-settings: 'ss06' on;
+
+/* Neutral/500 */
+color: #717184;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* Badge */
+
+box-sizing: border-box;
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 4px 6px;
+gap: 4px;
+
+width: 60px;
+height: 24px;
+
+background: #FFEBF0;
+border: 1px solid #FED7E0;
+border-radius: 100px;
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Icon */
+
+width: 12px;
+height: 12px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Vector */
+
+position: absolute;
+left: 0%;
+right: 0%;
+top: 0%;
+bottom: 0%;
+
+
+
+/* Vector */
+
+position: absolute;
+left: 75%;
+right: -25%;
+top: 62.5%;
+bottom: 12.5%;
+
+/* States / Error */
+background: #FB3766;
+/* States / Error */
+border: 1.5px solid #FB3766;
+transform: rotate(180deg);
+
+
+/* 1.37% */
+
+width: 32px;
+height: 16px;
+
+/* Body/XSmall - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 12px;
+line-height: 135%;
+/* or 16px */
+display: flex;
+align-items: center;
+letter-spacing: 0.005em;
+font-feature-settings: 'ss06' on;
+
+/* States / Error */
+color: #FB3766;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* People Watch Item */
+
+box-sizing: border-box;
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 16px 0px;
+
+width: 328px;
+height: 72px;
+
+/* Main Colors / White */
+background: #FFFFFF;
+/* Neutral/200
+
+Lightness = 90
+*/
+border-bottom: 1px solid #E3E3E8;
+
+/* Inside auto layout */
+flex: none;
+order: 5;
+flex-grow: 0;
+
+
+/* Crypto */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: flex-start;
+padding: 0px;
+gap: 12px;
+
+width: 165px;
+height: 40px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 1;
+
+
+/* Crypto */
+
+width: 40px;
+height: 40px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Group */
+
+position: absolute;
+left: 0%;
+right: 0%;
+top: 0%;
+bottom: 0%;
+
+
+
+/* Vector */
+
+position: absolute;
+left: 0%;
+right: 0%;
+top: 0%;
+bottom: 0%;
+
+background: #767DFF;
+
+
+/* Vector */
+
+position: absolute;
+left: 18.73%;
+right: 18.73%;
+top: 20.31%;
+bottom: 23.44%;
+
+/* Main Colors / White */
+background: #FFFFFF;
+
+
+/* Text */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+align-items: flex-start;
+padding: 0px;
+gap: 2px;
+
+width: 44px;
+height: 38px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Frame 14271 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 0px;
+gap: 8px;
+
+width: 44px;
+height: 20px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Bitcoin */
+
+width: 44px;
+height: 20px;
+
+/* Body/Small - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 14px;
+line-height: 145%;
+/* or 20px */
+font-feature-settings: 'ss06' on;
+
+/* Neutral/900 */
+color: #131316;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* BTC */
+
+width: 25px;
+height: 16px;
+
+/* Body/XSmall - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 12px;
+line-height: 135%;
+/* or 16px */
+letter-spacing: 0.005em;
+font-feature-settings: 'ss06' on;
+
+/* Neutral/400 */
+color: #9C9CAB;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Frame 39919 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 0px;
+
+width: 163px;
+height: 38px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Price */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+align-items: flex-start;
+padding: 0px;
+gap: 2px;
+
+width: 103px;
+height: 38px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 1;
+
+
+/* Frame 14271 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 0px;
+gap: 8px;
+
+width: 103px;
+height: 20px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* $1,236.21 */
+
+width: 42px;
+height: 20px;
+
+/* Body/Small - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 14px;
+line-height: 145%;
+/* or 20px */
+font-feature-settings: 'ss06' on;
+
+/* Neutral/900 */
+color: #131316;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* 1.4363 BTC */
+
+width: 103px;
+height: 16px;
+
+/* Body/XSmall - Regular */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 400;
+font-size: 12px;
+line-height: 135%;
+/* or 16px */
+letter-spacing: 0.005em;
+font-feature-settings: 'ss06' on;
+
+/* Neutral/500 */
+color: #717184;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* Badge */
+
+box-sizing: border-box;
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 4px 6px;
+gap: 4px;
+
+width: 60px;
+height: 24px;
+
+background: #FFEBF0;
+border: 1px solid #FED7E0;
+border-radius: 100px;
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Icon */
+
+width: 12px;
+height: 12px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Vector */
+
+position: absolute;
+left: 0%;
+right: 0%;
+top: 0%;
+bottom: 0%;
+
+
+
+/* Vector */
+
+position: absolute;
+left: 75%;
+right: -25%;
+top: 62.5%;
+bottom: 12.5%;
+
+/* States / Error */
+background: #FB3766;
+/* States / Error */
+border: 1.5px solid #FB3766;
+transform: rotate(180deg);
+
+
+/* 1.37% */
+
+width: 32px;
+height: 16px;
+
+/* Body/XSmall - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 12px;
+line-height: 135%;
+/* or 16px */
+display: flex;
+align-items: center;
+letter-spacing: 0.005em;
+font-feature-settings: 'ss06' on;
+
+/* States / Error */
+color: #FB3766;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* People Watch Item */
+
+box-sizing: border-box;
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 16px 0px;
+
+width: 328px;
+height: 72px;
+
+/* Main Colors / White */
+background: #FFFFFF;
+/* Neutral/200
+
+Lightness = 90
+*/
+border-bottom: 1px solid #E3E3E8;
+
+/* Inside auto layout */
+flex: none;
+order: 6;
+flex-grow: 0;
+
+
+/* Crypto */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: flex-start;
+padding: 0px;
+gap: 12px;
+
+width: 165px;
+height: 40px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 1;
+
+
+/* Crypto */
+
+width: 40px;
+height: 40px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* USDT */
+
+position: absolute;
+left: 0.41%;
+right: 0.09%;
+top: 0.23%;
+bottom: 0.27%;
+
+
+
+/* usdt */
+
+position: absolute;
+left: 0.41%;
+right: 0.09%;
+top: 0.23%;
+bottom: 0.27%;
+
+
+
+/* Group */
+
+position: absolute;
+left: 0.41%;
+right: 0.09%;
+top: 0.23%;
+bottom: 0.27%;
+
+
+
+/* Shape */
+
+position: absolute;
+left: 0.41%;
+right: 0.09%;
+top: 0.23%;
+bottom: 0.27%;
+
+background: #1BA27A;
+
+
+/* Shape */
+
+position: absolute;
+left: 26.4%;
+right: 26.49%;
+top: 25.32%;
+bottom: 46.59%;
+
+/* Neutral / White */
+background: #FFFFFF;
+
+
+/* Shape */
+
+position: absolute;
+left: 20.01%;
+right: 19.89%;
+top: 44.1%;
+bottom: 18.56%;
+
+/* Neutral / White */
+background: #FFFFFF;
+
+
+/* Text */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+align-items: flex-start;
+padding: 0px;
+gap: 2px;
+
+width: 41px;
+height: 38px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Frame 14271 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 0px;
+gap: 8px;
+
+width: 41px;
+height: 20px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Bitcoin */
+
+width: 41px;
+height: 20px;
+
+/* Body/Small - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 14px;
+line-height: 145%;
+/* or 20px */
+font-feature-settings: 'ss06' on;
+
+/* Neutral/900 */
+color: #131316;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* BTC */
+
+width: 31px;
+height: 16px;
+
+/* Body/XSmall - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 12px;
+line-height: 135%;
+/* or 16px */
+letter-spacing: 0.005em;
+font-feature-settings: 'ss06' on;
+
+/* Neutral/400 */
+color: #9C9CAB;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Frame 39919 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 0px;
+
+width: 163px;
+height: 38px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Price */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+align-items: flex-start;
+padding: 0px;
+gap: 2px;
+
+width: 103px;
+height: 38px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 1;
+
+
+/* Frame 14271 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 0px;
+gap: 8px;
+
+width: 103px;
+height: 20px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* $1,236.21 */
+
+width: 42px;
+height: 20px;
+
+/* Body/Small - Medium */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 500;
+font-size: 14px;
+line-height: 145%;
+/* or 20px */
+font-feature-settings: 'ss06' on;
+
+/* Neutral/900 */
+color: #131316;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* 1.4363 BTC */
+
+width: 103px;
+height: 16px;
+
+/* Body/XSmall - Regular */
+font-family: 'Aeonik';
+font-style: normal;
+font-weight: 400;
+font-size: 12px;
+line-height: 135%;
+/* or 16px */
+letter-spacing: 0.005em;
+font-feature-settings: 'ss06' on;
+
+/* Neutral/500 */
+color: #717184;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* Badge */
+
+box-sizing: border-box;
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 4px 6px;
+gap: 4px;
+
+width: 60px;
+height: 24px;
+
+background: #ECFDF7;
+border: 1px solid #DAFBEF;
+border-radius: 100px;
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Icon */
+
+width: 12px;
+height: 12px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+===
+/* People also watch */
+
+box-sizing: border-box;
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: center;
+padding: 24px 32px 32px;
+gap: 24px;
+
+position: relative;
+width: 392px;
+height: 568px;
+left: 616px;
+top: 731px;
+
+/* Main Colors / White */
+background: #FFFFFF;
+/* Neutral/200
+
+Lightness = 90
+*/
+border-top: 1px solid #E3E3E8;

@@ -18,7 +18,7 @@ const app = express();
 //app.use(cors());
 app.use(
   cors({
-    origin: "http://localhost:3000", //process.env.CORS_ORIGIN, // Allowed origin
+    origin: process.env.CORS_ORIGIN, // Allowed origin
     credentials: true, // Allow sending/receiving cookies
   }),
 );
@@ -72,7 +72,7 @@ const startServer = async () => {
       maxAge: 30 * 24 * 60 * 60 * 1000,
       httpOnly: true,
       sameSite: "none",
-      domain: "localhost",
+      domain: process.env.DOMAIN,
     });
 
     res.send("Cookie set");
@@ -109,7 +109,7 @@ app.post("/clear-cookie", (req, res) => {
     secure: true,
     httpOnly: true,
     sameSite: "none",
-    domain:'localhost',
+    domain: process.env.DOMAIN,
     expires: new Date(0)
   });
   res.json({ message: "Logged out successfully" });

@@ -3,7 +3,7 @@ import useWebSocket, {ReadyState} from "react-use-websocket";
 import {useCallback, useRef} from "react";
 
 
-const useWSClient = (url: string) => {
+const useWSClient = (url: string, addToHistory?:(dir:string, v:string)=>void) => {
     const fragments = useRef<{ [key: string]: string[] }>({});
     const fragmentsMsg = useRef<{ [key: string]: string[] }>({});
     const canWork = useRef(false);
@@ -35,6 +35,8 @@ const useWSClient = (url: string) => {
                     assembledMessage.length,
                 );
                 delete fragments.current[msgId];
+                addToHistory && addToHistory("<", assembledMessage);
+
                 console.log(
                     "call handler msgId",
                     msgId,
@@ -49,7 +51,7 @@ const useWSClient = (url: string) => {
                 }
             }
         }
-        console.log("/onMessage");
+        //console.log("/onMessage");
     };
 
     const {sendJsonMessage, readyState, getWebSocket} = useWebSocket(url, {
@@ -88,6 +90,7 @@ const useWSClient = (url: string) => {
                 socket.onerror = (error: Event) => {
                     reject(error);
                 };
+                addToHistory && addToHistory(">", JSON.stringify(o));
                 sendJsonMessage(o);
             } else {
                 reject({error: "socket is closed"});

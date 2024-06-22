@@ -5,7 +5,7 @@ import { TradeFilter } from "../trade";
 import { fetchHistory } from "../../utils/fetchData";
 import { PortfolioModel } from "../../models/portfolio";
 import {
-  checkPortfolioPricesCurrencies,
+  checkPortfolioPricesCurrencies, checkPrices,
   getDatePrices,
   getDateSymbolPrice,
   getRate,
@@ -30,6 +30,24 @@ type Params = {
   sample: string;
   precision:number
 };
+
+function getSymbolReturnFunc(symbol:string, invest:number)  {
+  let prevPrice: number|null = null
+  let ret = invest
+  return (date:string)=> {
+    const newPrice =getDateSymbolPrice(date, symbol)
+    if(prevPrice && newPrice) {
+      ret+=newPrice-prevPrice;
+      console.log(symbol, date, prevPrice, newPrice,newPrice- prevPrice, ret);
+      prevPrice=newPrice;
+      return ret;
+    } else {
+      console.log(symbol, date, newPrice, ret);
+      prevPrice=newPrice;
+      return ret;
+    }
+  }
+}
 export async function history(
   { _id, from, till, detail='0', sample , precision=2}: Params,
   sendResponse: (data: any) => void,
@@ -104,6 +122,9 @@ export async function history(
   console.log("P", startDate, uniqueSymbols, uniqueCurrencies);
   const lastDay = till.split("T")[0];
   let currentDay = startDate.split("T")[0];
+  await checkPrices([portfolio.baseInstrument],
+      moment(currentDay,formatYMD).add(-5, 'day').format(formatYMD))
+
 
   const symbolRealized: Record<string, RealizedData> = {};
 
@@ -115,7 +136,7 @@ export async function history(
   const rows = [];
   let nav = 0;
   let totalRealized=0;
-
+  let symbolReturnFunc: (date:string)=> number=(s)=>0;
   function setSymbolRealized(symbol:string, trade: Trade, oldVolume: number) {
     if (!symbolRealized[symbol]) {
       symbolRealized[symbol] = {totalCost: 0, realized: 0}
@@ -133,6 +154,9 @@ export async function history(
 
   for (const trade of trades) {
     if (!trade.tradeTime.includes(currentDay)) {
+      if ( currentDay === startDate.split("T")[0]) {//cree
+        symbolReturnFunc = getSymbolReturnFunc(portfolio.baseInstrument, nav)
+      }
       const nextCurrentDayWithTrade = trade.tradeTime.split("T")[0];
       if (sample) {
       //  currentDay = moment(currentDay,formatYMD).add(1, 'day').format(formatYMD)
@@ -157,6 +181,7 @@ export async function history(
             investedWithoutTrades: toNumLocal(inv),
             cash,
             nav: toNumLocal(isNotTradedDate ? inv + cash : nav + inv),
+            index: symbolReturnFunc(currentDay)
 
           });
         }
@@ -256,6 +281,7 @@ export async function history(
     investedWithoutTrades: toNumLocal(inv),
     cash:  toNumLocal(cash),
     nav: toNumLocal(nav + inv),
+    index: symbolReturnFunc(currentDay)
    // realized= allSymbols.reduce((sum,symbol) => sum + symbolRealized[symbol].realized, 0);
 
   });
@@ -284,6 +310,8 @@ export async function history(
         invested: toNumLocal(inv),
         cash: toNumLocal(cash),
         nav: toNumLocal(inv + cash),
+        index: symbolReturnFunc(currentDay)
+
       });
       currentDay = moment(currentDay,formatYMD).add(1, 'day').format(formatYMD)
     }

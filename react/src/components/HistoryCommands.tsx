@@ -2,11 +2,15 @@ import { Popover } from "antd";
 import { historyCommands } from "../pages/console";
 import { useState } from "react";
 import { LabelValue } from "../types/LabelValue";
+import styled from "styled-components";
 
 type Props = {
   onGetFromHistory: (lv: LabelValue) => void;
 };
 
+const StyledLi = styled.li`
+ padding: 2px 0!important;
+`
 const HistoryCommands = ({ onGetFromHistory }: Props) => {
   const [visibleHistoryCommand, setVisibleHistoryCommand] = useState(false);
   const handleVisibleChange = (visible: boolean) => {
@@ -22,9 +26,9 @@ const HistoryCommands = ({ onGetFromHistory }: Props) => {
         <div>
           <ul>
             {historyCommands.map((c, index) => (
-              <li key={index} onClick={() => handleClick(c)}>
+              <StyledLi key={index} onClick={() => handleClick(c)}>
                 {c.label}
-              </li>
+              </StyledLi>
             ))}
           </ul>
         </div>

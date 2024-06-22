@@ -12,11 +12,13 @@ const StyledList = styled(List)`
   }
 `;
 
-const StyledListItem = styled.div`
+const StyledListItem = styled(List.Item)`
+  padding: 2px 0px !important;
+`;
+
+const StyledListItemMeta = styled.div`
   white-space: nowrap;
   color: ${(props) => props.color || "inherit"};
-  // overflow: hidden;
-  // text-overflow: ellipsis;
 `;
 
 type Props = {
@@ -64,13 +66,13 @@ const HistoryList = ({
               const clr = s.charAt(0) === ">" ? "#880f41" : "#117207";
 
               return (
-                <List.Item>
+                <StyledListItem>
                   <List.Item.Meta
                     description={
-                      <StyledListItem color={clr}>{s}</StyledListItem>
+                      <StyledListItemMeta color={clr}>{s}</StyledListItemMeta>
                     }
                   />
-                </List.Item>
+                </StyledListItem>
               );
             }}
           />
