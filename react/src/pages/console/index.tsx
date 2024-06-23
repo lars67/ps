@@ -1,10 +1,10 @@
 
-import React, {memo, useRef, useState} from 'react';
+import React, {memo, useRef, useState, Suspense} from 'react';
 import {Avatar, Dropdown, MenuProps, message, Tabs} from 'antd';
 import type { TabsProps } from 'antd';
 import ConsoleTab from "./ConsoleTab";
 import {LabelValue} from "../../types/LabelValue";
-import {QuoteGrid} from "../index";
+import {QuoteGrid, Import }from "../index";
 import {LogoutOutlined, PlusOutlined, SettingOutlined, UnorderedListOutlined, UserOutlined} from "@ant-design/icons";
 import {PATH_LOGIN} from "../../constants/routes";
 import PortfoliosTable from "../portfolios";
@@ -64,6 +64,15 @@ export default memo(() => {
     setActiveKey(newActiveKey);
   };
 
+  const addImport = () => {
+    const newActiveKey = `newTab${++newTabIndex.current}`;
+    const newPanes = [...items];
+    const tabIndex= 1+newTabIndex.current
+    newPanes.push({label: `Import`, children: <Import/>, key: newActiveKey});
+    setItems(newPanes);
+    setActiveKey(newActiveKey);
+  };
+
   const tabActions : MenuProps["items"] = [
     {
       key: "tab-portfolio",
@@ -82,6 +91,12 @@ export default memo(() => {
       label: "Portfolios",
       icon: <UnorderedListOutlined />,
       onClick:(addPortfolios)
+    },
+    {
+      key: "tab-import",
+      label: "Imports",
+      icon: <UnorderedListOutlined />,
+      onClick:(addImport)
     },
   ];
   const onChange = (key: string) => {
@@ -128,7 +143,8 @@ export default memo(() => {
       </div>
   );
 
-  return (<Tabs
+  return (
+      <Suspense fallback={<div>Loading...</div>}><Tabs
       tabBarExtraContent={toolPanel}
       className="custom-tab-bar"
       activeKey={activeKey}
@@ -136,5 +152,5 @@ export default memo(() => {
       items={items}
       type="editable-card"
       onEdit={handleEdit}
-      onChange={onChange}/>)
+      onChange={onChange}/></Suspense>)
 })

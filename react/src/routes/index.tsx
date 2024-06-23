@@ -55,6 +55,10 @@ const router = createBrowserRouter([
     path: "/grid",
     element: <QuoteGrid />,
   },
+  {
+    path: "/import",
+    element: <QuoteGrid />,
+  },
 
   {
     element: <ProtectedRoute />,
