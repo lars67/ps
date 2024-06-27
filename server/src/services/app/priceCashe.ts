@@ -11,6 +11,11 @@ import {
 } from "../../utils";
 import { formatYMD } from "../../constants";
 
+export type PricePoint = {
+  date: string;
+  [key: string]: number| string;
+};
+
 const dateHistory: Record<string, Record<string, number>> = {};
 const histories: StringRecord = {};
 const SEARCH_DAY = 10;
@@ -94,7 +99,7 @@ export function getDatesSymbols(
   symbols: string[],
   from: string,
   till?: string,
-) {
+): PricePoint[] {
   let date = from.split("T").shift() as string;
   const dateLast = till?.split("T").shift() || moment().format(formatYMD);
   const prices = [];

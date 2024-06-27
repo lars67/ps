@@ -1,5 +1,9 @@
 import { ObjectId } from "mongodb";
-
+export enum  PortfolioTypes  {
+  STANDART= '',
+  SUMMATION= 'summation',
+  FUND='fund'
+}
 export type Portfolio = {
   name: string;
   description: string;

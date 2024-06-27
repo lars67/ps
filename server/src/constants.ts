@@ -7,7 +7,8 @@ export const errorMsgs  = {
     notAllowed: (text:string) =>  ({error: `${text}  is not allowed`}),
     unknown: (field: string, value:string) => ({error: `unknonown value '${value}' for ${field}`}),
     error: (error:string)=> ({error}),
-    denied: (text:string) => ({error:`Access to ${text} denied`})
+    denied: (text:string) => ({error:`Access to ${text} denied`}),
+
 }
 
 export const  formatYMD = 'YYYY-MM-DD';

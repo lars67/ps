@@ -87,6 +87,13 @@ type PortfolioPositionFull = PortfolioPosition &
     totalSymbol?: number;
     totalType?: string;
   };
+type PortfolioCurrencyCash ={
+  total: number;
+  symbol: string;
+};
+
+type CommonPortfolioPosition = PortfolioPositionFull | PortfolioCurrencyCash;
+
 export type QuoteChange = PortfolioPositionFull;
 /*QuoteData2 & {
   name: string;
@@ -200,7 +207,7 @@ export async function positions(
 
   let rates: Record<string, number> = {};
   let fees: Record<string, { fee: number; feeSym: number }>;
-
+  let cashes: Record<string, number> = {}
   let portfolioPositions: Record<string, Partial<PortfolioPositionFull>>;
   let currencyInvested: Record<
     string,
@@ -256,7 +263,7 @@ export async function positions(
     sectorInvested = positions.sectorInvested;
     industryInvested = positions.industryInvested;
     portfoliosInvested = positions.portfoliosInvested;
-
+    cashes= positions.cashes;
     const symbols = [
       ...positions.positions.map((p) => p.symbol),
       ...extractUniqueFields(positions.positions, "currency")
@@ -319,7 +326,7 @@ export async function positions(
   sectorInvested = positions.sectorInvested;
   industryInvested = positions.industryInvested;
   portfoliosInvested = positions.portfoliosInvested;
-
+cashes = positions.cashes;
   const symbols = [
     ...positions.positions.map((p) => p.symbol),
     ...extractUniqueFields(positions.positions, "currency")
@@ -385,7 +392,7 @@ export async function positions(
     ).filter(Boolean);
     console.log("isFirst", isFirst, "q2Symbols", q2Symbols);
 
-    const changes: QuoteChange[] = [];
+    const changes: CommonPortfolioPosition[] = [];
 
     q2Symbols.forEach((p) => {
       const { symbol, marketPrice, marketClose } = p as QuoteData2;
@@ -505,7 +512,12 @@ export async function positions(
         changes.push({ symbol, ...change });
       }
     });
-
+    if (isFirst) {
+      Object.keys(cashes).forEach(key=> {
+        const c : CommonPortfolioPosition = {symbol: `CASH_${key}`, total: cashes[key] as number};
+        changes.push( c)
+      })
+    }
     isFirst = false;
     return changes;
   };
@@ -541,7 +553,7 @@ export async function positions(
         change = { symbol } as PortfolioPositionFull;
         changes.push(change);
       }
-      change.weight =
+      (change as PortfolioPositionFull).weight =
         Math.round(
           (10000 * Number(portfolioPositions[symbol].marketValue)) /
             marketValue,
@@ -551,19 +563,19 @@ export async function positions(
     switch (closed) {
       case "no":
         changes = changes.filter(
-          (c) => portfolioPositions[c.symbol].volume !== 0,
+          (c): c is PortfolioPositionFull =>   portfolioPositions[c.symbol].volume !== 0,
         );
         break;
       case "only":
         changes = changes.filter(
-          (c) => portfolioPositions[c.symbol].volume === 0,
+          (c): c is PortfolioPositionFull => portfolioPositions[c.symbol].volume === 0,
         );
         break;
       default:
         break;
     }
 
-    summationTotal(changes, currencyInvested, "currencyTotal");
+    summationTotal(changes as PortfolioPositionFull[], currencyInvested, "currencyTotal");
     //region -> subregion
     let changesReg: PortfolioPositionFull[] = [];
     summationTotal(changesReg, regionInvested, "regionTotal");
@@ -615,7 +627,7 @@ export async function positions(
       changes.push(reg);
     });
 
-    summationTotal(changes, portfoliosInvested, "portfoliosTotal");
+    summationTotal(changes as PortfolioPositionFull[], portfoliosInvested, "portfoliosTotal");
 
     changes.push({
       symbol: "TOTAL",
@@ -746,6 +758,7 @@ async function getPositions(
   const uniqueSymbols = extractUniqueFields(allTrades, "symbol");
   const uniqueCurrencies = extractUniqueFields(allTrades, "currency");
   const symbolCountries = await getSymbolsCountries(uniqueSymbols);
+  let cashes: Record<string, number> = {}
   //  const { startDate, endDate, uniqueSymbols, uniqueCurrencies } =
   //    await checkPortfolioPricesCurrencies(allTrades, portfolio.currency);
   //console.log("positions.467", startDate, uniqueSymbols, uniqueCurrencies);
@@ -872,6 +885,11 @@ async function getPositions(
         break;
       case "31":
       case "20":
+        if (!cashes[trade.currency]) {
+          cashes[trade.currency] = trade.price;
+        } else {
+          cashes[trade.currency] += trade.price
+        }
       /*  const cashPut = trade.price * trade.rate;
         cash += cashPut;
         if (!currencyInvested[trade.currency]) {
@@ -961,6 +979,7 @@ async function getPositions(
     portfoliosInvested: await mapKeyToName(portfoliosInvested),
     uniqueSymbols,
     uniqueCurrencies,
+    cashes
   };
 }
 
@@ -993,6 +1012,7 @@ function prepareQuoteData2(
       const marketPrice = getMarketPrice(q, marketPriceModel);
       const bprice = getBasePrice(q, basePrice);
       if (bprice) qt.bprice = bprice;
+
       if (close) {
         qt.marketClose = close;
       }

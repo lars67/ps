@@ -252,6 +252,12 @@ const PortfoliosTable = () => {
         ellipsis: true,
       },
       {
+        title: "Type",
+        dataIndex: "portfolioType",
+        key: "portfolioType",
+        ellipsis: true,
+      },
+      {
         title: "Description",
         dataIndex: "description",
         key: "description",
@@ -276,7 +282,7 @@ const PortfoliosTable = () => {
         align: "right" as const,
       },
       {
-        title: "Access1",
+        title: "Access",
         dataIndex: "access",
         key: "access",
       },

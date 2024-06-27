@@ -15,6 +15,7 @@ const menu = [
     children: [
       { label: "Portfolios", key: "commands/portfolios" },
       { label: "Trades", key: "commands/trades" },
+      { label: "Tools", key: "commands/tools" },
     ],
   },
 ];

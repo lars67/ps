@@ -30,8 +30,13 @@ export type PutCash = {
   tradeType: string;
   rate: number;
 };
+
+export type PutInvestment = PutCash & {
+  shares?: number
+};
+
 export async function putSpecialTrade(
-  par: PutCash,
+  par: PutInvestment,
   sendResponse: (data: any) => void,
   msgId: string,
   userModif: string,
@@ -60,6 +65,7 @@ export async function putSpecialTrade(
   if (!(await CurrencyModel.find({ symbol: par.currency }))) {
     return { error: `Unknown currency` };
   }
+
   if (!par.userId) {
     par.userId = userId;
   }
@@ -89,7 +95,7 @@ export async function putSpecialTrade(
       if (rate) {
         par.rate = rate;
       } else {
-        throw `RATE unknown ${fx}`;
+        return {error: `RATE unknown ${fx}`};
       }
     }
   }
@@ -276,3 +282,6 @@ export const getPortfolioInstanceByIDorName = async (
 
 
 //
+export const calculatePerfomance = (days: any[]) => {
+
+};

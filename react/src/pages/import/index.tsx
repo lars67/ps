@@ -71,7 +71,10 @@ const ContextPane: React.FC<ContextPaneProps> = ({
 };
 
 const parseCSVString = (csvString: string): CsvData[] => {
-  const rows = csvString.trim().split("\n");
+
+  const rows = csvString.trim().replace(/"/g,'').split("\n").filter(r=>
+      !['BOF','BOA','BOS', 'EOS','EOA', 'EOF'].includes(r.slice(0,3)));
+
   const headers = rows[0].split(",");
 
   const data: CsvData[] = [];

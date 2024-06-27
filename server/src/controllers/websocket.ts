@@ -4,6 +4,8 @@ import * as commands from "../services/command";
 import * as plays from "../services/play";
 import * as symbols from "../services/custom/symbols";
 import * as logs from "../services/custom/logs";
+import * as tools from "../services/custom/tools";
+
 import * as portfolios from "../services/portfolio";
 import * as trades from "../services/trade";
 import * as tests from "../services/tests/prices";
@@ -22,6 +24,7 @@ const handlers: { [key: string]: any } = {
   plays,
 //tests commands
   tests,
+  tools,
 
 //custom full
   logs, //...Object.keys(customServises).reduce((all,s)=>s,{})

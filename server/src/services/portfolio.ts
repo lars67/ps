@@ -17,7 +17,7 @@ import { Trade } from "../types/trade";
 import {
   checkAccessByRole,
   fixRate, getPortfolioInstanceByIDorName,
-  PutCash,
+  PutCash, PutInvestment,
   putSpecialTrade,
   summationFlatPortfolios,
 } from "../services/portfolio/helper";
@@ -166,6 +166,21 @@ export async function putCash(
   );
 }
 
+export async function putInvestment(
+    par: PutInvestment,
+    sendResponse: (data: any) => void,
+    msgId: string,
+    userModif: string,
+    { userId }: UserData,
+): Promise<Trade | ErrorType | undefined> {
+  return await putSpecialTrade(
+      { ...par, tradeType: "31" },
+      sendResponse,
+      msgId,
+      userModif,
+      userId,
+  );
+}
 export async function putDividends(
     par: PutCash,
     sendResponse: (data: any) => void,
@@ -289,6 +304,17 @@ export const description: CommandDescription = {
     label: "Portfolio Put Cash",
     value: JSON.stringify({
       command: "portfolios.putCash",
+      portfolioId: "?",
+      amount: "?",
+      currency: "?",
+      userId: "",
+    }),
+  },
+
+  putInvestment: {
+    label: "Portfolio Put Cash",
+    value: JSON.stringify({
+      command: "portfolios.putInvestment",
       portfolioId: "?",
       amount: "?",
       currency: "?",

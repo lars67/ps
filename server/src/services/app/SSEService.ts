@@ -59,15 +59,15 @@ export default class SSEService implements SSEServiceInst {
       if (this.onOpen) this.onOpen();
     };
     this.source.onmessage = (event) => {
-      const data: object = JSON.parse(event.data);
+      const data: any[] = JSON.parse(event.data);
       if (this.onData) this.onData(data);
 
       //console.log('isFirst', this.isFirst, 'ONMESSAGE SSE EVENT QUOTES FROM TOP')//, data)
       // @ts-ignore
       const actualData = this.isFirst  ?  data : actualizeData(data);
-      console.log(this.eventName,'actualdata', actualData)
       this.isFirst= false;
-      if (actualData) {
+      if (actualData?.length>0) {
+        console.log(this.eventName,'actualdata', actualData)
         testLogger.log(JSON.stringify(actualData));
         sendEvent(this.eventName, data);
       }

@@ -25,7 +25,7 @@ export type Trade = {
   state: string;
   invested?: number;
   closed?: boolean
-
+  shares?: number
 };
 
 export type TradeWithID = Trade & { _id: string | ObjectId };
