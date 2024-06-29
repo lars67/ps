@@ -389,7 +389,7 @@ export async function getPortfolioTrades(_id: string, from?:string, filterAdditi
 
 
 export const actualizeTrades = (trades:Trade[]) => {
-    //process fx trades
+ /*   //process fx trades
     const fxTrades: Trade[] = [];
    // console.log('actualizeTrades', trades)
     trades.filter(t=> (t.symbol && t.symbol.indexOf(':FX')>0)).forEach(t=> {
@@ -405,6 +405,6 @@ export const actualizeTrades = (trades:Trade[]) => {
     if (fxTrades.length>0 ) {
         trades.push(...fxTrades)
     }
-   // console.log('/trades', trades);
+   // console.log('/trades', trades);*/
     return trades;
 }

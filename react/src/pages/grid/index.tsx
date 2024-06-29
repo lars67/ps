@@ -6,7 +6,7 @@ import React, {
   useState,
 } from "react";
 
-import { Table, message, Flex, Spin} from "antd";
+import { Table, message, Flex, Spin } from "antd";
 import "./styles.css";
 import useWebSocket, { ReadyState } from "react-use-websocket";
 import { useAppSelector } from "../../store/useAppSelector";
@@ -32,7 +32,6 @@ import {
   BaseConfigParams,
   ColorDataItem,
   DisplayKeys,
-
   LayoutKeys,
 } from "../../types/config";
 import { extractAndRemoveSubArray, insertBeforeIndex } from "../../utils";
@@ -86,10 +85,14 @@ const QuoteTable = () => {
 
   const modif = useRef(Math.round(100000 * Math.random()));
   const msgId = useRef(0);
-  const ser = (role === 'guest' ? process.env.REACT_APP_GUEST_WS  : process.env.REACT_APP_WS );
+  const ser =
+    role === "guest"
+      ? process.env.REACT_APP_GUEST_WS
+      : process.env.REACT_APP_WS;
   const url = `${ser}?${encodeURIComponent(token)}@${modif.current}`;
   const [tableData, setTableData] = useState<QuoteData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewCash, setViewCash] = useState(false);
 
   const portfolioRequested = useRef(false);
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
@@ -107,7 +110,6 @@ const QuoteTable = () => {
 
   const [hoveredRowKey, setHoveredRowKey] = useState<string | null>(null);
 
-
   const addToHistory = (dir: string, s: string) => {
     history.current.push(`${dir} ${s}`);
     if (history.current.length > 50) {
@@ -115,8 +117,14 @@ const QuoteTable = () => {
     }
   };
 
-    const {canWork, handlers,sendJsonMessageSync, sendMsg, clearMsgId, readyState} = useWSClient(url, addToHistory)
-
+  const {
+    canWork,
+    handlers,
+    sendJsonMessageSync,
+    sendMsg,
+    clearMsgId,
+    readyState,
+  } = useWSClient(url, addToHistory);
 
   const loadPortfolios = async () => {
     console.log("loadPortfolios");
@@ -170,7 +178,7 @@ const QuoteTable = () => {
       );
     });
 
-   // console.log("prepareDATA", groups.group);
+    // console.log("prepareDATA", groups.group);
 
     const targetType = `${groups.group}Total`;
     const [symbolPositions, filteredData1] = extractAndRemoveSubArray(
@@ -301,10 +309,39 @@ const QuoteTable = () => {
     };
   }, [pid, config]);
 
-  const actualTableData = useMemo(
-    () => prepareData(tableData),
-    [tableData, layout, groups],
+  const actualTableData = useMemo(() => {
+    const [cash, stock] = tableData.reduce(
+      ([cash, stock], trade) => {
+        if (trade.symbol.startsWith("CASH_")) {
+          return [[...cash, trade], stock];
+        } else {
+          return [cash, [...stock, trade]];
+        }
+      },
+      [[] as QuoteData[], [] as QuoteData[]],
+    );
+    return [cash, prepareData(stock)];
+  }, [tableData, layout, groups]);
+  const columnsCash = useMemo(
+    () => [
+      {
+        title: "Currency",
+        dataIndex: "symbol",
+        key: "symbol",
+        ellipsis: true,
+        render: (value: string) => value.split("_").pop(),
+      },
+      {
+        title: "Total",
+        dataIndex: "total",
+        key: "total",
+        ellipsis: true,
+        render: numberFormattedRender("total"),
+      },
+    ],
+    [],
   );
+
   const columns = useMemo(
     () => [
       {
@@ -384,13 +421,12 @@ const QuoteTable = () => {
         align: "right" as const,
         render: numberFormattedRender("todayResult"),
       },
-
     ],
     [display],
   );
 
   const handleSelectPortfolio = useCallback(
-    async (newPid: string) => {
+    (newPid: string) => {
       setPID(newPid);
       setSelectedPortfolio(portfolios.find((p) => p._id === newPid));
       history.current = [];
@@ -439,6 +475,11 @@ const QuoteTable = () => {
     [display, hoveredRowKey],
   );
 
+  const handleViewCash = useCallback(() => {
+    setViewCash((v) => !v);
+  }, []);
+
+  // @ts-ignore
   // @ts-ignore
   return (
     <div className={"playground-container"}>
@@ -448,6 +489,8 @@ const QuoteTable = () => {
         pid={pid}
         onSelectPortfolio={handleSelectPortfolio}
         canWork={canWork.current}
+        onViewCash={handleViewCash}
+        viewCash={viewCash}
         // leftChildren={<SubscriptionDataIndicator count={countChangeData} />}
       >
         <EmulatePriceChange
@@ -464,25 +507,38 @@ const QuoteTable = () => {
         />
       </GridToolbar>
       <div className={"table-container"}>
-        {pid && (
-          <Table
-            size="small"
-            rowKey={"symbol"}
-            loading={loading}
-            columns={columns}
-            dataSource={actualTableData}
-            pagination={false}
-            scroll={{ y: "calc(var(--top-div-height) - 86px)" }}
-            bordered={true}
-            rowHoverable={false}
-            onRow={(record) => ({
-              style: getRowStyle(record),
-              onMouseEnter: () => setHoveredRowKey(record.name),
-              onMouseLeave: () => setHoveredRowKey(null),
-            })}
+        {pid &&
+          (viewCash ? (
+            <Table
+              size="small"
+              rowKey={"symbol"}
+              loading={loading}
+              columns={columnsCash}
+              dataSource={actualTableData[0]}
+              pagination={false}
+              scroll={{ y: "calc(var(--top-div-height) - 86px)" }}
+              bordered={true}
+              rowHoverable={false}
+            />
+          ) : (
+            <Table
+              size="small"
+              rowKey={"symbol"}
+              loading={loading}
+              columns={columns}
+              dataSource={actualTableData[1]}
+              pagination={false}
+              scroll={{ y: "calc(var(--top-div-height) - 86px)" }}
+              bordered={true}
+              rowHoverable={false}
+              onRow={(record) => ({
+                style: getRowStyle(record),
+                onMouseEnter: () => setHoveredRowKey(record.name),
+                onMouseLeave: () => setHoveredRowKey(null),
+              })}
+            />
+          ))}
 
-          />
-        )}
         {initialization && (
           <Flex align="center" gap="middle">
             <Spin />

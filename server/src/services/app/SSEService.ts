@@ -67,7 +67,7 @@ export default class SSEService implements SSEServiceInst {
       const actualData = this.isFirst  ?  data : actualizeData(data);
       this.isFirst= false;
       if (actualData?.length>0) {
-        console.log(this.eventName,'actualdata', actualData)
+     //   console.log('SSEServicem  recieve: ', this.eventName,'actualdata', actualData)
         testLogger.log(JSON.stringify(actualData));
         sendEvent(this.eventName, data);
       }

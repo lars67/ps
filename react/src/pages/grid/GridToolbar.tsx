@@ -1,8 +1,8 @@
-import { Select } from "antd";
+import { Radio, Select } from "antd";
 import SocketConnectionIndicator from "../../SocketConnectionIndicator";
 import { ReadyState } from "react-use-websocket";
 import { Portfolio } from "../../types/portfolio";
-import SelectAnimated from "../../components/SelectAnimated/SelectAnimated";
+import styled from "styled-components";
 
 type Props = {
   readyState: ReadyState;
@@ -12,7 +12,14 @@ type Props = {
   canWork: boolean;
   children: React.ReactNode;
   leftChildren?: React.ReactNode;
+  onViewCash: () => void;
+  viewCash: boolean;
 };
+
+const RadioGroupStyled = styled(Radio.Group)`
+  margin-left: 10px;
+`;
+
 const GridToolbar = ({
   readyState,
   portfolios,
@@ -21,6 +28,8 @@ const GridToolbar = ({
   canWork,
   children,
   leftChildren,
+  onViewCash,
+  viewCash,
 }: Props) => {
   return (
     <div
@@ -41,6 +50,10 @@ const GridToolbar = ({
         options={portfolios}
         disabled={!canWork}
       ></Select>
+      <RadioGroupStyled onChange={onViewCash} value={viewCash} size={'small'}>
+        <Radio value={false}>Stocks</Radio>
+        <Radio value={true}>Cash</Radio>
+      </RadioGroupStyled>
       {leftChildren}
       <div className="spacer" />
       {children}

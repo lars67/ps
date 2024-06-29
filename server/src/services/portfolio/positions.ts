@@ -242,6 +242,7 @@ export async function positions(
   let investedPortfolio = 0; //full portfolio invested
 
   let totalRealized = 0;
+
   const subscriberOnTrades = async (ev: TradeOp) => {
     console.log("subscriberOnTrades get event==========", ev);
     const allTrades = await TradeModel.find({
@@ -327,14 +328,18 @@ export async function positions(
   industryInvested = positions.industryInvested;
   portfoliosInvested = positions.portfoliosInvested;
 cashes = positions.cashes;
+//console.log('T', trades)
   const symbols = [
     ...positions.positions.map((p) => p.symbol),
+    ...extractUniqueFields(trades.filter(t=>(t.tradeType === "1" && t.symbol?.endsWith(':FX'))), "symbol"),
     ...extractUniqueFields(positions.positions, "currency")
       .filter((c) => c !== portfolio.currency)
       .map((c: string) => `${c}${portfolio.currency}:FX`),
-  ].join(",");
+  ];
+ // console.log('SYMBOLS', symbols);
+
   eventEmitter.on("trade.change", subscriberOnTrades);
-  const sseService = new SSEService("quotes", symbols, eventName);
+  const sseService = new SSEService("quotes", symbols.join(','), eventName);
   //--
 
   rates = { [portfolio.currency]: 1.0 } as Record<string, number>;
@@ -350,9 +355,12 @@ cashes = positions.cashes;
   const processQuoteData = (data: QuoteData[]) => {
     const [currencyData, symbolData] = divideArray(
       data,
-      (q: QuoteData) => !positions.uniqueSymbols.includes(q.symbol),
+  //    (q: QuoteData) => !positions.uniqueSymbols.includes(q.symbol),
+        (q: QuoteData) => isCurrency(q.symbol),
+
     );
     console.log("processQuoteData rates", rates);
+  //  console.log('currencyData,symbolData: ', currencyData.map(c=>c.symbol), symbolData.map(c=>c.symbol));
     if (requestType === "0") {
       console.log("stop!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
       subscribers[userModif][msgId].sseService.stop();
@@ -367,7 +375,7 @@ cashes = positions.cashes;
       marketPrice,
       basePrice,
     ).filter(Boolean);
-    //  console.log( "q2Rates", q2Rates, 'rates', rates);
+    //  console.log( "q2Rates$$#", q2Rates, 'rates', rates, currencyData);
 
     const newRates = {} as Record<string, number>;
     q2Rates.forEach((r) => {
@@ -382,10 +390,10 @@ cashes = positions.cashes;
         rates[cur] = newRate;
       }
     });
-    // console.log("rates", rates, "newRates", newRates, "fees", fees);
+    //console.log("rates", rates, "newRates", newRates, "fees", fees);
 
     const q2Symbols = prepareQuoteData2(
-      symbolData,
+      symbolData.filter(d=>!isCurrency(d.symbol) ),
       marketPrice,
       basePrice,
       isFirst,
@@ -524,7 +532,7 @@ cashes = positions.cashes;
 
   const calcChanges = (data: object) => {
     let changes = processQuoteData(data as QuoteData[]);
-    //console.log("changes ==>", changes);
+    console.log("calcChanges ==>", changes);
     if (changes.length === 0) {
       return undefined;
     }
@@ -559,16 +567,19 @@ cashes = positions.cashes;
             marketValue,
         ) / 100;
     });
-
+//console.log('changes', changes)
     switch (closed) {
       case "no":
         changes = changes.filter(
-          (c): c is PortfolioPositionFull =>   portfolioPositions[c.symbol].volume !== 0,
+          (c): c is PortfolioPositionFull =>   {
+            console.log(c.symbol, portfolioPositions[c.symbol]);
+            return portfolioPositions[c.symbol]?.volume !== 0
+          },
         );
         break;
       case "only":
         changes = changes.filter(
-          (c): c is PortfolioPositionFull => portfolioPositions[c.symbol].volume === 0,
+          (c): c is PortfolioPositionFull => portfolioPositions[c.symbol]?.volume === 0,
         );
         break;
       default:
@@ -747,21 +758,18 @@ const summationTotal = (
 };
 
 async function getPositions(
-  allTrades0: Trade[],
+  allTrades: Trade[],
   portfolio: Portfolio,
   closed: string,
 ) {
   //console.log('getPositions....');
-  const allTrades = actualizeTrades(allTrades0);
   const lastTrade = findMaxByField<Trade>(allTrades, "tradeTime");
   const endDate = lastTrade.tradeTime;
   const uniqueSymbols = extractUniqueFields(allTrades, "symbol");
   const uniqueCurrencies = extractUniqueFields(allTrades, "currency");
   const symbolCountries = await getSymbolsCountries(uniqueSymbols);
   let cashes: Record<string, number> = {}
-  //  const { startDate, endDate, uniqueSymbols, uniqueCurrencies } =
-  //    await checkPortfolioPricesCurrencies(allTrades, portfolio.currency);
-  //console.log("positions.467", startDate, uniqueSymbols, uniqueCurrencies);
+//console.log('uniqueSymbols', uniqueSymbols, 'uniqueCurrencies', uniqueCurrencies);
   let currencyInvested: Record<
     string,
     { invested: number; investedSymbol: number; fee: number; feeSymbol: number }
@@ -809,6 +817,44 @@ async function getPositions(
     switch (trade.tradeType) {
       case "1":
         const { symbol } = trade;
+        if (symbol.endsWith(':FX')) {
+          const trgCur = symbol.slice(0, 3);
+          const dirBuyTrg = trade.side === "B" ? 1 : -1
+       const v = dirBuyTrg * trade.price * trade.rate * trade.volume;
+          console.log(v);
+          if (!cashes[trade.currency]) {
+            cashes[trade.currency] = -v;
+          } else {
+            cashes[trade.currency] -= v;
+          }
+          if (!cashes[trgCur]) {
+            cashes[trgCur] = v;
+          } else {
+            cashes[trgCur] += v;
+          }
+          if (!cashes[portfolio.currency]) {
+            cashes[portfolio.currency] = -trade.fee*trade.rate;
+          } else {
+            cashes[portfolio.currency] -=trade.fee*trade.rate;
+          }
+
+          break;
+        } else {
+          const trgCur = trade.currency;
+          const dirBuyTrg = trade.side === "B" ? 1 : -1;
+          const v = dirBuyTrg * trade.price * trade.rate * trade.volume;
+
+          if (!cashes[trgCur]) {
+            cashes[trgCur] = -v;
+          } else {
+            cashes[trgCur] -= v;
+          }
+          if (!cashes[portfolio.currency]) {
+            cashes[portfolio.currency] = -trade.fee*trade.rate;
+          } else {
+            cashes[portfolio.currency] -=trade.fee*trade.rate;
+          }
+        }
         const country = symbolCountries[symbol];
         const { region, subRegion } = getCountryFields(country, [
           "a2",
@@ -903,16 +949,7 @@ async function getPositions(
   const nowDay = moment().format(formatYMD); //!!!!!!!!!!!!!!!!!!!!!!!!
   const allSymbols = Object.keys(oldPortfolio);
   //console.log('oldPortfolio', oldPortfolio);
-  const actualSymbols = allSymbols.filter((s) => {
-    switch (closed) {
-      case "no":
-        return true; //oldPortfolio[s].volume !== 0;
-      case "only":
-        return true; //oldPortfolio[s].volume === 0;
-      default:
-        return true;
-    }
-  });
+  const actualSymbols = allSymbols.filter((s) => !s.endsWith(':FX'))
 
   //console.log("positions.OOOO", currentDay, nowDay, actualSymbols);
   const positions: Record<string, Partial<Trade>> = actualSymbols.reduce(
@@ -1006,7 +1043,7 @@ function prepareQuoteData2(
   });
   const qData2 = data.map((q) => {
     const { symbol, currency, volume, close, country } = q;
-    //console.log('qData2', q)
+    //console.log('qData2=>', q)
     if (symbol) {
       const qt: Partial<QuoteData2> = {};
       const marketPrice = getMarketPrice(q, marketPriceModel);
@@ -1137,3 +1174,13 @@ function getBasePrice(q: QuoteData, basePrice?: string): number | undefined {
       return q.close;
   }
 }
+
+/*
+buy EURUSD:FX   quantity =10000   price:1.0692 fee=2 currency USD
+so we in trade: USD sell+fee  = 10000*1.0692+2=10694 this amount need for buy 10000EUR
+Change in USD CASH = 100372 - 10694 = 89678 ! and in screen 3 we have too 89678, all good
+Change in EUR CASH = -39 +10692= 10653
+So all currencies cash in portfolio currency USD
+
+SELL EURDKK DKK 7.4585 20000  Buy evro 20000 by 7.4585=149170 DKK -> USD
+ */

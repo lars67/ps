@@ -34,7 +34,7 @@ const tradeMap: MapFields = {
   //  CostBasis
 };
 /*
-
+FXRateToBase:, Symbol, Quantity,TradePrice,Buy/Sell,CurrencyPrimary,IBCommission
 command
 :
 "trades.add"
