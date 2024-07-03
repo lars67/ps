@@ -44,8 +44,8 @@
         <td><div class="cm-activeLine cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolio.trades"</span>,<span class="ͼ1m">"_id"</span>:<span class="ͼ19">"?"</span>,<span class="ͼ1m">"from"</span>:<span class="ͼ19">""</span>}</div></td>
     </tr>
     <tr>
-        <td><a href="#to-putCash">Put Cash</td>
-        <td><div class="cm-activeLine cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.putCash"</span>,<span class="ͼ1m">"portfolioId"</span>:<span class="ͼ19">"?"</span>,<span class="ͼ1m">"amount"</span>:<span class="ͼ19">"?"</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"?"</span>,<span class="ͼ1m">"userId"</span>:<span class="ͼ19">""</span>}</div></td>
+        <td><a href="#to-putCash">Put Cash</a></td>
+        <td><div class="cm-activeLine cm-line"><span class="cm-matchingBracket">{</span><span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.putCash"</span>,<span class="ͼ1m">"portfolioId"</span>:<span class="ͼ19">"?"</span>,<span class="ͼ1m">"amount"</span>:<span class="ͼ19">"?"</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"?"</span>,<span class="ͼ1m">"rate"</span>:<span class="ͼ19">""</span>,<span class="ͼ1m">"description"</span>:<span class="ͼ19">""</span>,<span class="ͼ1m">"fee"</span>:<span class="ͼ19">""</span>,<span class="ͼ1m">"userId"</span>:<span class="ͼ19">""</span><span class="cm-matchingBracket">}</span></div></td>
     </tr>
     <tr>
         <td>Put Dividends</td>
@@ -79,7 +79,7 @@
     </tr>
     <tr>
         <td>baseInstrument</td>
-        <td><Some symbol like: SPY</td>
+        <td>Some symbol like: SPY</td>
         <td>Yes</td>
     </tr>
     <tr>
@@ -97,7 +97,11 @@
         <td>Children portfolios _id or names. ['child1', '661fb59b6d472d966c0a7521']</td>
         <td>No</td>
     </tr>
-
+    <tr>
+        <td>userId</td>
+        <td>UserId, when not set will be used userId of current logined User. <span color="red">Basically  this field  must set only automatically for current user.</span>
+        <td>No</td>
+    </tr>
 </table>
 <details>
     <summary>Output</summary>
@@ -149,7 +153,7 @@ Remove portfolio with all portfolio trades
     </tr>
     <tr>
         <td> _id</td>
-        <td>Portfolio , can be portfolio fields: _id or name</td>
+        <td>Portfolio , can be portfolio fields: _id or name or accountId</td>
         <td>Yes</td>
     </tr>
 </table>
@@ -354,7 +358,7 @@ Remove portfolio with all portfolio trades
 
 
 <h3 id="to-putCash">Put Cash</h3>
-<p>Put/Get cash from portfolio </p>
+<p>Put/Get cash to/from portfolio </p>
 
 <table>
     <tr>
@@ -363,27 +367,87 @@ Remove portfolio with all portfolio trades
     <th>Required</th>
     </tr>
     <tr>
-        <td> _id</td>
-        <td>Portfolio selection, can be portfolio fields: _id or name</td>
+        <td> portfolioId</td>
+        <td>Portfolio selection, can be used portfolio fields: _id or name or accountId</td>
         <td>Yes</td>
     </tr>
     <tr>
         <td>amount</td>
-        <td>value </td>
+        <td>value in currency </td>
+        <td>Yes</td>
+    </tr>
+
+    <tr>
+        <td>currency</td>
+        <td>value . Example USD,DKK,EUR...</td>
+        <td>Yes</td>
+    </tr>
+    <tr>
+        <td>rate</td>
+        <td>Cash currency rate. When rate is not set and currency is not portfolio.currency will be used  currency rate from historical dat according tradeTime. Rate used for calculate value this currency in base  currency</td>
         <td>No</td>
     </tr>
     <tr>
-        <td>currency</td>
-        <td>value </td>
+        <td>tradeTime</td>
+        <td>When not set will be used current time. Format: "tradeTime" :"2024-03-05T08:00:00" </td>
+        <td>No</td>
+    </tr>
+    <tr>
+        <td>fee</td>
+        <td>Fee for command in current currency. Fee applied to portfolio currency as -fee*rate</td>
+        <td>No</td>
+    </tr>
+    <tr>
+        <td>description</td>
+        <td>Description</td>
+        <td>No</td>
+    </tr>
+    <tr>
+        <td>tradeType</td>
+        <td>Trade Type: cash|dividends|investment|correction. Default type : cash </td>
+        <td>No</td>
+    </tr>
+    <tr>
+        <td>aml</td>
+        <td>AML</td>
+        <td>No</td>
+    </tr>
+    <tr>
+        <td>tradeId</td>
+        <td>Some external system id</td>
         <td>No</td>
     </tr>
 </table>
+<p>Examples:</p>
+<table>
+    <tr><td>
+<div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.putCash"</span>,<span class="ͼ1m">"portfolioId"</span>:<span class="ͼ19">"_testCashPortfolio"</span>,<span class="ͼ1m">"amount"</span>:<span class="ͼ19">"1000"</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"EUR"</span>, <span class="ͼ1m">"fee"</span>:<span class="ͼ19">"10"</span>, <span class="ͼ1m">"rate"</span>:<span class="ͼ19">"1.2"</span>}</div>
+Use rate. Will be applied to base currency as - rate*fee<br/>
+            Currency EUR tracked in base curency as +rate*amount
 
-<h3>Scenarios</h3>
+    </td></tr>
+    <tr><td>
+    <div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.putCash"</span>,<span class="ͼ1m">"portfolioId"</span>:<span class="ͼ19">"_testCashPortfolio"</span>,<span class="ͼ1m">"tradeId"</span>:<span class="ͼ19">"t3"</span>,<span class="ͼ1m">"amount"</span>:<span class="ͼ19">"-100000"</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"DKK"</span>,<span class="ͼ1m">"rate"</span>:<span class="ͼ19">"1"</span>,<span class="ͼ1m">"tradeType"</span>:<span class="ͼ19">"correction"</span>,<span class="ͼ1m">"description"</span>:<span class="ͼ19">"</span><span class="cm-selectionMatch"><span class="ͼ19">put correcti</span></span><span class="ͼ19">on"</span>}</div>
+        Use tradeType  = correction. It work similar to other tradeTypes : cash, dividends, investment. only set tradeType.
+         <br/>Used rate=1 and currency DKK ,when portfolio currency is not DKK it is mean that amount in portfolio currency. As far cashes tracked in portfolio currency. Cash in portfolio currency calculated as amount*rate.
+
+    </td></tr>
+    <tr><td>
+        <div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.putCash"</span>,<span class="ͼ1m">"portfolioId"</span>:<span class="ͼ19">"_testCashPortfolio"</span>,<span class="ͼ1m">"amount"</span>:<span class="ͼ19">"-1000"</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"DKK"</span>, <span class="ͼ1m">"tradeTime"</span> :<span class="ͼ19">"2024-03-06T08:00:00"</span>}</div>
+        Used cammand with currency DKK which is not base currency and without rate. In this case rate will be requested from historical data. Returnrd rate is equal command:
+        <div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"prices.historical"</span>, <span class="ͼ1m">"symbols"</span>: <span class="ͼ19">"DKKUSD:FX"</span>, <span class="ͼ1m">"date"</span>:"<span class="ͼ1a">2024</span><span class="ͼ1a">-0</span><span class="ͼ1a">3</span><span class="ͼ1a">-0</span><span class="ͼ1a">6</span>}</div>
+        After this operation CASH DKK tracked in portfolio currency(USD) will be -1000*0.1456, where DKKUSD:FX=0.1456
+    </td></tr>
+</table>
+
+
+<details>
+    <summary>Test scenario for putCash Test_Portfolio_Cash_Operations</summary>
 <div class="help-section">
-<div class="cm-line">Tests with portfolio with name <span class="ͼ19">"_testPortfolio"</span></div><div class="cm-line">#<span class="ͼ1a">1</span> Remove if exists</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.remove"</span>, <span class="ͼ1m">"_id"</span>:<span class="ͼ19">"_testPortfolio"</span>}</div><div class="cm-line">#<span class="ͼ1a">2</span> Create new portfolio</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.add"</span>,<span class="ͼ1m">"name"</span>:<span class="ͼ19">"_testPortfolio"</span>,<span class="ͼ1m">"description"</span>:<span class="ͼ19">""</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"USD"</span>,<span class="ͼ1m">"userId"</span>:<span class="ͼ19">""</span>,<span class="ͼ1m">"baseInstrument"</span>:<span class="ͼ19">"SPY"</span>}</div><div class="cm-line">#<span class="ͼ1a">3</span> Get our portfolio to variable with name =result </div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.list"</span>, <span class="ͼ1m">"filter"</span>: {<span class="ͼ1m">"name"</span>:<span class="ͼ19">"_testPortfolio"</span>}, <span class="ͼ1m">"_as"</span>:<span class="ͼ19">"result"</span>}</div><div class="cm-line">#<span class="ͼ1a">4</span> Check that variable result is array and it length=<span class="ͼ1a">1</span></div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.check"</span>, <span class="ͼ1m">"path"</span>: <span class="ͼ19">"result"</span>, <span class="ͼ1m">"conditions"</span>: {<span class="ͼ1m">"*"</span>: {<span class="ͼ1m">"$isArray"</span>: <span class="ͼ1b">true</span>}}, <span class="ͼ1m">"description"</span>: <span class="ͼ19">"Check that porfolio.list return array"</span>}</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.check"</span>, <span class="ͼ1m">"path"</span>: <span class="ͼ19">"result"</span>, <span class="ͼ1m">"conditions"</span>: {<span class="ͼ1m">"length"</span>: {<span class="ͼ1m">"$eq"</span>: <span class="ͼ1a">1</span>}},  <span class="ͼ1m">"description"</span>: <span class="ͼ19">"Check that porfolio.list return one item "</span>}</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.check"</span>, <span class="ͼ1m">"path"</span>: <span class="ͼ19">"result.0"</span>, <span class="ͼ1m">"conditions"</span>: {<span class="ͼ1m">"name"</span>: {<span class="ͼ1m">"$eq"</span>: <span class="ͼ19">"_testPortfolio"</span>}},  <span class="ͼ1m">"description"</span>: <span class="ͼ19">"Check that returned porfolio with requested name"</span>}</div><div class="cm-line">#<span class="ͼ1a">5</span> copy portfolio._id to variable pid </div><div class="cm-line">{<span class="ͼ1m">"command"</span>: <span class="ͼ19">"tests.setVar"</span>, <span class="ͼ1m">"v"</span>:{<span class="ͼ1m">"pid"</span>: <span class="ͼ19">"$var.result.0._id"</span> }}</div><div class="cm-line">#<span class="ͼ1a">6</span> </div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.check"</span>, <span class="ͼ1m">"path"</span>: <span class="ͼ19">"result.0"</span>, <span class="ͼ1m">"conditions"</span>: {<span class="ͼ1m">"_id"</span>: {<span class="ͼ1m">"$eq"</span>: <span class="ͼ19">"$var.pid"</span>}},  <span class="ͼ1m">"description"</span>: <span class="ͼ19">"Check that variable with name 'pid'= portfolio._id"</span>}</div><div class="cm-line">#<span class="ͼ1a">7</span> Put cash</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.putCash"</span>,<span class="ͼ1m">"portfolioId"</span>:<span class="ͼ19">"$var.pid"</span>,<span class="ͼ1m">"amount"</span>:<span class="ͼ19">"1000"</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"USD"</span>, <span class="ͼ1m">"tradeTime"</span> :<span class="ͼ19">"2024-03-01T08:00:00"</span>}</div><div class="cm-line">#<span class="ͼ1a">8</span> Add cash</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.history"</span>,<span class="ͼ1m">"_id"</span>:<span class="ͼ19">"$var.pid"</span>,<span class="ͼ1m">"detail"</span>:<span class="ͼ1a">1</span>, <span class="ͼ1m">"_as"</span>:<span class="ͼ19">"history"</span>}</div><div class="cm-line">#<span class="ͼ1a">9</span></div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.check"</span>, <span class="ͼ1m">"path"</span>: <span class="ͼ19">"history.days.0"</span>, <span class="ͼ1m">"conditions"</span>: {<span class="ͼ1m">"cash"</span>: {<span class="ͼ1m">"$eq"</span>: <span class="ͼ1a">1000</span>}},  <span class="ͼ1m">"description"</span>: <span class="ͼ19">"Check frst day put cash"</span>}</div><div class="cm-line">#<span class="ͼ1a">10</span> Put Cash in EUR</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.putCash"</span>,<span class="ͼ1m">"portfolioId"</span>:<span class="ͼ19">"$var.pid"</span>,<span class="ͼ1m">"amount"</span>:<span class="ͼ19">"1000"</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"EUR"</span>, <span class="ͼ1m">"tradeTime"</span> :<span class="ͼ19">"2024-03-02T08:00:00"</span>}</div><div class="cm-line">#<span class="ͼ1a">11</span> Get history</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.history"</span>,<span class="ͼ1m">"_id"</span>:<span class="ͼ19">"$var.pid"</span>,<span class="ͼ1m">"detail"</span>:<span class="ͼ1a">1</span>, <span class="ͼ1m">"_as"</span>:<span class="ͼ19">"history2"</span>}</div><div class="cm-line"><br></div><div class="cm-line"><br></div><div class="cm-line"><br></div><div class="cm-line"><br></div><div class="cm-line"><br></div><div class="cm-line"><br></div><div class="cm-line"><br></div>></div>
+    <div spellcheck="false" autocorrect="off" autocapitalize="off" translate="no" contenteditable="true" style="tab-size: 4; flex-basis: 1651px;" class="cm-content" role="textbox" aria-multiline="true" data-language="json" aria-autocomplete="list"><div class="cm-line">Test putCash with fee, rate  and description</div><div class="cm-line">------------------------------------------------</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.text"</span>, <span class="ͼ1m">"text"</span>:<span class="ͼ19">"Test putCash with fee, rate  and description"</span>}</div><div class="cm-line">#<span class="ͼ1a">1</span> Remove if exists</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.remove"</span>, <span class="ͼ1m">"_id"</span>:<span class="ͼ19">"_testCashPortfolio"</span>}</div><div class="cm-line">#<span class="ͼ1a">2</span> Create new portfolio</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.add"</span>,<span class="ͼ1m">"name"</span>:<span class="ͼ19">"_testCashPortfolio"</span>,<span class="ͼ1m">"description"</span>:<span class="ͼ19">"port"</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"USD"</span>,<span class="ͼ1m">"userId"</span>:<span class="ͼ19">""</span>,<span class="ͼ1m">"baseInstrument"</span>:<span class="ͼ19">"SPY"</span>}</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.putCash"</span>,<span class="ͼ1m">"portfolioId"</span>:<span class="ͼ19">"_testCashPortfolio"</span>,<span class="ͼ1m">"amount"</span>:<span class="ͼ19">"1000"</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"USD"</span>, <span class="ͼ1m">"fee"</span>:<span class="ͼ19">"20.5"</span>, <span class="ͼ1m">"tradeTime"</span> :<span class="ͼ19">"2024-03-01T08:00:00"</span>, <span class="ͼ1m">"description"</span>:<span class="ͼ19">"description USD"</span>}</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.putCash"</span>,<span class="ͼ1m">"portfolioId"</span>:<span class="ͼ19">"_testCashPortfolio"</span>,<span class="ͼ1m">"amount"</span>:<span class="ͼ19">"1000"</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"EUR"</span>, <span class="ͼ1m">"fee"</span>:<span class="ͼ19">"10"</span>, <span class="ͼ1m">"rate"</span>:<span class="ͼ19">"1.2"</span>, <span class="ͼ1m">"tradeTime"</span> :<span class="ͼ19">"2024-03-01T08:00:00"</span>, <span class="ͼ1m">"description"</span>:<span class="ͼ19">"description EUR"</span>}</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.trades"</span>, <span class="ͼ1m">"_id"</span>:<span class="ͼ19">"_testCashPortfolio"</span>, <span class="ͼ1m">"_as"</span>:<span class="ͼ19">"trades"</span>}</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.check"</span>, <span class="ͼ1m">"path"</span>: <span class="ͼ19">"trades.[currency=USD]"</span>, <span class="ͼ1m">"conditions"</span>: {<span class="ͼ1m">"fee"</span>: {<span class="ͼ1m">"$eq"</span>: <span class="ͼ19">"20.5"</span>}, <span class="ͼ1m">"description"</span>: {<span class="ͼ1m">"$eq"</span>:<span class="ͼ19">"description USD"</span>}},  </div><div class="cm-line">  <span class="ͼ1m">"description"</span>: <span class="ͼ19">"Check input fee, description"</span>}</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.positions"</span>,<span class="ͼ1m">"_id"</span>:<span class="ͼ19">"_testCashPortfolio"</span>, <span class="ͼ1m">"requestType"</span>:<span class="ͼ19">"0"</span>, <span class="ͼ1m">"msgId"</span>:<span class="ͼ19">"mPos0"</span>}</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.waitMsg"</span>, <span class="ͼ1m">"msgId"</span>:<span class="ͼ19">"mPos0"</span>, <span class="ͼ1m">"to"</span>:<span class="ͼ19">"positions"</span>}</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.check"</span>,  <span class="ͼ1m">"path"</span>: <span class="ͼ19">"positions.[symbol=CASH_EUR]"</span>,   <span class="ͼ1m">"conditions"</span>: {<span class="ͼ1m">"total"</span>: {<span class="ͼ1m">"$eq"</span>: <span class="ͼ1a">1200</span>}},  </div><div class="cm-line">  <span class="ͼ1m">"description"</span>: <span class="ͼ19">"Check cash EUR=1200"</span> }</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.check"</span>,  <span class="ͼ1m">"path"</span>: <span class="ͼ19">"positions.[symbol=CASH_USD]"</span>,   <span class="ͼ1m">"conditions"</span>: {<span class="ͼ1m">"total"</span>: {<span class="ͼ1m">"$eq"</span>: <span class="ͼ1a">967.5</span>}},  </div><div class="cm-line">  <span class="ͼ1m">"description"</span>: <span class="ͼ19">"Check cash base currency(USD) include all fee = 1000 - 20 - 12.5 = 967.5"</span> }</div><div class="cm-line"><br></div><div class="cm-line"><br></div><div class="cm-line">Test putCash with retrieve rate from historical data</div><div class="cm-line">-cash operations with portfolio, we put <span class="ͼ1a">2</span> cash <span class="ͼ1a">1000</span>USD + <span class="ͼ1a">1000</span>EUR and must get cash, nav = <span class="ͼ1a">1000</span>+<span class="ͼ1a">1000</span>*<span class="ͼ1a">1.085517</span> =  <span class="ͼ1a">2085.517</span>,</div><div class="cm-line">-then we put cash <span class="ͼ1a">-1000</span> DKK and get cash, nav =  <span class="ͼ1a">1939.878</span></div><div class="cm-line">------------------------------------------------</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.text"</span>, <span class="ͼ1m">"text"</span>:<span class="ͼ19">"Test putCash with retrieve rate from historical data"</span>}</div><div class="cm-line">#<span class="ͼ1a">1</span> Remove if exists</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.remove"</span>, <span class="ͼ1m">"_id"</span>:<span class="ͼ19">"_testCashPortfolio"</span>}</div><div class="cm-line">#<span class="ͼ1a">2</span> Create new portfolio</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.add"</span>,<span class="ͼ1m">"name"</span>:<span class="ͼ19">"_testCashPortfolio"</span>,<span class="ͼ1m">"description"</span>:<span class="ͼ19">""</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"USD"</span>,<span class="ͼ1m">"userId"</span>:<span class="ͼ19">""</span>,<span class="ͼ1m">"baseInstrument"</span>:<span class="ͼ19">"SPY"</span>}</div><div class="cm-line">#<span class="ͼ1a">3</span> Put cash, we use portfolio.name in portfolioId </div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.putCash"</span>,<span class="ͼ1m">"portfolioId"</span>:<span class="ͼ19">"_testCashPortfolio"</span>,<span class="ͼ1m">"amount"</span>:<span class="ͼ19">"1000"</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"USD"</span>, <span class="ͼ1m">"tradeTime"</span> :<span class="ͼ19">"2024-03-01T08:00:00"</span>}</div><div class="cm-line">#<span class="ͼ1a">4</span> Put cash in not portfolio currency</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.putCash"</span>,<span class="ͼ1m">"portfolioId"</span>:<span class="ͼ19">"_testCashPortfolio"</span>,<span class="ͼ1m">"amount"</span>:<span class="ͼ19">"1000"</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"EUR"</span>, <span class="ͼ1m">"tradeTime"</span> :<span class="ͼ19">"2024-03-05T08:00:00"</span>,<span class="ͼ1m">"_as"</span>:<span class="ͼ19">"cashEUR"</span>}</div><div class="cm-line">#<span class="ͼ1a">5</span> Get  EURUSD:FX  for date:"<span class="ͼ1a">2024</span><span class="ͼ1a">-0</span><span class="ͼ1a">3</span><span class="ͼ1a">-0</span><span class="ͼ1a">5</span> and save as price variable</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"prices.historical"</span>, <span class="ͼ1m">"symbols"</span>: <span class="ͼ19">"EURUSD:FX"</span>, <span class="ͼ1m">"date"</span>:<span class="ͼ19">"2024-03-05"</span>, <span class="ͼ1m">"_as"</span>:<span class="ͼ19">"price"</span>}</div><div class="cm-line">#<span class="ͼ1a">6</span>  Check that used EURUSD rate for current date <span class="ͼ1a">2024</span><span class="ͼ1a">-0</span><span class="ͼ1a">3</span><span class="ͼ1a">-0</span><span class="ͼ1a">5</span> is equal historical data</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.check"</span>, <span class="ͼ1m">"path"</span>: <span class="ͼ19">"cashEUR"</span>, <span class="ͼ1m">"conditions"</span>: {<span class="ͼ1m">"rate"</span>: {<span class="ͼ1m">"$eq"</span>: <span class="ͼ19">"$var.price.EURUSD:FX"</span>}},  </div><div class="cm-line">  <span class="ͼ1m">"description"</span>: <span class="ͼ19">"Check that used EURUSD rate for current date 2024-03-05 is equal historical data"</span>}</div><div class="cm-line">#<span class="ͼ1a">7</span> PUT <span class="ͼ1a">-2000</span> USD</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.putCash"</span>,<span class="ͼ1m">"portfolioId"</span>:<span class="ͼ19">"_testCashPortfolio"</span>,<span class="ͼ1m">"amount"</span>:<span class="ͼ19">"-1000"</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"DKK"</span>, <span class="ͼ1m">"tradeTime"</span> :<span class="ͼ19">"2024-03-06T08:00:00"</span>, <span class="ͼ1m">"_as"</span>:<span class="ͼ19">"cashDKK"</span>}</div><div class="cm-line">#<span class="ͼ1a">8</span> Get  DKKUSD:FX  for date:"<span class="ͼ1a">2024</span><span class="ͼ1a">-0</span><span class="ͼ1a">3</span><span class="ͼ1a">-0</span><span class="ͼ1a">6</span> and save as price variable</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"prices.historical"</span>, <span class="ͼ1m">"symbols"</span>: <span class="ͼ19">"DKKUSD:FX"</span>, <span class="ͼ1m">"date"</span>:<span class="ͼ19">"2024-03-06"</span>, <span class="ͼ1m">"_as"</span>:<span class="ͼ19">"price"</span>}</div><div class="cm-line">#<span class="ͼ1a">9</span>  Check that used DKKUSD rate for current date <span class="ͼ1a">2024</span><span class="ͼ1a">-0</span><span class="ͼ1a">3</span><span class="ͼ1a">-0</span><span class="ͼ1a">6</span> is equal historical data</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.check"</span>, <span class="ͼ1m">"path"</span>: <span class="ͼ19">"cashDKK"</span>, <span class="ͼ1m">"conditions"</span>: {<span class="ͼ1m">"rate"</span>: {<span class="ͼ1m">"$eq"</span>: <span class="ͼ19">"$var.price.DKKUSD:FX"</span>}},  </div><div class="cm-line">  <span class="ͼ1m">"description"</span>: <span class="ͼ19">"Check that used DKKUSD rate for current date 2024-03-06 is equal historical data"</span>}</div><div class="cm-line"><br></div><div class="cm-line">#<span class="ͼ1a">10</span> get history</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.history"</span>,<span class="ͼ1m">"_id"</span>:<span class="ͼ19">"_testCashPortfolio"</span>,<span class="ͼ1m">"detail"</span>:<span class="ͼ1a">0</span>, <span class="ͼ1m">"till"</span>:<span class="ͼ19">"2024-03-07"</span>,  <span class="ͼ1m">"_as"</span>:<span class="ͼ19">"history"</span>}</div><div class="cm-line"><br></div><div class="cm-line">#<span class="ͼ1a">11</span> check</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.check"</span>, <span class="ͼ1m">"path"</span>: <span class="ͼ19">"history.days.1"</span>, <span class="ͼ1m">"conditions"</span>: {<span class="ͼ1m">"cash"</span>: {<span class="ͼ1m">"$eq"</span>: <span class="ͼ1a">2085.52</span>}},  </div><div class="cm-line">  <span class="ͼ1m">"description"</span>: <span class="ͼ19">"Check that we have cash in USD for 2024-03-05= 2085.52 = 1000USD+1000EUR rateEUR=1.085517 "</span>}</div><div class="cm-line"><br></div><div class="cm-line">#<span class="ͼ1a">12</span> check</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.check"</span>, <span class="ͼ1m">"path"</span>: <span class="ͼ19">"history.days.2"</span>, <span class="ͼ1m">"conditions"</span>: {<span class="ͼ1m">"cash"</span>: {<span class="ͼ1m">"$eq"</span>: <span class="ͼ1a">1939.88</span>}},  </div><div class="cm-line">  <span class="ͼ1m">"description"</span>: <span class="ͼ19">"Check that we have cash in USD for date 2024-03-06  = 1939.88 = 1000USD+1000EUR-1000DKK rateDKK=0.145639"</span> }</div><div class="cm-line"><br></div><div class="cm-line">#<span class="ͼ1a">13</span> get positions</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.positions"</span>,<span class="ͼ1m">"_id"</span>:<span class="ͼ19">"_testCashPortfolio"</span>, <span class="ͼ1m">"requestType"</span>:<span class="ͼ19">"0"</span>, <span class="ͼ1m">"msgId"</span>:<span class="ͼ19">"mPos"</span>}</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.waitMsg"</span>, <span class="ͼ1m">"msgId"</span>:<span class="ͼ19">"mPos"</span>, <span class="ͼ1m">"to"</span>:<span class="ͼ19">"positions"</span>}</div><div class="cm-line">#<span class="ͼ1a">14</span> check</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.check"</span>,  <span class="ͼ1m">"path"</span>: <span class="ͼ19">"positions.[symbol=CASH_USD]"</span>,   <span class="ͼ1m">"conditions"</span>: {<span class="ͼ1m">"total"</span>: {<span class="ͼ1m">"$eq"</span>: <span class="ͼ1a">1000</span>}},  </div><div class="cm-line">  <span class="ͼ1m">"description"</span>: <span class="ͼ19">"Check positions cash USD =1000"</span> }</div><div class="cm-line"><br></div><div class="cm-line">#<span class="ͼ1a">15</span> check</div><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.check"</span>, <span class="ͼ1m">"path"</span>:<span class="ͼ19">"positions.[symbol=CASH_DKK]"</span> <span class="ͼ1m">"conditions"</span>: {<span class="ͼ1m">"total"</span>: {<span class="ͼ1m">"$eq"</span>: <span class="ͼ1a">-145.64</span>}},  </div><div class="cm-activeLine cm-line">  <span class="ͼ1m">"description"</span>: <span class="ͼ19">"Check positions cash DKK = -1000DKK = -145.64 USD"</span> }</div></div>
 </div>
-<script src="../../contextMenu.js"></script>
+</details>
+    <script src="../../contextMenu.js"></script>
 
 <script>
 </script>

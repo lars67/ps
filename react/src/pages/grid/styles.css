@@ -75,6 +75,9 @@
 .table-container {
     height: calc(100% - 40px);
     overflow: hidden;
+    display: flex;
+    aligh-items: center;
+    justify-content: center;
 }
 
 td.ant-table-cell, th.ant-table-cell {

@@ -12,7 +12,7 @@ import {
 
 import { errorMsgs } from "../constants";
 import { ErrorType } from "../types/other";
-import { Trade } from "../types/trade";
+import {convertMoneyTypeToTradeType, MoneyTypes, Trade} from "../types/trade";
 
 import {
   checkAccessByRole,
@@ -158,7 +158,7 @@ export async function putCash(
     { userId }: UserData,
 ): Promise<Trade | ErrorType | undefined> {
   return await putSpecialTrade(
-      { ...par, tradeType: "31" },
+      { ...par, tradeType: convertMoneyTypeToTradeType(par.tradeType as  MoneyTypes,MoneyTypes.Cash)},
       sendResponse,
       msgId,
       userModif,
@@ -174,7 +174,7 @@ export async function putInvestment(
     { userId }: UserData,
 ): Promise<Trade | ErrorType | undefined> {
   return await putSpecialTrade(
-      { ...par, tradeType: "31" },
+      { ...par, tradeType: MoneyTypes.Investment },
       sendResponse,
       msgId,
       userModif,
@@ -189,7 +189,7 @@ export async function putDividends(
     { userId }: UserData,
 ): Promise<Trade | ErrorType | undefined> {
   return await putSpecialTrade(
-      { ...par, tradeType: "20" },
+      { ...par, tradeType: MoneyTypes.Dividends },
       sendResponse,
       msgId,
       userModif,
@@ -307,9 +307,13 @@ export const description: CommandDescription = {
       portfolioId: "?",
       amount: "?",
       currency: "?",
-      userId: "",
+      rate:"",
+      description:"",
+      fee: "",
+      userId: ""
     }),
   },
+
 
   putInvestment: {
     label: "Portfolio Put Cash",
@@ -319,6 +323,9 @@ export const description: CommandDescription = {
       amount: "?",
       currency: "?",
       userId: "",
+      rate:"",
+      descriptuion:"",
+      fee: ""
     }),
   },
 
@@ -330,6 +337,9 @@ export const description: CommandDescription = {
       amount: "?",
       currency: "?",
       userId: "",
+      rate:"",
+      descriptuion:"",
+      fee: ""
     }),
   },
 

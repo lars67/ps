@@ -8,7 +8,7 @@ import {helpSlice} from "../../store/slices/help";
 const menu = [
   { label: "Home", key: "home"  },
 
-  { label: "Test Commands", key: 'commands/tests' },
+
   {
     label: "Commands",
     key: "m_commands",
@@ -18,6 +18,7 @@ const menu = [
       { label: "Tools", key: "commands/tools" },
     ],
   },
+  { label: "Test Commands", key: 'commands/tests' },
 ];
 
 const HelpMenu: React.FC = () => {

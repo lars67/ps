@@ -26,7 +26,10 @@ const TradeSchema = new Schema<Trade>({
   comment: { type: String },
   state: { type: String },
   closed: {type: Boolean},
-  shares: {type:Number}
+  shares: {type:Number},
+  description: { type: String },
+  aml: {type: Boolean}
+
 });
 
 export const TradeModel: Model<Trade> =

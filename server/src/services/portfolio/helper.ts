@@ -29,6 +29,10 @@ export type PutCash = {
   tradeTime?: string;
   tradeType: string;
   rate: number;
+  description?: string;
+  fee?: number;
+  aml?:boolean;
+  tradeId?: string;
 };
 
 export type PutInvestment = PutCash & {
@@ -99,22 +103,25 @@ export async function putSpecialTrade(
       }
     }
   }
-  console.log("par.rate=>", par.rate);
+
   const newTrade = new TradeModel({
     portfolioId: par.portfolioId,
     price: Number(par.amount),
     currency: par.currency,
     userId: par.userId,
+    ...(par.tradeId && {tradeId: par.tradeId}) ,
     tradeTime: par.tradeTime,
     tradeType: par.tradeType,
+    fee:par.fee || 0,
+    ...(par.description && {description: par.description}) ,
     state: 1,
     side: TradeSide.PUT,
     volume: 0,
-    fee: 0,
     contract: "CASH",
     rate: par.rate,
+    aml: par.aml
   });
-
+console.log(newTrade);
   const added = await newTrade.save();
   sendEvent("trade.add", added);
   return added;

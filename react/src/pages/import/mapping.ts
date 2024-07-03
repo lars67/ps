@@ -98,8 +98,14 @@ export const mapToTrade = (data: FieldMapResult[]):TradesData[] => {
 
   const trades = data.map((d) =>
     Object.keys(tradeMap).reduce((o, fld) => {
-      const fieldValue = d[fld];
+
+      let fieldValue = d[fld];
       const fieldMapping = tradeMap[fld];
+      if (fld==='IBCommission') {
+         if (d.IBCommissionCurrency!== d.CurrencyPrimary) {
+           return {...o, fee: Math.abs(Number(d.IBCommission))*Number(d.TradePrice)};
+         }
+      }
       if (typeof fieldMapping === 'function') {
         return { ...o, ...fieldMapping(fieldValue) };
       } else {

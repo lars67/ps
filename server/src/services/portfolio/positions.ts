@@ -265,6 +265,7 @@ export async function positions(
     industryInvested = positions.industryInvested;
     portfoliosInvested = positions.portfoliosInvested;
     cashes= positions.cashes;
+//    console.log('cashes', cashes)
     const symbols = [
       ...positions.positions.map((p) => p.symbol),
       ...extractUniqueFields(positions.positions, "currency")
@@ -273,9 +274,15 @@ export async function positions(
             c !== portfolio.currency && `${c}${portfolio.currency}:FX`,
         )
         .filter(Boolean),
-    ].join(",");
-    console.log("resubscribe if need ");
-    subscribers[userModif][msgId].sseService.start(symbols, true);
+    ];
+    positions.uniqueCurrencies.filter(u=> u!==portfolio.currency).forEach(u=> {
+      const  r = `${portfolio.currency}${u}:FX`
+      if (!symbols.includes(r)) {
+        symbols.push(r);
+      }
+    })
+    console.log("resubscribe if need ", symbols);
+    subscribers[userModif][msgId].sseService.start(symbols.join(","), true);
     rates = { [portfolio.currency]: 1.0 } as Record<string, number>;
     fees = positions.fees;
 
@@ -328,7 +335,7 @@ export async function positions(
   industryInvested = positions.industryInvested;
   portfoliosInvested = positions.portfoliosInvested;
 cashes = positions.cashes;
-//console.log('T', trades)
+
   const symbols = [
     ...positions.positions.map((p) => p.symbol),
     ...extractUniqueFields(trades.filter(t=>(t.tradeType === "1" && t.symbol?.endsWith(':FX'))), "symbol"),
@@ -336,7 +343,13 @@ cashes = positions.cashes;
       .filter((c) => c !== portfolio.currency)
       .map((c: string) => `${c}${portfolio.currency}:FX`),
   ];
- // console.log('SYMBOLS', symbols);
+  positions.uniqueCurrencies.filter(u=> u!==portfolio.currency).forEach(u=> {
+    const  r = `${portfolio.currency}${u}:FX`
+    if (!symbols.includes(r)) {
+      symbols.push(r);
+    }
+  })
+  console.log('SYMBOLS', symbols);
 
   eventEmitter.on("trade.change", subscriberOnTrades);
   const sseService = new SSEService("quotes", symbols.join(','), eventName);
@@ -441,16 +454,19 @@ cashes = positions.cashes;
         };
 
         change = portfolioPositions[symbol] as QuoteChange;
-        change.result =
+        /*change.result =
           (change.marketValue ||
             Number(portfolioPositions[symbol].marketValue)) -
           Number(portfolioPositions[symbol].investedFull) -
-          fees[symbol].fee;
+          fees[symbol].fee;*/
+
         change.resultSymbol =
           (change.marketValueSymbol ||
             Number(portfolioPositions[symbol].marketValueSymbol)) -
           Number(portfolioPositions[symbol].investedFullSymbol) -
           fees[symbol].feeSym;
+          change.result = change.resultSymbol*rates[cur];
+ //         console.log(symbol, cur, rates[cur], change.resultSymbol, change.result);
         const mPrice = Number(
           p?.marketPrice || portfolioPositions[symbol].marketPrice,
         );
@@ -820,12 +836,13 @@ async function getPositions(
         if (symbol.endsWith(':FX')) {
           const trgCur = symbol.slice(0, 3);
           const dirBuyTrg = trade.side === "B" ? 1 : -1
-       const v = dirBuyTrg * trade.price * trade.rate * trade.volume;
-          console.log(v);
+          const vFrom  = dirBuyTrg *  trade.volume;
+          const vTo = dirBuyTrg * trade.price * trade.volume;
+          const v = dirBuyTrg * trade.price * trade.volume*trade.rate;
           if (!cashes[trade.currency]) {
             cashes[trade.currency] = -v;
           } else {
-            cashes[trade.currency] -= v;
+            cashes[trade.currency] -= v
           }
           if (!cashes[trgCur]) {
             cashes[trgCur] = v;
@@ -837,13 +854,12 @@ async function getPositions(
           } else {
             cashes[portfolio.currency] -=trade.fee*trade.rate;
           }
-
+//          console.log('v,vFrom, vTo', v, symbol, vFrom, vTo, 'fee', trade.fee*trade.rate);
           break;
         } else {
           const trgCur = trade.currency;
           const dirBuyTrg = trade.side === "B" ? 1 : -1;
-          const v = dirBuyTrg * trade.price * trade.rate * trade.volume;
-
+          const v = dirBuyTrg * trade.price *  trade.volume* trade.rate;
           if (!cashes[trgCur]) {
             cashes[trgCur] = -v;
           } else {
@@ -854,7 +870,9 @@ async function getPositions(
           } else {
             cashes[portfolio.currency] -=trade.fee*trade.rate;
           }
+ //         console.log('v', symbol, v, 'fee',trade.fee*trade.rate);
         }
+
         const country = symbolCountries[symbol];
         const { region, subRegion } = getCountryFields(country, [
           "a2",
@@ -931,10 +949,17 @@ async function getPositions(
         break;
       case "31":
       case "20":
+      case "21":
+      case "22":
         if (!cashes[trade.currency]) {
-          cashes[trade.currency] = trade.price;
+          cashes[trade.currency] = trade.price*trade.rate;
         } else {
-          cashes[trade.currency] += trade.price
+          cashes[trade.currency] += trade.price*trade.rate
+        }
+        if (!cashes[portfolio.currency]) {
+          cashes[portfolio.currency] = -trade.fee*trade.rate;
+        } else {
+          cashes[portfolio.currency] -=trade.fee*trade.rate;
         }
       /*  const cashPut = trade.price * trade.rate;
         cash += cashPut;
@@ -1183,4 +1208,34 @@ Change in EUR CASH = -39 +10692= 10653
 So all currencies cash in portfolio currency USD
 
 SELL EURDKK DKK 7.4585 20000  Buy evro 20000 by 7.4585=149170 DKK -> USD
+
+
+
+Interactive Brokers (IB) calculates the cash change for a buy or sell trade of the EURUSD currency pair based on the portfolio currency, which in this example can be either EUR or DKK.
+
+Here's how the cash change would be calculated in each scenario:
+
+    Portfolio Currency is EUR:
+        If you buy EURUSD:
+            The cash change would be the cost of the trade in EUR, which is the traded volume multiplied by the EURUSD price.
+            For example, if you buy 100,000 EURUSD at a price of 1.2000, the cash change would be 100,000 * 1.2000 = 120,000 EUR.
+        If you sell EURUSD:
+            The cash change would be the proceeds of the trade in EUR, which is the traded volume multiplied by the EURUSD price.
+            For example, if you sell 100,000 EURUSD at a price of 1.2000, the cash change would be 100,000 * 1.2000 = 120,000 EUR.
+
+    Portfolio Currency is DKK:
+        If you buy EURUSD:
+            The cash change would be the cost of the trade in DKK, which is the traded volume multiplied by the EURUSD price and then converted to DKK using the EUR/DKK exchange rate.
+            For example, if you buy 100,000 EURUSD at a price of 1.2000 and the EUR/DKK rate is 7.4500, the cash change would be (100,000 * 1.2000) * 7.4500 = 894,000 DKK.
+        If you sell EURUSD:
+            The cash change would be the proceeds of the trade in DKK, which is the traded volume multiplied by the EURUSD price and then converted to DKK using the EUR/DKK exchange rate.
+            For example, if you sell 100,000 EURUSD at a price of 1.2000 and the EUR/DKK rate is 7.4500, the cash change would be (100,000 * 1.2000) * 7.4500 = 894,000 DKK.
+
+The key factors are:
+
+    If the portfolio currency is the same as the base currency of the trade (EUR in this case), the cash change is simply the trade volume multiplied by the price.
+    If the portfolio currency is different from the base currency of the trade (DKK in this case), the cash change is calculated by converting the trade value to the portfolio currency using the applicable exchange rate.
+
+Interactive Brokers would handle these currency conversions and cash changes automatically as part of the trade execution and settlement process.
+
  */

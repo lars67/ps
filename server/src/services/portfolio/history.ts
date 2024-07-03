@@ -292,6 +292,8 @@ for (const trade of trades) {
       else
         shares+=1
     case "20":
+    case "21":
+    case "22":
       const rate = trade.rate || 1.0;
       const cashPut = trade.price * rate;
       console.log(
