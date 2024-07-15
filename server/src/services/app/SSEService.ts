@@ -37,8 +37,14 @@ export default class SSEService implements SSEServiceInst {
 
   public start(symbols:string, restart:boolean=false): void {
     symbols = extractUniqueValues(symbols.split(',')).join(',');
-    console.log('SSESERVICE SYMBOLS', symbols, restart);
+    console.log('SSESERVICE SYMBOLS:', symbols, this.symbols, restart);
     if (!restart && this.symbols === symbols) {
+     /* if (this.symbols.length === 0) {
+        console.log('SSESERVICE SYMBOLS this.eventName', this.eventName);
+        sendEvent(this.eventName, []);
+      }*/
+      console.log('SSESERVICE SYMBOLS break');
+
       return ;
     }
     this.isFirst= true;

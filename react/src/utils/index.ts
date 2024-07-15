@@ -11,7 +11,7 @@ export function isVarObject(value: any) {
 }
 
 export function isSymbol(s: string) {
-  return s.indexOf("TOTAL") !== 0;
+  return s.indexOf("TOTAL") !== 0 && s.indexOf("CASH") !== 0;
 }
 
 export function extractAndRemoveSubArray0<T extends object>(

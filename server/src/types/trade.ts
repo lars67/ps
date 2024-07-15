@@ -60,7 +60,7 @@ export enum MoneyTypes {
   Cash = "cash"
 }
 
-export function convertMoneyTypeToTradeType(moneyType: MoneyTypes, defValue:string): TradeTypes {
+export function convertMoneyTypeToTradeType(moneyType: MoneyTypes, defValue: TradeTypes): TradeTypes {
   switch (moneyType) {
     case MoneyTypes.Cash:
       return TradeTypes.Cash;
@@ -73,7 +73,7 @@ export function convertMoneyTypeToTradeType(moneyType: MoneyTypes, defValue:stri
     case MoneyTypes.Correction:
       return TradeTypes.Correction;
     default:
-      return TradeTypes.Cash;
+      return defValue;
   }
 }
 

@@ -1,4 +1,4 @@
-import { Trade, TradeSide } from "../../types/trade";
+import { MoneyTypes, Trade, TradeSide, TradeTypes } from "../../types/trade";
 import { ErrorType } from "../../types/other";
 import { PortfolioModel } from "../../models/portfolio";
 import { CurrencyModel } from "../../models/currency";
@@ -20,6 +20,7 @@ import moment from "moment";
 import { errorMsgs, formatYMD } from "../../constants";
 import { UserData } from "../../services/websocket";
 import { Model } from "mongoose";
+import { getSymbolCurrency } from "../../services/app/companies";
 
 export type PutCash = {
   portfolioId: string;
@@ -31,30 +32,44 @@ export type PutCash = {
   rate: number;
   description?: string;
   fee?: number;
-  aml?:boolean;
+  aml?: boolean;
   tradeId?: string;
 };
 
 export type PutInvestment = PutCash & {
-  shares?: number
+  shares?: number;
 };
 
+export type PutDividends = PutCash & {
+  symbol: string;
+};
 export async function putSpecialTrade(
-  par: PutInvestment,
+  par: PutInvestment | PutDividends,
   sendResponse: (data: any) => void,
   msgId: string,
   userModif: string,
   userId: string,
 ): Promise<Trade | ErrorType | undefined> {
-  let err_required = ["currency", "amount", "portfolioId"].reduce(
-    (err, fld) => {
-      if (!par[fld as keyof PutCash]) {
-        err += `${fld}, `;
-      }
-      return err;
-    },
-    "",
+  console.log(
+    ">>>>>",
+    par.tradeType,
+    TradeTypes.Dividends,
+    par.tradeType === TradeTypes.Dividends,
   );
+  let err_required = (
+    par.tradeType === TradeTypes.Dividends
+      ? ["symbol", "amount", "portfolioId"]
+      : ["currency", "amount", "portfolioId"]
+  ).reduce((err, fld) => {
+    if (!par[fld as keyof (PutCash | PutDividends)]) {
+      err += `${fld}, `;
+    }
+    return err;
+  }, "");
+
+  if (err_required) {
+    return errorMsgs.required(err_required);
+  }
 
   const realId = await getRealId<Portfolio>(par.portfolioId, PortfolioModel);
   if (isErrorType(realId)) {
@@ -78,10 +93,17 @@ export async function putSpecialTrade(
   } else if (!isISODate(par.tradeTime)) {
     return { error: `Wrong tradeTime format` };
   }
-  if (!par.rate) {
+
+    const pard = par as PutDividends;
+    if (!par.currency && pard.symbol) {
+      par.currency = await getSymbolCurrency(pard.symbol);
+      if (!par.currency) {
+        return errorMsgs.required("currency");
+      }
+    }
     if (portfolio.currency === par.currency) {
       par.rate = 1;
-    } else {
+    } else  if (!par.rate) {
       const fx = `${par.currency}${portfolio.currency}`;
       let rate = getDateSymbolPrice(par.tradeTime, fx);
       console.log("fx, rate", fx, rate);
@@ -99,9 +121,9 @@ export async function putSpecialTrade(
       if (rate) {
         par.rate = rate;
       } else {
-        return {error: `RATE unknown ${fx}`};
+        return { error: `RATE unknown ${fx}` };
       }
-    }
+
   }
 
   const newTrade = new TradeModel({
@@ -109,19 +131,23 @@ export async function putSpecialTrade(
     price: Number(par.amount),
     currency: par.currency,
     userId: par.userId,
-    ...(par.tradeId && {tradeId: par.tradeId}) ,
+    ...(par.tradeId && { tradeId: par.tradeId }),
     tradeTime: par.tradeTime,
     tradeType: par.tradeType,
-    fee:par.fee || 0,
-    ...(par.description && {description: par.description}) ,
+    ...((par as PutInvestment).shares && {shares:(par as PutInvestment).shares}),
+    fee: par.fee || 0,
+    ...(par.description && { description: par.description }),
+    ...((par as PutDividends).symbol && {
+      symbol: (par as PutDividends).symbol,
+    }),
     state: 1,
     side: TradeSide.PUT,
     volume: 0,
     contract: "CASH",
     rate: par.rate,
-    aml: par.aml
+    aml: par.aml,
   });
-console.log(newTrade);
+  console.log(newTrade);
   const added = await newTrade.save();
   sendEvent("trade.add", added);
   return added;
@@ -287,8 +313,5 @@ export const getPortfolioInstanceByIDorName = async (
   return { _id: realId, error, instance: portfolio };
 };
 
-
 //
-export const calculatePerfomance = (days: any[]) => {
-
-};
+export const calculatePerfomance = (days: any[]) => {};

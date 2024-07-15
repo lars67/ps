@@ -75,28 +75,30 @@ export default memo(() => {
 
   const tabActions : MenuProps["items"] = [
     {
-      key: "tab-portfolio",
-      label: "Positions",
-      icon: <UnorderedListOutlined />,
-      onClick:addPositions
-    },
-    {
-      key: "tab-anonymouse",
-      label: "Anonymous",
-      icon: <UnorderedListOutlined />,
-      onClick:(addAnonymous)
-    },
-    {
       key: "tab-portfolios",
       label: "Portfolios",
       icon: <UnorderedListOutlined />,
       onClick:(addPortfolios)
     },
     {
+      key: "tab-portfolio",
+      label: "Positions",
+      icon: <UnorderedListOutlined />,
+      onClick:addPositions
+    },
+
+    { type: 'divider' },
+    {
       key: "tab-import",
       label: "Imports",
       icon: <UnorderedListOutlined />,
       onClick:(addImport)
+    },
+    {
+      key: "tab-anonymouse",
+      label: "Anonymous",
+      icon: <UnorderedListOutlined />,
+      onClick:(addAnonymous)
     },
   ];
   const onChange = (key: string) => {

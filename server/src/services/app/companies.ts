@@ -27,6 +27,7 @@ export const getCompanyField = async (
 };
 
 let symbolsCountry: Record<string, string> = {};
+let symbolsCurrencies: Record<string, string> = {};
 export const getSymbolsCountries = async (
   symbolsAr: string[],
 ): Promise<Record<string, string>> => {
@@ -36,11 +37,13 @@ export const getSymbolsCountries = async (
       let car = (await loadInstruments(reqSymbols.join(","))) as {
         symbol: string;
         region: string;
+        currency: string;
       }[];
       if (!Array.isArray(car)) car =[car];
       car.map((c) => {
         const country = c.region === "US" ? "United States" : c.region;
         symbolsCountry[c.symbol] = country;
+        symbolsCurrencies[c.symbol] =c.currency;
       });
     } catch (err) {
       console.log("Error getCompany", err);
@@ -48,6 +51,23 @@ export const getSymbolsCountries = async (
     }
   }
   return symbolsAr.reduce((o, s) => ({ ...o, [s]: symbolsCountry[s] }), {});
+};
+
+export const getSymbolCurrency = async (
+    symbol: string,
+): Promise<string> => {
+  if (!symbolsCurrencies[symbol]) {
+    try {
+      let currency = (await loadInstruments(symbol) )as {
+        currency: string;
+      }
+       symbolsCurrencies[symbol] =currency.currency;
+
+    } catch (err) {
+      return '';
+    }
+  }
+  return symbolsCurrencies[symbol]
 };
 
 export const getGICS = async (

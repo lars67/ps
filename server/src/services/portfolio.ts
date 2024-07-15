@@ -1,31 +1,24 @@
-import { Portfolio, PortfolioWithID } from "@/types/portfolio";
-import { PortfolioModel } from "../models/portfolio";
-import { FilterQuery } from "mongoose";
-import { CommandDescription } from "@/types/custom";
-import {
-  checkCurrency,
-  checkUnique,
-  getRealId,
-  isErrorType,
-  validateRequired,
-} from "../utils";
+import {Portfolio, PortfolioWithID} from "@/types/portfolio";
+import {PortfolioModel} from "../models/portfolio";
+import {FilterQuery} from "mongoose";
+import {CommandDescription} from "@/types/custom";
+import {checkCurrency, checkUnique, getRealId, isErrorType, validateRequired,} from "../utils";
 
-import { errorMsgs } from "../constants";
-import { ErrorType } from "../types/other";
-import {convertMoneyTypeToTradeType, MoneyTypes, Trade} from "../types/trade";
+import {errorMsgs} from "../constants";
+import {ErrorType} from "../types/other";
+import {convertMoneyTypeToTradeType, MoneyTypes, Trade, TradeTypes} from "../types/trade";
 
 import {
-  checkAccessByRole,
-  fixRate, getPortfolioInstanceByIDorName,
-  PutCash, PutInvestment,
+  getPortfolioInstanceByIDorName,
+  PutCash,
+  PutDividends,
+  PutInvestment,
   putSpecialTrade,
-  summationFlatPortfolios,
 } from "../services/portfolio/helper";
-import { TradeModel } from "../models/trade";
-import { getCurrentPosition, getPortfolioTrades } from "../utils/portfolio";
-import { checkPriceCurrency } from "../services/app/priceCashe";
-import { UserData } from "@/services/websocket";
-import { generateAccountID, validateAccountID } from "../utils/idGenerator";
+import {TradeModel} from "../models/trade";
+import {getPortfolioTrades} from "../utils/portfolio";
+import {UserData} from "@/services/websocket";
+import {generateAccountID} from "../utils/idGenerator";
 
 export { history } from "./portfolio/history";
 export { positions } from "./portfolio/positions";
@@ -158,7 +151,7 @@ export async function putCash(
     { userId }: UserData,
 ): Promise<Trade | ErrorType | undefined> {
   return await putSpecialTrade(
-      { ...par, tradeType: convertMoneyTypeToTradeType(par.tradeType as  MoneyTypes,MoneyTypes.Cash)},
+      { ...par, tradeType: convertMoneyTypeToTradeType(par.tradeType as  MoneyTypes,TradeTypes.Cash)},
       sendResponse,
       msgId,
       userModif,
@@ -174,7 +167,7 @@ export async function putInvestment(
     { userId }: UserData,
 ): Promise<Trade | ErrorType | undefined> {
   return await putSpecialTrade(
-      { ...par, tradeType: MoneyTypes.Investment },
+      { ...par, tradeType: TradeTypes.Investment},
       sendResponse,
       msgId,
       userModif,
@@ -182,14 +175,17 @@ export async function putInvestment(
   );
 }
 export async function putDividends(
-    par: PutCash,
+    par: PutDividends,
     sendResponse: (data: any) => void,
     msgId: string,
     userModif: string,
     { userId }: UserData,
 ): Promise<Trade | ErrorType | undefined> {
+  if (!par.symbol) {
+     return errorMsgs.required1('symbol')
+  }
   return await putSpecialTrade(
-      { ...par, tradeType: MoneyTypes.Dividends },
+      { ...par, tradeType: TradeTypes.Dividends },
       sendResponse,
       msgId,
       userModif,
@@ -322,6 +318,7 @@ export const description: CommandDescription = {
       portfolioId: "?",
       amount: "?",
       currency: "?",
+      shares: 1,
       userId: "",
       rate:"",
       descriptuion:"",

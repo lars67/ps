@@ -6,7 +6,7 @@ import React, {
   useState,
 } from "react";
 
-import { Table, message, Flex, Spin } from "antd";
+import {Table, message, Flex, Spin, RadioChangeEvent} from "antd";
 import "./styles.css";
 import useWebSocket, { ReadyState } from "react-use-websocket";
 import { useAppSelector } from "../../store/useAppSelector";
@@ -92,7 +92,7 @@ const QuoteTable = () => {
   const url = `${ser}?${encodeURIComponent(token)}@${modif.current}`;
   const [tableData, setTableData] = useState<QuoteData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewCash, setViewCash] = useState(false);
+  const [viewMode, setViewMode] = useState('stocks');
 
   const portfolioRequested = useRef(false);
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
@@ -310,17 +310,20 @@ const QuoteTable = () => {
   }, [pid, config]);
 
   const actualTableData = useMemo(() => {
-    const [cash, stock] = tableData.reduce(
-      ([cash, stock], trade) => {
+    const [cash, stock, dividends] = tableData.reduce(
+      ([cash, stock, dividends], trade) => {
         if (trade.symbol.startsWith("CASH_")) {
-          return [[...cash, trade], stock];
+          return [[...cash, trade], stock, dividends];
+        } else if (trade.symbol.startsWith("DIVIDENDS_")){
+          return [cash, stock, [...dividends, trade]];
         } else {
-          return [cash, [...stock, trade]];
+            return [cash, [...stock, trade], dividends];
+
         }
       },
-      [[] as QuoteData[], [] as QuoteData[]],
+      [[] as QuoteData[], [] as QuoteData[], [] as QuoteData[]],
     );
-    return [cash, prepareData(stock)];
+    return [cash, prepareData(stock), dividends];
   }, [tableData, layout, groups]);
   const columnsCash = useMemo(
     () => [
@@ -332,14 +335,14 @@ const QuoteTable = () => {
         render: (value: string) => value.split("_").pop(),
       },
       {
-        title: "Total",
+        title: selectedPortfolio ? `Total (in ${selectedPortfolio?.currency  })` : 'Total',
         dataIndex: "total",
         key: "total",
         ellipsis: true,
         render: numberFormattedRender("total"),
       },
     ],
-    [],
+    [selectedPortfolio]
   );
 
   const columns = useMemo(
@@ -399,6 +402,13 @@ const QuoteTable = () => {
         key: "weight",
         align: "right" as const,
         render: numberFormattedRender("weight"),
+      },
+      {
+        title: "Realized",
+        dataIndex: "realized",
+        key: "realized",
+        align: "right" as const,
+        render: numberFormattedRender("realized"),
       },
       {
         title: "Avg.Premium",
@@ -475,12 +485,11 @@ const QuoteTable = () => {
     [display, hoveredRowKey],
   );
 
-  const handleViewCash = useCallback(() => {
-    setViewCash((v) => !v);
+  const handleViewMode = useCallback((e:RadioChangeEvent) => {
+    setViewMode(e.target.value);
   }, []);
 
-  // @ts-ignore
-  // @ts-ignore
+
   return (
     <div className={"playground-container"}>
       <GridToolbar
@@ -489,8 +498,8 @@ const QuoteTable = () => {
         pid={pid}
         onSelectPortfolio={handleSelectPortfolio}
         canWork={canWork.current}
-        onViewCash={handleViewCash}
-        viewCash={viewCash}
+        onViewMode={handleViewMode}
+        viewMode={viewMode}
         // leftChildren={<SubscriptionDataIndicator count={countChangeData} />}
       >
         <EmulatePriceChange
@@ -508,7 +517,26 @@ const QuoteTable = () => {
       </GridToolbar>
       <div className={"table-container"}>
         {pid &&
-          (viewCash ? (
+          (viewMode === 'stocks' ?
+              (
+                  <Table
+                      size="small"
+                      rowKey={"symbol"}
+                      loading={loading}
+                      columns={columns}
+                      dataSource={actualTableData[1]}
+                      pagination={false}
+                      scroll={{ y: "calc(var(--top-div-height) - 86px)" }}
+                      bordered={true}
+                      rowHoverable={false}
+                      onRow={(record) => ({
+                style: getRowStyle(record),
+                onMouseEnter: () => setHoveredRowKey(record.name),
+                onMouseLeave: () => setHoveredRowKey(null),
+              })}
+                  />) :
+              viewMode === 'cash' ?
+              (
             <Table
               size="small"
               rowKey={"symbol"}
@@ -521,22 +549,18 @@ const QuoteTable = () => {
               rowHoverable={false}
             />
           ) : (
-            <Table
-              size="small"
-              rowKey={"symbol"}
-              loading={loading}
-              columns={columns}
-              dataSource={actualTableData[1]}
-              pagination={false}
-              scroll={{ y: "calc(var(--top-div-height) - 86px)" }}
-              bordered={true}
-              rowHoverable={false}
-              onRow={(record) => ({
-                style: getRowStyle(record),
-                onMouseEnter: () => setHoveredRowKey(record.name),
-                onMouseLeave: () => setHoveredRowKey(null),
-              })}
-            />
+                      <Table
+                          size="small"
+                          rowKey={"symbol"}
+                          loading={loading}
+                          columns={columnsCash}
+                          dataSource={actualTableData[2]}
+                          pagination={false}
+                          scroll={{ y: "calc(var(--top-div-height) - 86px)" }}
+                          bordered={true}
+                          rowHoverable={false}
+                      />
+
           ))}
 
         {initialization && (

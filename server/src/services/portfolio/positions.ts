@@ -5,7 +5,7 @@ import { PortfolioModel } from "../../models/portfolio";
 import { Portfolio } from "../../types/portfolio";
 
 import moment, { Moment } from "moment";
-import {errorMsgs, formatYMD} from "../../constants";
+import { errorMsgs, formatYMD } from "../../constants";
 import {
   divideArray,
   extractUniqueFields,
@@ -25,14 +25,18 @@ import {
 import { actualizeTrades, getPortfolioTrades } from "../../utils/portfolio";
 import { SubscribeMsgs } from "../../types/other";
 import { WebSocket } from "ws";
-import {UserData, UserWebSocket} from "../../services/websocket";
+import { UserData, UserWebSocket } from "../../services/websocket";
 import {
   getCountries,
   getCountryField,
   getCountryFields,
   getSubRegions,
 } from "../../services/app/countries";
-import {checkAccessByRole, getPortfolioInstanceByIDorName, mapKeyToName} from "../../services/portfolio/helper";
+import {
+  checkAccessByRole,
+  getPortfolioInstanceByIDorName,
+  mapKeyToName,
+} from "../../services/portfolio/helper";
 const subscribers: Record<string, SubscribeMsgs> = {}; //userModif-> SubscribeMsgs
 
 type QuoteData2 = {
@@ -87,7 +91,7 @@ type PortfolioPositionFull = PortfolioPosition &
     totalSymbol?: number;
     totalType?: string;
   };
-type PortfolioCurrencyCash ={
+type PortfolioCurrencyCash = {
   total: number;
   symbol: string;
 };
@@ -169,7 +173,7 @@ export async function positions(
     _id: realId,
     error,
     instance: portfolio,
-  } = await  getPortfolioInstanceByIDorName (_id, userData);
+  } = await getPortfolioInstanceByIDorName(_id, userData);
   if (error) {
     return error;
   }
@@ -177,8 +181,7 @@ export async function positions(
     return { error: `Portfolio with _id=${realId} is not exists` };
   }
 
-
-    console.log(
+  console.log(
     `====================requestType=${requestType}=================`,
   );
 
@@ -207,7 +210,7 @@ export async function positions(
 
   let rates: Record<string, number> = {};
   let fees: Record<string, { fee: number; feeSym: number }>;
-  let cashes: Record<string, number> = {}
+  let cashes: Record<string, number> = {};
   let portfolioPositions: Record<string, Partial<PortfolioPositionFull>>;
   let currencyInvested: Record<
     string,
@@ -247,7 +250,7 @@ export async function positions(
     console.log("subscriberOnTrades get event==========", ev);
     const allTrades = await TradeModel.find({
       portfolioId: realId,
-      state: { $in: [1, 21] },
+      state: { $in: [1] },
     })
       .sort({ tradeTime: 1 })
       .lean();
@@ -264,8 +267,8 @@ export async function positions(
     sectorInvested = positions.sectorInvested;
     industryInvested = positions.industryInvested;
     portfoliosInvested = positions.portfoliosInvested;
-    cashes= positions.cashes;
-//    console.log('cashes', cashes)
+    cashes = positions.cashes;
+    //    console.log('cashes', cashes)
     const symbols = [
       ...positions.positions.map((p) => p.symbol),
       ...extractUniqueFields(positions.positions, "currency")
@@ -275,12 +278,14 @@ export async function positions(
         )
         .filter(Boolean),
     ];
-    positions.uniqueCurrencies.filter(u=> u!==portfolio.currency).forEach(u=> {
-      const  r = `${portfolio.currency}${u}:FX`
-      if (!symbols.includes(r)) {
-        symbols.push(r);
-      }
-    })
+    positions.uniqueCurrencies
+      .filter((u) => u !== portfolio.currency)
+      .forEach((u) => {
+        const r = `${portfolio.currency}${u}:FX`;
+        if (!symbols.includes(r)) {
+          symbols.push(r);
+        }
+      });
     console.log("resubscribe if need ", symbols);
     subscribers[userModif][msgId].sseService.start(symbols.join(","), true);
     rates = { [portfolio.currency]: 1.0 } as Record<string, number>;
@@ -316,7 +321,7 @@ export async function positions(
   }
 
   const allTrades = await getPortfolioTrades(realId, undefined, {
-    state: { $in: [1, 21] },
+    state: { $in: [1] },
   });
   if ((allTrades as { error: string }).error) {
     return allTrades as { error: string };
@@ -334,25 +339,30 @@ export async function positions(
   sectorInvested = positions.sectorInvested;
   industryInvested = positions.industryInvested;
   portfoliosInvested = positions.portfoliosInvested;
-cashes = positions.cashes;
+  cashes = positions.cashes;
 
   const symbols = [
     ...positions.positions.map((p) => p.symbol),
-    ...extractUniqueFields(trades.filter(t=>(t.tradeType === "1" && t.symbol?.endsWith(':FX'))), "symbol"),
+    ...extractUniqueFields(
+      trades.filter((t) => t.tradeType === "1" && t.symbol?.endsWith(":FX")),
+      "symbol",
+    ),
     ...extractUniqueFields(positions.positions, "currency")
       .filter((c) => c !== portfolio.currency)
       .map((c: string) => `${c}${portfolio.currency}:FX`),
   ];
-  positions.uniqueCurrencies.filter(u=> u!==portfolio.currency).forEach(u=> {
-    const  r = `${portfolio.currency}${u}:FX`
-    if (!symbols.includes(r)) {
-      symbols.push(r);
-    }
-  })
-  console.log('SYMBOLS', symbols);
+  positions.uniqueCurrencies
+    .filter((u) => u !== portfolio.currency)
+    .forEach((u) => {
+      const r = `${portfolio.currency}${u}:FX`;
+      if (!symbols.includes(r)) {
+        symbols.push(r);
+      }
+    });
+  console.log("SYMBOLS", symbols);
 
   eventEmitter.on("trade.change", subscriberOnTrades);
-  const sseService = new SSEService("quotes", symbols.join(','), eventName);
+  const sseService = new SSEService("quotes", symbols.join(","), eventName);
   //--
 
   rates = { [portfolio.currency]: 1.0 } as Record<string, number>;
@@ -368,12 +378,11 @@ cashes = positions.cashes;
   const processQuoteData = (data: QuoteData[]) => {
     const [currencyData, symbolData] = divideArray(
       data,
-  //    (q: QuoteData) => !positions.uniqueSymbols.includes(q.symbol),
-        (q: QuoteData) => isCurrency(q.symbol),
-
+      //    (q: QuoteData) => !positions.uniqueSymbols.includes(q.symbol),
+      (q: QuoteData) => isCurrency(q.symbol),
     );
     console.log("processQuoteData rates", rates);
-  //  console.log('currencyData,symbolData: ', currencyData.map(c=>c.symbol), symbolData.map(c=>c.symbol));
+    //  console.log('currencyData,symbolData: ', currencyData.map(c=>c.symbol), symbolData.map(c=>c.symbol));
     if (requestType === "0") {
       console.log("stop!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
       subscribers[userModif][msgId].sseService.stop();
@@ -406,7 +415,7 @@ cashes = positions.cashes;
     //console.log("rates", rates, "newRates", newRates, "fees", fees);
 
     const q2Symbols = prepareQuoteData2(
-      symbolData.filter(d=>!isCurrency(d.symbol) ),
+      symbolData.filter((d) => !isCurrency(d.symbol)),
       marketPrice,
       basePrice,
       isFirst,
@@ -465,8 +474,8 @@ cashes = positions.cashes;
             Number(portfolioPositions[symbol].marketValueSymbol)) -
           Number(portfolioPositions[symbol].investedFullSymbol) -
           fees[symbol].feeSym;
-          change.result = change.resultSymbol*rates[cur];
- //         console.log(symbol, cur, rates[cur], change.resultSymbol, change.result);
+        change.result = change.resultSymbol * rates[cur];
+        //         console.log(symbol, cur, rates[cur], change.resultSymbol, change.result);
         const mPrice = Number(
           p?.marketPrice || portfolioPositions[symbol].marketPrice,
         );
@@ -537,10 +546,21 @@ cashes = positions.cashes;
       }
     });
     if (isFirst) {
-      Object.keys(cashes).forEach(key=> {
-        const c : CommonPortfolioPosition = {symbol: `CASH_${key}`, total: cashes[key] as number};
-        changes.push( c)
-      })
+      Object.keys(cashes).forEach((key) => {
+        const c: CommonPortfolioPosition = {
+          symbol: `CASH_${key}`,
+          total: cashes[key] as number,
+        };
+        changes.push(c);
+      });
+      console.log("positions.dividends=", positions.dividends);
+      Object.keys(positions.dividends).forEach((key) => {
+        const c: CommonPortfolioPosition = {
+          symbol: `DIVIDENDS_${key}`,
+          total: toNum({ n: positions.dividends[key]  }),
+        };
+        changes.push(c);
+      });
     }
     isFirst = false;
     return changes;
@@ -583,26 +603,29 @@ cashes = positions.cashes;
             marketValue,
         ) / 100;
     });
-//console.log('changes', changes)
+    //console.log('changes', changes)
     switch (closed) {
       case "no":
-        changes = changes.filter(
-          (c): c is PortfolioPositionFull =>   {
-            console.log(c.symbol, portfolioPositions[c.symbol]);
-            return portfolioPositions[c.symbol]?.volume !== 0
-          },
-        );
+        changes = changes.filter((c): c is PortfolioPositionFull => {
+          console.log(c.symbol, portfolioPositions[c.symbol]);
+          return portfolioPositions[c.symbol]?.volume !== 0;
+        });
         break;
       case "only":
         changes = changes.filter(
-          (c): c is PortfolioPositionFull => portfolioPositions[c.symbol]?.volume === 0,
+          (c): c is PortfolioPositionFull =>
+            portfolioPositions[c.symbol]?.volume === 0,
         );
         break;
       default:
         break;
     }
 
-    summationTotal(changes as PortfolioPositionFull[], currencyInvested, "currencyTotal");
+    summationTotal(
+      changes as PortfolioPositionFull[],
+      currencyInvested,
+      "currencyTotal",
+    );
     //region -> subregion
     let changesReg: PortfolioPositionFull[] = [];
     summationTotal(changesReg, regionInvested, "regionTotal");
@@ -615,19 +638,25 @@ cashes = positions.cashes;
       const regionName = reg.name.split("_").pop() as string;
       const subRegs = getSubRegions(regionName).map((n) => `TOTAL_${n}`);
       //console.log("subRegs", subRegs);
-      changesSubReg.filter((s) => subRegs.includes(s.name)).forEach(subReg=> {
-        const subregionName = subReg.name.split("_").pop() as string;
+      changesSubReg
+        .filter((s) => subRegs.includes(s.name))
+        .forEach((subReg) => {
+          const subregionName = subReg.name.split("_").pop() as string;
 
-        const countries = getCountries(subregionName).map((n) => `TOTAL_${n}`);
-        changes.push(...changesCountry.filter((c) => countries.includes(c.name)));
-        changes.push(subReg);
-      })
+          const countries = getCountries(subregionName).map(
+            (n) => `TOTAL_${n}`,
+          );
+          changes.push(
+            ...changesCountry.filter((c) => countries.includes(c.name)),
+          );
+          changes.push(subReg);
+        });
       //changes.push(...changesSubReg.filter((s) => subRegs.includes(s.name)));
       changes.push(reg);
     });
     //let changesCountry: PortfolioPositionFull[] = [];
-   // summationTotal(changes, countryInvested, "countryTotal");
-//sector->industry
+    // summationTotal(changes, countryInvested, "countryTotal");
+    //sector->industry
     const sectorIndustryMap = {} as Record<string, Set<string>>;
     Object.values(portfolioPositions)
       .filter((p) => !(p as PortfolioPositionFull).totalType)
@@ -654,7 +683,11 @@ cashes = positions.cashes;
       changes.push(reg);
     });
 
-    summationTotal(changes as PortfolioPositionFull[], portfoliosInvested, "portfoliosTotal");
+    summationTotal(
+      changes as PortfolioPositionFull[],
+      portfoliosInvested,
+      "portfoliosTotal",
+    );
 
     changes.push({
       symbol: "TOTAL",
@@ -784,8 +817,9 @@ async function getPositions(
   const uniqueSymbols = extractUniqueFields(allTrades, "symbol");
   const uniqueCurrencies = extractUniqueFields(allTrades, "currency");
   const symbolCountries = await getSymbolsCountries(uniqueSymbols);
-  let cashes: Record<string, number> = {}
-//console.log('uniqueSymbols', uniqueSymbols, 'uniqueCurrencies', uniqueCurrencies);
+  let cashes: Record<string, number> = {};
+  let dividends: Record<string, number> = {};
+  //console.log('uniqueSymbols', uniqueSymbols, 'uniqueCurrencies', uniqueCurrencies);
   let currencyInvested: Record<
     string,
     { invested: number; investedSymbol: number; fee: number; feeSymbol: number }
@@ -830,19 +864,20 @@ async function getPositions(
     `tradeTime, symbol, side, price,volume, rate, volumeOld,volumeNew,avgPrice, realizedPnL,realized,totalCost`,
   );
   for (const trade of allTrades) {
+
     switch (trade.tradeType) {
       case "1":
         const { symbol } = trade;
-        if (symbol.endsWith(':FX')) {
+        if (symbol.endsWith(":FX")) {
           const trgCur = symbol.slice(0, 3);
-          const dirBuyTrg = trade.side === "B" ? 1 : -1
-          const vFrom  = dirBuyTrg *  trade.volume;
+          const dirBuyTrg = trade.side === "B" ? 1 : -1;
+          const vFrom = dirBuyTrg * trade.volume;
           const vTo = dirBuyTrg * trade.price * trade.volume;
-          const v = dirBuyTrg * trade.price * trade.volume*trade.rate;
+          const v = dirBuyTrg * trade.price * trade.volume * trade.rate;
           if (!cashes[trade.currency]) {
             cashes[trade.currency] = -v;
           } else {
-            cashes[trade.currency] -= v
+            cashes[trade.currency] -= v;
           }
           if (!cashes[trgCur]) {
             cashes[trgCur] = v;
@@ -850,27 +885,27 @@ async function getPositions(
             cashes[trgCur] += v;
           }
           if (!cashes[portfolio.currency]) {
-            cashes[portfolio.currency] = -trade.fee*trade.rate;
+            cashes[portfolio.currency] = -trade.fee * trade.rate;
           } else {
-            cashes[portfolio.currency] -=trade.fee*trade.rate;
+            cashes[portfolio.currency] -= trade.fee * trade.rate;
           }
-//          console.log('v,vFrom, vTo', v, symbol, vFrom, vTo, 'fee', trade.fee*trade.rate);
+          //          console.log('v,vFrom, vTo', v, symbol, vFrom, vTo, 'fee', trade.fee*trade.rate);
           break;
         } else {
           const trgCur = trade.currency;
           const dirBuyTrg = trade.side === "B" ? 1 : -1;
-          const v = dirBuyTrg * trade.price *  trade.volume* trade.rate;
+          const v = dirBuyTrg * trade.price * trade.volume * trade.rate;
           if (!cashes[trgCur]) {
             cashes[trgCur] = -v;
           } else {
             cashes[trgCur] -= v;
           }
           if (!cashes[portfolio.currency]) {
-            cashes[portfolio.currency] = -trade.fee*trade.rate;
+            cashes[trade.currency] = -trade.fee * trade.rate;
           } else {
-            cashes[portfolio.currency] -=trade.fee*trade.rate;
+            cashes[trade.currency] -= trade.fee * trade.rate;
           }
- //         console.log('v', symbol, v, 'fee',trade.fee*trade.rate);
+          //         console.log('v', symbol, v, 'fee',trade.fee*trade.rate);
         }
 
         const country = symbolCountries[symbol];
@@ -947,19 +982,43 @@ async function getPositions(
         }
 
         break;
+      case "20": //Dividends = "20",
+          console.log('DIIIIIIIIIIIIIIIIIIIIIIv',oldPortfolio,trade.symbol);
+        const dividendPerShareVol = (oldPortfolio[trade.symbol] as Trade)?.volume || 1;
+        if (!dividends[trade.symbol]) {
+          dividends[trade.symbol] =
+            trade.price * trade.rate * dividendPerShareVol;
+        } else {
+          dividends[trade.symbol] +=
+            trade.price * trade.rate * dividendPerShareVol;
+        }
+        if (!cashes[trade.currency]) {
+          cashes[trade.currency] =
+            trade.price * trade.rate * dividendPerShareVol;
+        } else {
+          cashes[trade.currency] +=
+            trade.price * trade.rate * dividendPerShareVol;
+        }
+        console.log(
+          "dividends:",
+          trade.price,
+          trade.rate,
+          dividendPerShareVol,
+          dividends,
+        );
+        break;
       case "31":
-      case "20":
       case "21":
       case "22":
         if (!cashes[trade.currency]) {
-          cashes[trade.currency] = trade.price*trade.rate;
+          cashes[trade.currency] = trade.price * trade.rate;
         } else {
-          cashes[trade.currency] += trade.price*trade.rate
+          cashes[trade.currency] += trade.price * trade.rate;
         }
         if (!cashes[portfolio.currency]) {
-          cashes[portfolio.currency] = -trade.fee*trade.rate;
+          cashes[portfolio.currency] = -trade.fee * trade.rate;
         } else {
-          cashes[portfolio.currency] -=trade.fee*trade.rate;
+          cashes[portfolio.currency] -= trade.fee * trade.rate;
         }
       /*  const cashPut = trade.price * trade.rate;
         cash += cashPut;
@@ -974,7 +1033,7 @@ async function getPositions(
   const nowDay = moment().format(formatYMD); //!!!!!!!!!!!!!!!!!!!!!!!!
   const allSymbols = Object.keys(oldPortfolio);
   //console.log('oldPortfolio', oldPortfolio);
-  const actualSymbols = allSymbols.filter((s) => !s.endsWith(':FX'))
+  const actualSymbols = allSymbols.filter((s) => !s.endsWith(":FX"));
 
   //console.log("positions.OOOO", currentDay, nowDay, actualSymbols);
   const positions: Record<string, Partial<Trade>> = actualSymbols.reduce(
@@ -1041,7 +1100,8 @@ async function getPositions(
     portfoliosInvested: await mapKeyToName(portfoliosInvested),
     uniqueSymbols,
     uniqueCurrencies,
-    cashes
+    cashes,
+    dividends,
   };
 }
 

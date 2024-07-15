@@ -232,7 +232,6 @@ for (const trade of trades) {
 
     //->
     currentDay = nextCurrentDayWithTrade; // trade.tradeTime.split("T")[0];
-
     Object.keys(oldPortfolio).map((p) => {
       const pi = oldPortfolio[p] as Trade;
       if (pi.volume === 0) {
@@ -241,6 +240,8 @@ for (const trade of trades) {
     });
   }
   const rate = getRate(trade.currency, portfolio.currency, trade.tradeTime);
+  let dividendPerShareVol =1;
+
   switch (trade.tradeType) {
     case "1":
       const { symbol } = trade;
@@ -286,26 +287,20 @@ for (const trade of trades) {
         realized: toNumLocal(symbolRealized[symbol].realized),
       });
       break;
+
+    case "20"://Dividends = "20",
+      dividendPerShareVol = (oldPortfolio[trade.symbol] as Trade)?.volume || 1;
     case "31":
+    case "21":
       if (trade.shares)
         shares+=trade.shares;
       else
         shares+=1
-    case "20":
-    case "21":
     case "22":
       const rate = trade.rate || 1.0;
-      const cashPut = trade.price * rate;
-      console.log(
-        "CASHPUT",
-        trade.tradeTime,
-        trade.price,
-        rate,
-        "=",
-        cashPut,
-        "+",
-        cash,
-      );
+      const cashPut = trade.price * rate*dividendPerShareVol;
+
+
       cash += cashPut;
       nav += cashPut;
       cashChanged.push(currentDay);

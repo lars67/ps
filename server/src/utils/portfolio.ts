@@ -85,7 +85,7 @@ export const getCurrentPosition = async (_id:string) => {
     }
     const allTrades = await TradeModel.find({
         portfolioId: realId,
-        state: {$in: [1, 21]},
+        state: {$in: [1]},
     })
         .sort({tradeTime: 1})
         .lean();
