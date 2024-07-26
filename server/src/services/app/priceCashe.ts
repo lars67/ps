@@ -8,12 +8,13 @@ import {
   extractUniqueFields,
   findMaxByField,
   findMinByField,
+  removeDuplicatesByProperty,
 } from "../../utils";
 import { formatYMD } from "../../constants";
 
 export type PricePoint = {
   date: string;
-  [key: string]: number| string;
+  [key: string]: number | string;
 };
 
 const dateHistory: Record<string, Record<string, number>> = {};
@@ -39,13 +40,17 @@ export async function checkPrices(
     typeof startDate0 === "string"
       ? startDate0
       : moment(startDate0 as Date).format(formatYMD);
-
+  const withoutPrices = [] as string[];
   try {
     for (const symbol of portfolioSymbols) {
       if (!histories[symbol] || histories[symbol] > startDate) {
-        console.log("fetchHistory", symbol);
+        // console.log("fetchHistory", symbol);
         const history = await fetchHistory({ symbol, from: startDate });
-        console.log("/fetchHistory", symbol);
+   //     console.log(symbol, history);
+        if (history.length === 0) {
+          withoutPrices.push(symbol);
+        }
+        //console.log("/fetchHistory", symbol);
         histories[symbol] = startDate;
         for (const h of history) {
           const { date, close } = h;
@@ -61,6 +66,145 @@ export async function checkPrices(
     console.error("Error in checkPrices:", error);
     throw error;
   }
+  return withoutPrices;
+}
+
+export const getSymbolPrices = (symbol: string) => {
+  const prices = Object.keys(dateHistory)
+    .sort()
+    .map((d) => dateHistory[d][symbol]);
+  return prices;
+};
+
+export function fillDateHistoryFromTrades(
+  trades: Pick<Trade, "symbol" | "price" | "tradeTime">[],
+  symbols: string[],
+  endDate: string,
+) {
+  // console.log('interpolate price from trades for ', symbols, trades.map(t=>t.symbol));
+  for (const symbol of symbols) {
+    const isFX = symbol.endsWith(":FX");
+    let symbolInTrade = symbol;
+    let currencyKey, currencyKey2;
+    if (isFX) {
+      const tcount1 = trades.filter((t) => t.symbol === symbol).length;
+      const symbol2 = symbol.replace(/(\w{3})(\w{3})(:)(\w+)/, '$2$1$3$4');
+
+      const tcount2 = trades.filter((t) => t.symbol === symbol2).length;
+      if (tcount1 === 0 && tcount2 > 0) {
+        symbolInTrade = symbol2;
+      }
+      currencyKey = symbol.split(":").shift();
+      currencyKey2 = symbol2.split(":").shift();
+      console.log(
+        "symbol, tcount1, symbol2, tcount2",
+        symbol,
+        tcount1,
+        symbol2,
+        tcount2,
+        "|",
+        symbolInTrade,
+        currencyKey,
+          currencyKey2
+      );
+    }
+    let tradesSymbol = trades
+      .filter((t) => t.symbol === symbolInTrade)
+      .map((t) => ({
+        ...t,
+        tradeDate: t.tradeTime.split("T").shift() as string,
+      }))
+      .sort((a, b) => moment(a.tradeTime).diff(moment(b.tradeTime)));
+    //console.log('tradesSymbol', tradesSymbol);
+    tradesSymbol = removeDuplicatesByProperty(tradesSymbol, "tradeDate");
+    //console.log("tradesSymbol without dubl", tradesSymbol);
+    let prevTrade = null;
+    let prevTradeDate = null;
+    let prevTradeDatePrice = 0;
+    for (const trade of tradesSymbol) {
+      const tradeDate = moment(trade.tradeDate);
+      const date = trade.tradeDate;
+      const price = symbolInTrade === symbol ? trade.price : 1 / trade.price;
+      if (!prevTrade) {
+        if (!dateHistory[date]) {
+          dateHistory[date] = {
+            [symbol]: price,
+            ...(currencyKey && { [currencyKey]: price }),
+            ...(currencyKey2 && { [currencyKey2]: 1/price }),
+          };
+        } else {
+          dateHistory[date][symbol] = price;
+          currencyKey && (dateHistory[date][currencyKey] = price);
+         (currencyKey2 && !dateHistory[date][currencyKey2]) && (dateHistory[date][currencyKey2] = 1/price);
+
+        }
+
+        //console.log(symbol, date, '::', trade.price);
+      } else {
+        // Interpolate values between the previous trade and the current trade
+        const prevDate = moment(prevTradeDate);
+        const daysDiff = tradeDate.diff(prevDate, "days");
+
+        for (let i = 1; i < daysDiff; i++) {
+          const interpolatedDate = prevDate
+            .clone()
+            .add(i, "days")
+            .format("YYYY-MM-DD");
+          const interpolatedPrice =
+            prevTradeDatePrice + (price - prevTradeDatePrice) * (i / daysDiff);
+           dateHistory[interpolatedDate] = {
+            ...dateHistory[interpolatedDate],
+            [symbol]: interpolatedPrice,
+            ...(currencyKey && { [currencyKey]: interpolatedPrice }),
+            ...((currencyKey2 && !dateHistory[interpolatedDate][currencyKey2]) && {[currencyKey2] :1/interpolatedPrice})
+
+        };
+          //console.log(interpolatedDate, ':-:', interpolatedClose);
+        }
+
+        // Add the current trade to dateHistory
+        dateHistory[trade.tradeDate] = {
+          ...dateHistory[trade.tradeDate],
+          [symbol]: price,
+          ...(currencyKey && { [currencyKey]: price }),
+          ...((currencyKey2 && !dateHistory[trade.tradeDate][currencyKey2]) && {[currencyKey2] :1/price})
+        };
+        //console.log(trade.tradeDate, '::', trade.price);
+      }
+
+      prevTrade = trade;
+      prevTradeDate = date;
+      prevTradeDatePrice = price;
+    }
+
+    // Interpolate values from the last trade to the endDate
+    if (prevTrade) {
+      const lastDate = moment(prevTrade.tradeTime);
+      const daysDiff = moment(endDate).diff(lastDate, "days");
+
+      for (let i = 1; i <= daysDiff; i++) {
+        const interpolatedDate = lastDate
+          .clone()
+          .add(i, "days")
+          .format("YYYY-MM-DD");
+        if(!dateHistory[interpolatedDate]) {
+          dateHistory[interpolatedDate]= {}
+        }
+       // console.log('interpolatedDate', interpolatedDate, dateHistory[interpolatedDate]);
+        dateHistory[interpolatedDate] = {
+          ...dateHistory[interpolatedDate],
+          [symbol]: prevTradeDatePrice,
+          ...(currencyKey && { [currencyKey]: prevTradeDatePrice }),
+          ...((currencyKey2 && !dateHistory[interpolatedDate][currencyKey2]) && {[currencyKey2] :1/prevTradeDatePrice})
+
+        };
+        //console.log(interpolatedDate, ':', prevTrade.price);
+      }
+    }
+    //console.log(symbol, getSymbolPrices(symbol));
+  }
+
+  return getSymbolPrices(symbols[0]);
 }
 export function getDatePrices(date: string, find: boolean = false) {
   if (dateHistory[date]) {
@@ -126,8 +270,29 @@ export async function checkPriceCurrency(
     formatYMD,
   );
 
-  const startDate = startDateInputM.add(-7, "days").format(formatYMD);
+  const addFXHistory = async (fx: string, startDate: string) => {
+    let history = await fetchHistory({
+      symbol: `${fx}:FX`,
+      from: startDate,
+    });
+    if (history.length > 0) {
+      histories[fx] = history[0].date;
+      // console.log('remember', symbol, history.length);
+      history.map((h) => {
+        const { date, close } = h;
+        if (dateHistory[date]) {
+          dateHistory[date][fx] = close;
+        } else {
+          dateHistory[date] = { [fx]: close };
+        }
+      });
+      return true;
+    }
+    return false;
+  };
 
+  const startDate = startDateInputM.add(-7, "days").format(formatYMD);
+  let badSymbol='';
   if (balanceCurrency !== currency) {
     let symbol: string = "";
     let fx = `${currency}${balanceCurrency}`;
@@ -136,47 +301,30 @@ export async function checkPriceCurrency(
       if (histories[fx] <= startDate) {
         return;
       }
-      symbol = fx;
     } else if (histories[fx2]) {
       if (histories[fx2] <= startDate) {
         return;
       }
-      symbol = fx2;
     }
-    if (!symbol) {
-      const comp = await loadCompany(`${fx}:FX`);
-      symbol = comp.symbol ? fx : fx2;
+    const addedFX = await addFXHistory(fx, startDate);
+    const addedFX2 = await addFXHistory(fx2, startDate);
+    if (currency==='CNH' || (!addedFX && !addedFX2)) {
+      console.log(`FX price absent for ${fx} ${fx2} !!!!!!!!!!`);
+      badSymbol= `${fx}:FX`
     }
-    let history = await fetchHistory({
-      symbol: `${symbol}:FX`,
-      from: startDate,
-    });
-    if (history && history.length < 1) {
-      history = await fetchHistory({
-        symbol: `${symbol}:FX`,
-      });
-    }
-    histories[symbol] = history[0].date;
-    // console.log('remember', symbol, history.length);
-    history.map((h) => {
-      const { date, close } = h;
-      if (dateHistory[date]) {
-        dateHistory[date][symbol] = close;
-      } else {
-        dateHistory[date] = { [symbol]: close };
-      }
-    });
+    return badSymbol;
   }
 }
 
 export async function checkPortfolioPricesCurrencies(
   trades: Trade[],
   balanceCurrency: string,
-  baseInstrument?: string
+  baseInstrument?: string,
 ) {
+  const withoutPrices = [] as string[];
   const uniqueSymbols = extractUniqueFields(trades, "symbol");
   if (baseInstrument && !uniqueSymbols.includes(baseInstrument)) {
-    uniqueSymbols.push(baseInstrument)
+    uniqueSymbols.push(baseInstrument);
   }
   const uniqueCurrencies = extractUniqueFields(trades, "currency");
   //  console.log('TRADES', trades)
@@ -186,13 +334,17 @@ export async function checkPortfolioPricesCurrencies(
   const endDate = findMaxByField<Trade>(trades, "tradeTime").tradeTime.split(
     "T",
   )[0];
-  console.log("checkPortfolioPricesCurrencies startDate", startDate);
-  await checkPrices(uniqueSymbols, startDate);
+  console.log("checkPortfolioPricesCurrencies startDate", startDate, endDate);
+  withoutPrices.push(...(await checkPrices(uniqueSymbols, startDate)));
+  console.log("checkPriceCurrency");
   for (const currency of uniqueCurrencies) {
-    await checkPriceCurrency(currency, balanceCurrency, startDate);
+    const r = await checkPriceCurrency(currency, balanceCurrency, startDate);
+    if (r) {
+      withoutPrices.push(r);
+    }
   }
   console.log("/checkPortfolioPricesCurrencies");
-  return { startDate, endDate, uniqueSymbols, uniqueCurrencies };
+  return { startDate, endDate, uniqueSymbols, uniqueCurrencies, withoutPrices };
 }
 
 export const priceToBaseCurrency = (
@@ -241,11 +393,6 @@ export const getRate = (
   return Number(r.toFixed(4));
 };
 
-export const getSymbolPrices =(symbol:string, from?: string, till?:string) => {
-
-  const prices = Object.keys(dateHistory).sort().map(d=> dateHistory[d].symbol)
-  return prices;
-}
 /*
 export function findSymbolDatePrices(date, symbol) {
     if (dateHistory[date] && dateHistory[date][symbol]) {

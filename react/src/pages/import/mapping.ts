@@ -10,7 +10,7 @@ type MapFields = Record<
 const toTradeTime = (dt: string) => {
   const ar = dt.split(";"); //20240509;231612
   return {
-    tradeDate: `${ar[0].slice(0, 4)}-${ar[0].slice(4, 6)}-${ar[0].slice(6)}T${ar[1].slice(0, 2)}:${ar[1].slice(2, 4)}:${ar[1].slice(4)}`,
+    tradeTime: `${ar[0].slice(0, 4)}-${ar[0].slice(4, 6)}-${ar[0].slice(6)}T${ar[1].slice(0, 2)}:${ar[1].slice(2, 4)}:${ar[1].slice(4)}`,
   };
 };
 
@@ -32,6 +32,7 @@ const tradeMap: MapFields = {
   //   IBCommissionCurrency,
   //   ClosePrice,
   //  CostBasis
+
 };
 /*
 FXRateToBase:, Symbol, Quantity,TradePrice,Buy/Sell,CurrencyPrimary,IBCommission

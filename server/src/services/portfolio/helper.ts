@@ -110,12 +110,15 @@ export async function putSpecialTrade(
       if (!rate) {
         const leftDate = moment(par.tradeTime.split("T").shift(), formatYMD);
         console.log("leftDate", leftDate.add(-7, "days").format(formatYMD));
-
-        await checkPriceCurrency(
-          par.currency,
-          portfolio.currency,
-          leftDate.add(-7, "days").format(formatYMD),
-        );
+         try {
+           await checkPriceCurrency(
+               par.currency,
+               portfolio.currency,
+               leftDate.add(-7, "days").format(formatYMD),
+           );
+         } catch(err) {
+           console.log('checkPriceCurrency', err);
+         }
         rate = getDateSymbolPrice(par.tradeTime, fx);
       }
       if (rate) {

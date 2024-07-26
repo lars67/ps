@@ -276,3 +276,15 @@ export function isCurrency(symbol:string) {
   return symbol.indexOf(':FX') > 0
 }
 
+
+export function removeDuplicatesByProperty<T, K extends keyof T>(array: T[], property: K): T[] {
+  const uniqueValues = new Set<T[K]>();
+  return array.filter((item) => {
+    if (uniqueValues.has(item[property])) {
+      return false;
+    } else {
+      uniqueValues.add(item[property]);
+      return true;
+    }
+  });
+}

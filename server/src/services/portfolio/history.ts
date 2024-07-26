@@ -2,7 +2,7 @@ import { Trade } from "../../types/trade";
 
 import {
   checkPortfolioPricesCurrencies,
-  checkPrices,
+  checkPrices, fillDateHistoryFromTrades,
   getDatePrices,
   getDateSymbolPrice,
   getRate,
@@ -135,16 +135,23 @@ export async function history(
     return { days: [], ...(withDetail && { rows: [] }) };
   }
 
-  const { startDate, endDate, uniqueSymbols, uniqueCurrencies } =
+  const { startDate, endDate, uniqueSymbols, uniqueCurrencies, withoutPrices } =
     await checkPortfolioPricesCurrencies(trades, portfolio.currency);
-  console.log("P", startDate, uniqueSymbols, uniqueCurrencies);
+  console.log("PSTART", startDate, endDate, uniqueSymbols, uniqueCurrencies, withoutPrices);
   const lastDay = till.split("T")[0];
-  let currentDay = startDate.split("T")[0];
-  await checkPrices(
-    [portfolio.baseInstrument],
-    moment(currentDay, formatYMD).add(-5, "day").format(formatYMD),
-  );
+  let currentDay = startDate.split("T")[0]
+  try {
+    await checkPrices(
+        [portfolio.baseInstrument],
+        moment(currentDay, formatYMD).add(-5, "day").format(formatYMD),
+    );
+  } catch(err) {
+   console.log('ERR:',err)
+  }
+  if (withoutPrices.length > 0) {
 
+    await fillDateHistoryFromTrades(trades, withoutPrices, endDate)
+  }
   const symbolRealized: Record<string, RealizedData> = {};
 
   const oldPortfolio: Record<string, Partial<Trade> | {}> = {};
@@ -210,7 +217,7 @@ for (const trade of trades) {
     ///process as not trades all till nextCurrentDayWithTrade
     while (currentDay < nextCurrentDayWithTrade) {
       const isNotTradedDate = tradedSymbols.length === 0;
-      console.log('isNotTradedDate', isNotTradedDate, tradedSymbols.length);
+  //    console.log('isNotTradedDate', isNotTradedDate, tradedSymbols.length);
       let { inv, notTradeChanges, perfomance } = addNotTradesItems(
         currentDay,
         portfolio.currency,
@@ -369,8 +376,8 @@ pushDay(currentDay,cashChanged.includes(currentDay), inv, invested)
   if (sample) {
     days = resampleByTradeTime(days, sample);
   }
-  console.log("DAYS", days);
-  return { days, ...(withDetail && { details: rows }) };
+  //console.log("DAYS", days);
+  return { ...(withoutPrices.length > 0  && {info:`Used trades for inerpolate prices/rates: ${withoutPrices.join(',')}`}), days, ...(withDetail && { details: rows }) };
 }
 
 function getPortfolioPerfomance(
@@ -412,12 +419,17 @@ function addNotTradesItems(
       .filter((k) => !tradedSymbols.includes(k))
       .reduce((sum, symbol) => {
         const pi = oldPortfolio[symbol] as Trade;
-        const price = toNum({
+        let price = toNum({
           n: getDateSymbolPrice(currentDay, symbol) as number,
         });
+        if (!price && symbol.endsWith(':FX')) {
+          price = toNum({
+            n: getDateSymbolPrice(currentDay, symbol.split(':').shift() as string) as number,
+          });
+        }
         const rate = getRate(pi.currency, portfolioCurrency, currentDay);
         if (!price || !rate) {
-          throw `No price=${price}|rate=${rate} ${symbol} ${currentDay}`;
+          throw `No price=${price}|rate=${rate} ${symbol} ${currentDay} ${pi.currency}`;
           return 0;
         }
         const investedSymbol = rate * pi.volume * price;

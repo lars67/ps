@@ -41,7 +41,7 @@ export const fetchHistory =  async function(query:StringRecord):Promise<Historic
 
         console.log(getDataUrl('historical', toQueryString(query)));
         const response = await fetch(getDataUrl('historical', toQueryString(query)) );
-        const data = await response.json();
+         const data = await response.json();
         const symbol = query.symbol;
         let prevValue: HistoricalDataInput;
         const targetData = data.map((item:HistoricalDataInput) => {

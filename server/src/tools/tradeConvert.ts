@@ -19,6 +19,7 @@ const mapAddTrade = {
   //    contract:"Spot",
   //   user:"test7",
   trade_time: "tradeTime", //"2024-01-10T00:00:02"
+  tradeDate: "tradeTime"
 };
 
 const xmlString1 = `<response>

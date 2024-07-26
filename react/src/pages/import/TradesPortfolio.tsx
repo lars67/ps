@@ -34,6 +34,7 @@ const TradesPortfolio: React.FC<Props> = (props: Props) => {
   const onFinish = async (values: TradesPortfolioData) => {
     console.log("Received values of form:", values);
     await props.onApply(values);
+    console.log("form sended loading =false");
     setLoading(false);
   };
 

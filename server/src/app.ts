@@ -10,6 +10,7 @@ import * as url from "url";
 import jwt, { JwtPayload, VerifyErrors } from "jsonwebtoken";
 import logger from "@/utils/logger";
 import process from "process";
+import {getDatePrices, getSymbolPrices} from "./services/app/priceCashe";
 
 const cors = require("cors");
 const https = require("https");
@@ -64,22 +65,38 @@ const startServer = async () => {
     console.log(`HTTPS server running on port 3333`);
   });
 
-  app.get("/set-cookie", (req, res) => {
-    const token = url.parse(req.url, true).query.token;
-    res.cookie("ps2token", token, {
-      path:'/',
-      secure: true,
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-      httpOnly: true,
-      sameSite: "none",
-      domain: process.env.DOMAIN,
-    });
-
-    res.send("Cookie set");
-  });
 
   //initWatchers();
 };
+
+app.get("/hi", async (req, res) => {
+      res.json({a:777});
+});
+
+app.get("/set-cookie", (req, res) => {
+  const token = url.parse(req.url, true).query.token;
+  res.cookie("ps2token", token, {
+    path:'/',
+    secure: true,
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    httpOnly: true,
+    sameSite: "none",
+    domain: process.env.DOMAIN,
+  });
+
+  res.send("Cookie set");
+});
+
+app.get("/cashtest", async (req, res) => {
+  const {symbol,date, o} = req.query;
+  console.log('/cashtest', symbol, date, o);
+  switch (o) {
+    case 'day':
+      res.json(await getDatePrices(date as string));
+    default :
+      res.json(await getSymbolPrices(symbol as string));
+  }
+});
 
 app.get("/check-cookie", (req, res) => {
   const token = req.cookies.ps2token;
