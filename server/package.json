@@ -43,6 +43,7 @@
     "@types/ws": "^8.5.10",
     "@types/xmldom": "^0.1.34",
     "bcryptjs": "^2.4.3",
+    "fs-extra": "^11.2.0",
     "prettier": "^3.2.5",
     "ts-node": "^10.9.2",
     "tsc-watch": "^6.0.4",

@@ -11,6 +11,7 @@ import jwt, { JwtPayload, VerifyErrors } from "jsonwebtoken";
 import logger from "@/utils/logger";
 import process from "process";
 import {getDatePrices, getSymbolPrices} from "./services/app/priceCashe";
+import * as path from "path";
 
 const cors = require("cors");
 const https = require("https");
@@ -26,6 +27,7 @@ app.use(
 
 app.use(cookieParser());
 app.use(express.static("public"));
+
 
 let mongoose: typeof import("mongoose");
 
@@ -64,6 +66,7 @@ const startServer = async () => {
   httpsServer.listen(3333, () => {
     console.log(`HTTPS server running on port 3333`);
   });
+
 
 
   //initWatchers();

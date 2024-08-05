@@ -40,6 +40,10 @@ function generateJWT(userData: UserData): string {
   return token;
 }
 
+function getCookie (name: string, cookies: string) {
+    const c = cookies.split(';').find(c => c.startsWith(`${name}=`))
+    return c  &&  c.split('='). pop();
+}
 export const initWS = (
   serverLogin: https.Server,
   serverApp: https.Server,
@@ -107,15 +111,14 @@ export const initWS = (
   let clients: ClientType[] = [];
   mainServer.on("connection", (socket, req) => {
     const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    console.log(`Client connected with IP: ${ip}`, req.headers["ps2token"]);
+   // console.log(`Client connected with IP: ${ip}`, req.headers["ps2token"]);
 
     const fullQuery = req.url?.split("?")[1] || ""; // Get query parameters from URL
     const [query, modif = ""] = fullQuery.split("@");
     const token = req.headers["ps2token"] || query;
     let userData: UserData;
 
-
-    if (!token) {
+    if (!token  || token !== getCookie('ps2token', req.headers.cookie as string)) {
       return socket.close(4001, "Authentication error: Token missing");
     }
 

@@ -167,17 +167,17 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
         <Drawer
           size={"large"}
-          title="Help"
+          title=""
           placement="right"
-          closable={true}
+          closable={false}
           onClose={closeDrawer}
           mask={false}
           open={drawerVisible} // Use 'open' instead of 'visible'
           style={{ overflow: "hidden", padding: "4px" }}
           bodyStyle={{ padding: "0px" }}
-          headerStyle={{ backgroundColor: "#DFD" }}
+          headerStyle={{ height:0, backgroundColor: "transparent" }}
         >
-          <HelpViewer />
+          <HelpViewer closeDrawer={closeDrawer}/>
         </Drawer>
 
         <Layout

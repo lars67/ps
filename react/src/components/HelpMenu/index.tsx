@@ -4,6 +4,8 @@ import {Button, Dropdown, Menu, MenuProps} from "antd";
 import { MenuOutlined } from "@ant-design/icons";
 import {useAppDispatch} from "../../store/useAppDispatch";
 import {helpSlice} from "../../store/slices/help";
+import styled from "styled-components";
+import { CloseOutlined } from '@ant-design/icons'
 
 const menu = [
   { label: "Home", key: "home"  },
@@ -19,7 +21,23 @@ const menu = [
     ],
   },
   { label: "Test Commands", key: 'commands/tests' },
+  { label: "Operations", key: 'operations' },
+
 ];
+
+const CloseOutlinedStyled  = styled(CloseOutlined)`
+    cursor: pointer;
+    color: black;
+    font-size: 24px;
+    
+    &:hover {
+        color: red; // Change color on hover
+    }
+  position: fixed;
+  top: 0;
+  right:0;
+  z-index: 100000;
+`;
 
 const HelpMenu: React.FC = () => {
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
@@ -28,16 +46,18 @@ const HelpMenu: React.FC = () => {
     setMenuOpen(!menuOpen);
   };
 
-  const handleMenuClick: MenuProps['onClick'] = (e) => {
-    dispatch(helpSlice.actions.changeHelpPage({helpPage:e.key}));
-    setMenuOpen(false)
+  const handleMenuClick = () => {
+    //dispatch(helpSlice.actions.changeHelpPage({helpPage:'main'}));
+    //setMenuOpen(false)
   };
 
-  return (
+  /*return (
     <div className="floating-menu">
       <Menu onClick={handleMenuClick}  mode="horizontal" items={menu} style={{ backgroundColor: 'rgba(255, 255, 255, 0' }}/>
     </div>
-  );
+  );*/
+  return        <CloseOutlinedStyled  onClick={handleMenuClick} />
+
 };
 
 export default HelpMenu;

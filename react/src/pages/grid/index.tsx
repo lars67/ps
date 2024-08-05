@@ -325,6 +325,7 @@ const QuoteTable = () => {
     );
     return [cash, prepareData(stock), dividends];
   }, [tableData, layout, groups]);
+
   const columnsCash = useMemo(
     () => [
       {
@@ -335,6 +336,13 @@ const QuoteTable = () => {
         render: (value: string) => value.split("_").pop(),
       },
       {
+        title: 'Total local',
+        dataIndex: "totalLocal",
+        key: "totalLocal",
+        ellipsis: true,
+        render: numberFormattedRender("totalLocal"),
+      },
+      {
         title: selectedPortfolio ? `Total (in ${selectedPortfolio?.currency  })` : 'Total',
         dataIndex: "total",
         key: "total",
@@ -343,6 +351,26 @@ const QuoteTable = () => {
       },
     ],
     [selectedPortfolio]
+  );
+
+  const columnsDividends = useMemo(
+      () => [
+        {
+          title: "Currency",
+          dataIndex: "symbol",
+          key: "symbol",
+          ellipsis: true,
+          render: (value: string) => value.split("_").pop(),
+        },
+        {
+          title:  'Total',
+          dataIndex: "total",
+          key: "total",
+          ellipsis: true,
+          render: numberFormattedRender("total"),
+        },
+      ],
+      [selectedPortfolio]
   );
 
   const columns = useMemo(
@@ -553,7 +581,7 @@ const QuoteTable = () => {
                           size="small"
                           rowKey={"symbol"}
                           loading={loading}
-                          columns={columnsCash}
+                          columns={columnsDividends}
                           dataSource={actualTableData[2]}
                           pagination={false}
                           scroll={{ y: "calc(var(--top-div-height) - 86px)" }}

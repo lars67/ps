@@ -1,16 +1,32 @@
 import axios from "axios";
 import "./cm-viewer.css";
 import "./style.css";
-import { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import HoverHolder from "../HoverHolder";
 import { useAppSelector } from "../../store/useAppSelector";
 import HelpMenu from "../HelpMenu";
 import DynamicIFrame from "./DynamicIFrame";
 import IframeResizer from "iframe-resizer-react";
+import styled from "styled-components";
+import {CloseOutlined} from "@ant-design/icons";
 
 const helpPath = process.env.REACT_APP_URL_DATA;
 
-const HTMLViewer = () => {
+const CloseOutlinedStyled  = styled(CloseOutlined)`
+  cursor: pointer;
+  color: #f89a92;
+  font-size: 24px;
+
+  &:hover {
+    color: red; // Change color on hover
+  }
+
+  position: fixed;
+  top: 16px;
+  right: 36px;
+  z-index: 100000;
+`;
+const HTMLViewer = ({closeDrawer}:{closeDrawer:()=> void}) => {
   const [htmlContent, setHtmlContent] = useState("");
   const { helpPage } = useAppSelector((state) => state.help);
 
@@ -50,10 +66,10 @@ const HTMLViewer = () => {
 
     fetchHtmlContent();
   }, [helpPage]);*/
-  const helpPagePrepared = `${helpPage.replace('home', '')}/index.html`;
+  const helpPagePrepared ='index.html';// `${helpPage.replace('home', '')}/index.html`;
   return (
     <>
-        <HelpMenu />
+
         <iframe
           src={`${helpPath}/help/${helpPagePrepared}`}
           title="iframe"
@@ -64,7 +80,7 @@ const HTMLViewer = () => {
             overflow: "auto",
           }}
         ></iframe>
-
+        <CloseOutlinedStyled  onClick={closeDrawer} />
     </>
   );
 };

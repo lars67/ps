@@ -85,7 +85,7 @@ export const quotes = async (
     const symbols = par.symbols?.split(',');
     const precision= par.precision || 4;
     const {subscribeId} = par;
-    if (symbols.length<1) {
+    if (symbols?.length<1) {
         return {error: 'No symbols'}
     }
 

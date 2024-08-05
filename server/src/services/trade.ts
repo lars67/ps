@@ -46,17 +46,6 @@ export async function add(
   userData: UserData,
 ): Promise<Trade | ErrorType | null> {
   //console.log("T", trade);
-  if (isCurrency(trade.symbol)){
-    trade.currency= trade.symbol.substring(3,6)
-  }
-
-    let err_required = validateRequired<Trade>(validationsAddRequired, trade)
-  if (err_required) {
-    return errorMsgs.required(err_required);
-  }
-  if (!isTradeSide(trade.side)) {
-    return { error: `Wrong trade Side` };
-  }
   const {
     _id: realId,
     error,
@@ -65,7 +54,21 @@ export async function add(
   if (error) {
     return error as ErrorType;
   }
+  const isFX = isCurrency(trade.symbol);
+  if (isFX && !trade.currency){
+    trade.currency= trade.symbol.substring(3,6);
+  }
+  console.log('TRADE------------', trade.symbol, trade.currency);
   trade.portfolioId= realId;
+    let err_required = validateRequired<Trade>(validationsAddRequired, trade)
+  if (err_required) {
+    return errorMsgs.required(err_required);
+  }
+  if (!isTradeSide(trade.side)) {
+    return { error: `Wrong trade Side` };
+  }
+
+
 
   if (!(await CurrencyModel.find({ symbol: trade.currency }))) {
     return { error: `Unknown currency` };
@@ -83,20 +86,27 @@ export async function add(
   }
   const {currency: portfolioCurrency} = await  PortfolioModel.findById(trade.portfolioId, {currency:1}) as Portfolio;
 
+
+  console.log('aaaaaaaaaaaa', trade.rate)
   if (!trade.rate) {
 
-    let rate = getDateSymbolPrice(trade.tradeTime, trade.symbol);
+    const rateSymbol = isFX ? trade.symbol : `${trade.currency}${portfolioCurrency}:FX`
+    let rate = getDateSymbolPrice(trade.tradeTime, rateSymbol);
+    console.log('aaaaaaaaaaaa2', trade.tradeTime, rateSymbol, rate,trade.currency,
+        portfolioCurrency)
     if (!rate) {
       await checkPriceCurrency(
           trade.currency,
           portfolioCurrency,
           trade.tradeTime);
-      rate = getDateSymbolPrice(trade.tradeTime, trade.symbol);
+      rate = getDateSymbolPrice(trade.tradeTime, rateSymbol);
+      console.log('aaaaaaaaaaaa3', trade.tradeTime, rateSymbol, portfolioCurrency, rate)
+
     }
     if (rate) {
-      trade.rate = rate;
+      trade.rate = isFX ? 1/rate : rate;
     }else {
-      throw `RATE unknown ${trade.symbol}`
+      throw `RATE unknown ${rateSymbol}`
     }
   }
 
@@ -219,7 +229,7 @@ export async function removeAll({
 
 export const description: CommandDescription = {
 
-  subscribe: {
+  /*subscribe: {
     label: "Subscribe Portfolio Trades",
     value: JSON.stringify({
       command: "trades.subscribe",
@@ -231,7 +241,7 @@ export const description: CommandDescription = {
   unsubscribe: {
     label: "UnSubscribe Portfolio Trades",
     value: JSON.stringify({ command: "trades.unsubscribe", subscribeId: "?" }),
-  },
+  },*/
 
   removeAll: {
     label: "removeAll  Trades for portfolio",

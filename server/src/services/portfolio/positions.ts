@@ -90,10 +90,13 @@ type PortfolioPositionFull = PortfolioPosition &
     total?: number;
     totalSymbol?: number;
     totalType?: string;
-  };
+   };
 type PortfolioCurrencyCash = {
   total: number;
   symbol: string;
+  rate?: number;
+  totalLocal?:number;
+
 };
 
 type CommonPortfolioPosition = PortfolioPositionFull | PortfolioCurrencyCash;
@@ -381,10 +384,25 @@ export async function positions(
       //    (q: QuoteData) => !positions.uniqueSymbols.includes(q.symbol),
       (q: QuoteData) => isCurrency(q.symbol),
     );
-    console.log("processQuoteData rates", rates);
+    console.log("processQuoteData rates", rates, positions.uniqueCurrencies);
     //  console.log('currencyData,symbolData: ', currencyData.map(c=>c.symbol), symbolData.map(c=>c.symbol));
+    positions.uniqueCurrencies.forEach(cur=> {
+      if (cur === portfolio.currency) {
+        rates[cur] = 1
+      } else {
+        let fxData = data.find(d => d.symbol === `${cur}${portfolio.currency}:FX`);
+        console.log('fxData', fxData, data)
+        let inv = false;
+        if (!fxData) {
+          fxData = data.find(d => d.symbol === `${portfolio.currency}${cur}:FX`);
+          inv = true;
+        }
+        rates[cur] = fxData ? (inv ? 1.0 / fxData.close : fxData.close) : 1;
+        console.log(cur, rates[cur]);
+      }
+    });
     if (requestType === "0") {
-      console.log("stop!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+      console.log("stop!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", rates);
       subscribers[userModif][msgId].sseService.stop();
       eventEmitter.removeListener(
         subscribers[userModif][msgId].sseService.getEventName(),
@@ -401,18 +419,28 @@ export async function positions(
 
     const newRates = {} as Record<string, number>;
     q2Rates.forEach((r) => {
-      const cur = (r as { symbol: string }).symbol.substring(0, 3);
-      const newRate = (r as QuoteData2).marketPrice;
-      // console.log((r as { symbol: string }).symbol, cur, newRate, rates[cur]);
-      if (!rates[cur] && newRate) {
-        newRates[cur] = newRate;
-        rates[cur] = newRate;
-      } else if (newRate && newRate !== rates[cur]) {
-        newRates[cur] = newRate;
-        rates[cur] = newRate;
+      let cur = (r as { symbol: string }).symbol.substring(0, 3);
+      const cur2 = (r as { symbol: string }).symbol.substring(3, 6);
+      let  newRate = (r as QuoteData2).marketPrice;
+      let haveRate = true;
+      if (cur === portfolio.currency) {
+        newRate = 1/newRate
+        cur = cur2
+      } else if (cur2 !== portfolio.currency) {
+        haveRate =false;
+      }
+      console.log(cur,'haveRate', haveRate, newRate);
+      if (haveRate) {
+        if (!rates[cur] && newRate) {
+          newRates[cur] = newRate;
+          rates[cur] = newRate;
+        } else if (newRate && newRate !== rates[cur]) {
+          newRates[cur] = newRate;
+          rates[cur] = newRate;
+        }
       }
     });
-    //console.log("rates", rates, "newRates", newRates, "fees", fees);
+    console.log("rates", rates,  "fees", fees);
 
     const q2Symbols = prepareQuoteData2(
       symbolData.filter((d) => !isCurrency(d.symbol)),
@@ -549,7 +577,9 @@ export async function positions(
       Object.keys(cashes).forEach((key) => {
         const c: CommonPortfolioPosition = {
           symbol: `CASH_${key}`,
-          total: cashes[key] as number,
+          total:cashes[key]*rates[key],
+          rate: rates[key],
+          totalLocal: cashes[key] as number,
         };
         changes.push(c);
       });
@@ -817,7 +847,7 @@ async function getPositions(
   const uniqueSymbols = extractUniqueFields(allTrades, "symbol");
   const uniqueCurrencies = extractUniqueFields(allTrades, "currency");
   const symbolCountries = await getSymbolsCountries(uniqueSymbols);
-  let cashes: Record<string, number> = {};
+  let cashes: Record<string, number> = {}; //local,port
   let dividends: Record<string, number> = {};
   //console.log('uniqueSymbols', uniqueSymbols, 'uniqueCurrencies', uniqueCurrencies);
   let currencyInvested: Record<
@@ -870,19 +900,21 @@ async function getPositions(
         const { symbol } = trade;
         if (symbol.endsWith(":FX")) {
           const trgCur = symbol.slice(0, 3);
+          const fromCur = symbol.slice(3, 6);
           const dirBuyTrg = trade.side === "B" ? 1 : -1;
-          const vFrom = dirBuyTrg * trade.volume;
-          const vTo = dirBuyTrg * trade.price * trade.volume;
-          const v = dirBuyTrg * trade.price * trade.volume * trade.rate;
+          const v = dirBuyTrg * trade.price * trade.volume;//* trade.rate;
+          let r = trade.currency === portfolio.currency ? trade.rate : 1
           if (!cashes[trade.currency]) {
-            cashes[trade.currency] = -v;
+
+            cashes[trade.currency] = -v*r;
           } else {
-            cashes[trade.currency] -= v;
+            cashes[trade.currency] -= v*r;
           }
+          r = trgCur === portfolio.currency ? trade.rate : 1
           if (!cashes[trgCur]) {
-            cashes[trgCur] = v;
+            cashes[trgCur] = v*r;
           } else {
-            cashes[trgCur] += v;
+            cashes[trgCur] += v*r;
           }
           if (!cashes[portfolio.currency]) {
             cashes[portfolio.currency] = -trade.fee * trade.rate;
@@ -894,16 +926,16 @@ async function getPositions(
         } else {
           const trgCur = trade.currency;
           const dirBuyTrg = trade.side === "B" ? 1 : -1;
-          const v = dirBuyTrg * trade.price * trade.volume * trade.rate;
+          const v = dirBuyTrg * trade.price * trade.volume;// * trade.rate;
           if (!cashes[trgCur]) {
             cashes[trgCur] = -v;
           } else {
             cashes[trgCur] -= v;
           }
           if (!cashes[portfolio.currency]) {
-            cashes[trade.currency] = -trade.fee * trade.rate;
+            cashes[portfolio.currency] = -trade.fee * trade.rate;
           } else {
-            cashes[trade.currency] -= trade.fee * trade.rate;
+            cashes[portfolio.currency] -= trade.fee * trade.rate;
           }
           //         console.log('v', symbol, v, 'fee',trade.fee*trade.rate);
         }
@@ -987,17 +1019,17 @@ async function getPositions(
         const dividendPerShareVol = (oldPortfolio[trade.symbol] as Trade)?.volume || 1;
         if (!dividends[trade.symbol]) {
           dividends[trade.symbol] =
-            trade.price * trade.rate * dividendPerShareVol;
+            trade.price *  dividendPerShareVol;
         } else {
           dividends[trade.symbol] +=
-            trade.price * trade.rate * dividendPerShareVol;
+            trade.price *  dividendPerShareVol;
         }
         if (!cashes[trade.currency]) {
           cashes[trade.currency] =
-            trade.price * trade.rate * dividendPerShareVol;
+            trade.price * dividendPerShareVol;// * trade.rate;
         } else {
           cashes[trade.currency] +=
-            trade.price * trade.rate * dividendPerShareVol;
+            trade.price * dividendPerShareVol ;//trade.rate *
         }
         console.log(
           "dividends:",
@@ -1011,14 +1043,14 @@ async function getPositions(
       case "21":
       case "22":
         if (!cashes[trade.currency]) {
-          cashes[trade.currency] = trade.price * trade.rate;
+          cashes[trade.currency] = trade.price
         } else {
-          cashes[trade.currency] += trade.price * trade.rate;
+          cashes[trade.currency] += trade.price;
         }
         if (!cashes[portfolio.currency]) {
-          cashes[portfolio.currency] = -trade.fee * trade.rate;
+          cashes[portfolio.currency] = -trade.fee* trade.rate;
         } else {
-          cashes[portfolio.currency] -= trade.fee * trade.rate;
+          cashes[portfolio.currency] -= trade.fee* trade.rate;
         }
       /*  const cashPut = trade.price * trade.rate;
         cash += cashPut;
@@ -1298,4 +1330,8 @@ The key factors are:
 
 Interactive Brokers would handle these currency conversions and cash changes automatically as part of the trade execution and settlement process.
 
+Operations:
+  CASH   ->   Local_cash
+  FX       Local_cash <-> Local_cash
+  Symbol   Local_cash  <-> Investment
  */

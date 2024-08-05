@@ -221,8 +221,10 @@ export function getDatePrices(date: string, find: boolean = false) {
   }
   return null;
 }
-export function getDateSymbolPrice(dateInput: string, symbol: string) {
+export function getDateSymbolPrice(dateInput: string, symbolInput: string) {
   const date = dateInput.split("T").shift() as string;
+  const symbol =symbolInput.endsWith(':FX') ? symbolInput.split(':').shift() as string: symbolInput;
+  //console.log('getDateSymbolPrice', date, symbol, dateHistory[date]);
   if (dateHistory[date] && dateHistory[date][symbol]) {
     return dateHistory[date][symbol];
   }
@@ -230,7 +232,9 @@ export function getDateSymbolPrice(dateInput: string, symbol: string) {
   let prevDate = moment(date, formatYMD);
   for (let i = 1; i < SEARCH_DAY; i++) {
     prevDate = prevDate.add(-1, "days");
+
     const d = prevDate.format(formatYMD);
+   // console.log('i', i, symbol, prevDate,d, (dateHistory[d] && dateHistory[d][symbol]));
     if (dateHistory[d] && dateHistory[d][symbol]) {
       return dateHistory[d][symbol];
     }
@@ -275,16 +279,19 @@ export async function checkPriceCurrency(
       symbol: `${fx}:FX`,
       from: startDate,
     });
+    //console.log('addFXHistory history.length', history.length,fx, histories);
+   // console.log(history[0]);
     if (history.length > 0) {
       histories[fx] = history[0].date;
       // console.log('remember', symbol, history.length);
-      history.map((h) => {
+      history.map((h,i ) => {
         const { date, close } = h;
         if (dateHistory[date]) {
           dateHistory[date][fx] = close;
         } else {
           dateHistory[date] = { [fx]: close };
         }
+     //   i <=10 && console.log(date,dateHistory[date]);
       });
       return true;
     }
@@ -309,7 +316,7 @@ export async function checkPriceCurrency(
     const addedFX = await addFXHistory(fx, startDate);
     const addedFX2 = await addFXHistory(fx2, startDate);
     if (currency==='CNH' || (!addedFX && !addedFX2)) {
-      console.log(`FX price absent for ${fx} ${fx2} !!!!!!!!!!`);
+      //console.log(`FX price absent for ${fx} ${fx2} !!!!!!!!!!`);
       badSymbol= `${fx}:FX`
     }
     return badSymbol;
@@ -334,16 +341,16 @@ export async function checkPortfolioPricesCurrencies(
   const endDate = findMaxByField<Trade>(trades, "tradeTime").tradeTime.split(
     "T",
   )[0];
-  console.log("checkPortfolioPricesCurrencies startDate", startDate, endDate);
+  //console.log("checkPortfolioPricesCurrencies startDate", startDate, endDate);
   withoutPrices.push(...(await checkPrices(uniqueSymbols, startDate)));
-  console.log("checkPriceCurrency");
+ // console.log("checkPriceCurrency");
   for (const currency of uniqueCurrencies) {
     const r = await checkPriceCurrency(currency, balanceCurrency, startDate);
     if (r) {
       withoutPrices.push(r);
     }
   }
-  console.log("/checkPortfolioPricesCurrencies");
+ // console.log("/checkPortfolioPricesCurrencies");
   return { startDate, endDate, uniqueSymbols, uniqueCurrencies, withoutPrices };
 }
 

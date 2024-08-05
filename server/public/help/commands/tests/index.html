@@ -3,15 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <title>Tests</title>
-    <title>Portfolios</title>
+    <base href="https://localhost:3333/help/" />
+    <title>Tests command </title>
     <link rel="stylesheet" href="../../style.css">
     <link rel="stylesheet" href="../../cm-viewer.css">
     <link rel="stylesheet" href="../../contextMenu.css">
     <script src="../../contextMenu.js"></script>
 </head>
 <body>
-<h1 id="manual">Tests</h1>
-<a href="../commands/testFunctions">Test Fuctions</a></li>
+<div class="navbar">
+    <a href="index.html">Help</a>
+    <div class="dropdown">
+        <button class="dropbtn">Commands
+            ▼
+        </button>
+        <div class="dropdown-content">
+            <a href="commands/portfolios/index.html">Portfolios</a>
+            <a href="commands/tools/index.html">Tools</a>
+        </div>
+    </div>
+    <a href="commands/tests/index.html">Test Commands</a>
+    <a href="operations/index.html">Operations</a>
+</div>
+
+<h1 class="firstItem">Tests</h1>
+<a href="./commands/tests/#toHelpCommands">Help Commands</a></li>
 
 <p>Execute test commands on the client side, enabling the creation of tests alongside other commands</p>
 <p>Test commands can create and utilize variables with arbitrary values during the execution of the command package.
@@ -113,24 +129,24 @@ Below we find object in variable with name 'history1' which has propery 'days' w
         <th>Call</th>
     </tr>
     <tr>
-        <td><a href="#to-check">Check</a></td>
+        <td><<a href="./commands/tests/#to-check">Check</a></td>
         <td><div class="cm-activeLine cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.check"</span>,<span class="ͼ1m">"path"</span>:<span class="ͼ19">"?"</span>,<span class="ͼ1m">"conditions"</span>:{}}</div>
         </td>
 
     </tr>
     <tr>
-        <td><a href="#to-setVar">Set variable</a></td>
+        <td><<a href="./commands/tests/#to-setVar">Set variable</a></td>
         <td>
             <div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.setVar"</span>,<span class="ͼ1m">"v"</span>:<span class="ͼ19">"?"</span>}</div>
         </td>
     </tr>
     <tr>
-        <td><a href="#to-getVar">Get variable</a></td>
+        <td><<a href="./commands/tests/#to-getVar">Get variable</a></td>
         <td><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.getVar"</span>,<span class="ͼ1m">"path"</span>:<span class="ͼ19">"?"</span>}</div>
         </td>
      </tr>
     <tr>
-        <td><a href="#to-setMode">Set output mode</a></td>
+        <td><<a href="./commands/tests/#to-setMode">Set output mode</a></td>
         <td>
           <div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.setMode"</span>,<span class="ͼ1m">"hide"</span>:<span class="ͼ1b">true</span>}</div>
         </td>
@@ -224,6 +240,26 @@ Below we find object in variable with name 'history1' which has propery 'days' w
         <td>Yes</td>
     </tr>
 
+</table>
+
+<h1 id="toHelpCommands">Help Commands</h1>
+<table>
+    <tr>
+        <th>Command</th>
+        <th>Call</th>
+    </tr>
+    <tr>
+        <td>Break Test sequence</td>
+        <td><div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.breakTests"</span>}</div></td>
+    </tr>
+    <tr>
+        <td>Wait msg</td>
+        <td></td>
+    </tr>
+    <tr>
+        <td>Find object in array with minimal field value</td>
+        <td></td>
+    </tr>
 </table>
 </body>
 </html>

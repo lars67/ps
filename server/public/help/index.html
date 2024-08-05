@@ -2,56 +2,105 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <base href="https://localhost:3333/help/" />
     <title>Help</title>
     <link rel="stylesheet" href="./style.css">
     <link rel="stylesheet" href="`./cm-viewer.css">
     <link rel="stylesheet" href="./contextMenu.css">
     <script src="./contextMenu.js"></script>
     <style>
-        /* CSS styles for the list */
-        ul {
-            list-style-type: none;
-            padding: 0;
+        .spinner {
+            color: #fff;
+            font-size: 10px;
+            width: 1em;
+            height: 1em;
+            border-radius: 50%;
+            position: relative;
+            text-indent: -9999em;
+            animation: mulShdSpin 1.3s infinite linear;
+            transform: translateZ(0);
         }
 
-        li {
-            margin-bottom: 5px;
+        @keyframes mulShdSpin {
+            0%,
+            100% {
+                box-shadow: 0 -3em 0 0.2em,
+                2em -2em 0 0em, 3em 0 0 -1em,
+                2em 2em 0 -1em, 0 3em 0 -1em,
+                -2em 2em 0 -1em, -3em 0 0 -1em,
+                -2em -2em 0 0;
+            }
+            12.5% {
+                box-shadow: 0 -3em 0 0, 2em -2em 0 0.2em,
+                3em 0 0 0, 2em 2em 0 -1em, 0 3em 0 -1em,
+                -2em 2em 0 -1em, -3em 0 0 -1em,
+                -2em -2em 0 -1em;
+            }
+            25% {
+                box-shadow: 0 -3em 0 -0.5em,
+                2em -2em 0 0, 3em 0 0 0.2em,
+                2em 2em 0 0, 0 3em 0 -1em,
+                -2em 2em 0 -1em, -3em 0 0 -1em,
+                -2em -2em 0 -1em;
+            }
+            37.5% {
+                box-shadow: 0 -3em 0 -1em, 2em -2em 0 -1em,
+                3em 0em 0 0, 2em 2em 0 0.2em, 0 3em 0 0em,
+                -2em 2em 0 -1em, -3em 0em 0 -1em, -2em -2em 0 -1em;
+            }
+            50% {
+                box-shadow: 0 -3em 0 -1em, 2em -2em 0 -1em,
+                3em 0 0 -1em, 2em 2em 0 0em, 0 3em 0 0.2em,
+                -2em 2em 0 0, -3em 0em 0 -1em, -2em -2em 0 -1em;
+            }
+            62.5% {
+                box-shadow: 0 -3em 0 -1em, 2em -2em 0 -1em,
+                3em 0 0 -1em, 2em 2em 0 -1em, 0 3em 0 0,
+                -2em 2em 0 0.2em, -3em 0 0 0, -2em -2em 0 -1em;
+            }
+            75% {
+                box-shadow: 0em -3em 0 -1em, 2em -2em 0 -1em,
+                3em 0em 0 -1em, 2em 2em 0 -1em, 0 3em 0 -1em,
+                -2em 2em 0 0, -3em 0em 0 0.2em, -2em -2em 0 0;
+            }
+            87.5% {
+                box-shadow: 0em -3em 0 0, 2em -2em 0 -1em,
+                3em 0 0 -1em, 2em 2em 0 -1em, 0 3em 0 -1em,
+                -2em 2em 0 0, -3em 0em 0 0, -2em -2em 0 0.2em;
+            }
         }
 
-        a {
-            text-decoration: none;
-            color: #333;
-        }
-
-        a:hover {
-            background-color: #f0f0f0;
-        }
-
-        /* Nested list styling */
-        ul ul {
-            margin-left: 20px;
-        }
     </style>
+    <script>
+      window.addEventListener('load', function() {
+    // Hide the spinner
+    const spinner = document.getElementById('spinner');
 
+    // Hide the spinner after the page is fully loaded
+    spinner.style.display = 'none';
+
+    // Show the content
+    content.classList.remove('hidden');
+    });
+    </script>
 </head>
 <body>
-<h1 id="manual"></h1>
-<!--
-<ul>
-    <li><a href="#">Commands</a>
-        <ul>
-            <li><a href="./commands/collection">Collections</a></li>
-            <li><a href="./commands/tests">Tests</a></li>
-            <li><a href="../commands/testFunctions">Test Fuctions</a></li>
-            <li><a href="./commands/portfolios">Portfolios</a></li>
-            <li><a href="./commands/trades">Trades</a></li>
-        </ul>
-    </li>
-    <li><a href="./commands/datasources">Data sources</a></li>
+<div class="navbar">
+    <a href="index.html">Help</a>
+     <div class="dropdown">
+        <button class="dropbtn">Commands
+            ▼
+        </button>
+        <div class="dropdown-content">
+            <a href="commands/portfolios/index.html">Portfolios</a>
+            <a href="commands/tools/index.html">Tools</a>
+        </div>
+    </div>
+    <a href="commands/tests/index.html">Test Commands</a>
+    <a href="operations/index.html">Operations</a>
+</div>
+<div id="spinner" class="spinner" style="margin: auto auto;"></div>
 
-</ul>
--->
-<p>Under construction for this moment. Need apply communication between Main React app and html/css help inside frame</p>
 </body>
 </html>
 
