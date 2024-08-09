@@ -1,3 +1,6 @@
+import {ObjectId} from "mongodb";
+import {Currency} from "@/types/currency";
+
 export type User = {
   _id?: string | null;
   name?: string | null;
@@ -6,3 +9,6 @@ export type User = {
   password?: string | null;
   image?: string;
  };
+
+
+export type UserWithID = User & { _id: string | ObjectId };

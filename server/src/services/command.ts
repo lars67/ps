@@ -21,12 +21,20 @@ type CommandItem = {
   access?: string;
 };
 //standart collection with standart handlers
-const collections = ["currencies", "portfolios", "sectors", "trades"];
+const memberCollections = ["portfolios", "trades"];
+
+const collections = ["currencies", "sectors", "users", ...memberCollections];
 
 export const validationsAddRequired: string[] = ["label", "value"];
 
+const checkAccessByRole = (role:string) => (c:Command) => {
+  if (c.access === 'public' || role ==='admin') return true;
+  if (c.access === 'member' && role === 'member') return true
+  return false
+}
 let allCustomCommands: CommandItem[] = [];
 let guestAllowedCommands: string[] = [];
+let  memberAllowedCommands: string[] = [];
 export async function list(
   filter: Partial<Command> = {},
   sendResponse: (data: object) => void,
@@ -35,14 +43,14 @@ export async function list(
   { userId, role, name }: UserData,
 ): Promise<Command[] | null> {
   const maps = collectionNameToComPar(getMongoose());
-  console.log("commands list", userId, role, name);
+//  console.log("commands list", userId, role, name,maps);
   const isGuest = role === "guest";
   try {
     const tableCommands = isGuest
       ? []
       : [
           ...[
-            ...collections.map((c) => [
+            ...(role === 'member' ? memberCollections : collections).map((c) => [
               {
                 label: `List ${c}`,
                 value: JSON.stringify({
@@ -142,7 +150,7 @@ export async function list(
     if (isGuest) {
       return [...allCustomCommands.filter((c) => c.access === "public")];
     } else {
-      return [...userCommands, ...allCustomCommands, ...tableCommands];
+      return [...userCommands, ...allCustomCommands.filter(checkAccessByRole(role)), ...tableCommands];
     }
   } catch (err) {
     console.log("ERR", err);
@@ -219,4 +227,28 @@ export const getGuestAccessAlowedCommands = () => {
     });
   }
   return guestAllowedCommands;
+};
+
+export const getMemberAccessAlowedCommands = () => {
+  if (memberAllowedCommands.length === 0) {
+    memberAllowedCommands.push('commands.list');
+    memberAllowedCommands.push(...['portfolios.list', 'portfolios.add', 'portfolios.update', 'portfolios.remove',
+       'portfolios.detailList',
+       'trades.add', 'trades.update', 'trades.remove']);
+    collections.forEach((col) => {
+      const modelName = getModelNameByCollectionName(col);
+      if (modelName) {
+        const { description } = require(`./${modelName?.toLowerCase()}`);
+        if (description) {
+          Object.keys(description).map((c) => {
+            if (description[c].access === 'member' ||  description[c].access === 'public')
+              memberAllowedCommands.push(`${col}.${c}`.toLowerCase());
+          });
+        }
+      }
+    });
+    console.log('memberAllowedCommands >>>', memberAllowedCommands)
+
+  }
+  return memberAllowedCommands;
 };

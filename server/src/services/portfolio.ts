@@ -1,12 +1,23 @@
-import {Portfolio, PortfolioWithID} from "@/types/portfolio";
-import {PortfolioModel} from "../models/portfolio";
-import {FilterQuery} from "mongoose";
-import {CommandDescription} from "@/types/custom";
-import {checkCurrency, checkUnique, getRealId, isErrorType, validateRequired,} from "../utils";
+import { Portfolio, PortfolioWithID } from "@/types/portfolio";
+import { PortfolioModel } from "../models/portfolio";
+import { FilterQuery } from "mongoose";
+import { CommandDescription } from "@/types/custom";
+import {
+  checkCurrency,
+  checkUnique,
+  getRealId,
+  isErrorType,
+  validateRequired,
+} from "../utils";
 
-import {errorMsgs} from "../constants";
-import {ErrorType} from "../types/other";
-import {convertMoneyTypeToTradeType, MoneyTypes, Trade, TradeTypes} from "../types/trade";
+import { errorMsgs } from "../constants";
+import { ErrorType } from "../types/other";
+import {
+  convertMoneyTypeToTradeType,
+  MoneyTypes,
+  Trade,
+  TradeTypes,
+} from "../types/trade";
 
 import {
   getPortfolioInstanceByIDorName,
@@ -15,10 +26,10 @@ import {
   PutInvestment,
   putSpecialTrade,
 } from "../services/portfolio/helper";
-import {TradeModel} from "../models/trade";
-import {getPortfolioTrades} from "../utils/portfolio";
-import {UserData} from "@/services/websocket";
-import {generateAccountID} from "../utils/idGenerator";
+import { TradeModel } from "../models/trade";
+import { getPortfolioTrades } from "../utils/portfolio";
+import { UserData } from "@/services/websocket";
+import { generateAccountID } from "../utils/idGenerator";
 
 export { history } from "./portfolio/history";
 export { positions } from "./portfolio/positions";
@@ -29,44 +40,54 @@ export const validationsAddRequired: string[] = [
   "baseInstrument",
 ];
 
-
 export async function list(
-    filter: FilterQuery<Portfolio> = {},
+  filter: FilterQuery<Portfolio> = {},
+  sendResponse: (data: object) => void,
+  msgId: string,
+  userModif: string,
+  userData: UserData,
 ): Promise<Portfolio[] | null> {
   try {
-    console.log("filter", filter);
-    const portfolios = await PortfolioModel.find(filter?.filter).lean();
+    if (userData.role !== "admin") {
+      filter = {
+        ...filter?.filter,
+        $or: [{ access: "public" }, { userId: userData.userId }],
+      };
+    } else {
+      filter = filter?.filter;
+    }
+    console.log("filter", filter, userData.role);
+    const portfolios = await PortfolioModel.find(filter).lean();
     return portfolios;
   } catch (err) {}
   return [];
 }
 
 export async function add(
-    portfolio: Portfolio,
-    sendResponse: (data: object) => void,
-    msgId: string,
-    userModif: string,
-    { userId }: UserData,
+  portfolio: Portfolio,
+  sendResponse: (data: object) => void,
+  msgId: string,
+  userModif: string,
+  userData: UserData,
 ): Promise<Portfolio | ErrorType | null> {
-  console.log("ADDDDDD", msgId, userModif, userId);
   let err_required = validateRequired<Portfolio>(
-      validationsAddRequired,
-      portfolio,
+    validationsAddRequired,
+    portfolio,
   );
   if (err_required) {
     return errorMsgs.required(err_required);
   }
   let error = await checkUnique<Portfolio>(
-      PortfolioModel,
-      portfolio.name,
-      "name",
+    PortfolioModel,
+    portfolio.name,
+    "name",
   );
   if (error) return error;
   error = await checkCurrency(portfolio.currency);
   if (error) return error;
 
-  if (!portfolio.userId) {
-    portfolio.userId = userId;
+  if (!portfolio.userId || userData.role !== "admin") {
+    portfolio.userId = userData.userId;
   }
   portfolio.accountId = generateAccountID();
 
@@ -76,7 +97,7 @@ export async function add(
 }
 
 export async function update(
-    Portfolio: Partial<PortfolioWithID>,
+  Portfolio: Partial<PortfolioWithID>,
 ): Promise<Portfolio | ErrorType | null> {
   const { _id, accountId, userId, ...other } = Portfolio;
   if (other.currency) {
@@ -93,8 +114,8 @@ export async function update(
 }
 
 export async function remove({
-                               _id,
-                             }: {
+  _id,
+}: {
   _id: string;
 }): Promise<Portfolio | ErrorType | null> {
   if (!_id) {
@@ -122,11 +143,11 @@ export async function remove({
 }
 
 export async function trades(
-    { _id, from }: { _id: string; from?: string },
-    sendResponse: (data: any) => void,
-    msgId: string,
-    userModif: string,
-    userData: UserData,
+  { _id, from }: { _id: string; from?: string },
+  sendResponse: (data: any) => void,
+  msgId: string,
+  userModif: string,
+  userData: UserData,
 ): Promise<Trade[] | ErrorType> {
   if (!_id) {
     return errorMsgs.required1("_id");
@@ -135,7 +156,7 @@ export async function trades(
     _id: realId,
     error,
     instance: portfolio,
-  } = await  getPortfolioInstanceByIDorName (_id, userData);
+  } = await getPortfolioInstanceByIDorName(_id, userData);
   if (error) {
     return error as ErrorType;
   }
@@ -144,62 +165,68 @@ export async function trades(
 }
 
 export async function putCash(
-    par: PutCash,
-    sendResponse: (data: any) => void,
-    msgId: string,
-    userModif: string,
-    { userId }: UserData,
+  par: PutCash,
+  sendResponse: (data: any) => void,
+  msgId: string,
+  userModif: string,
+  { userId }: UserData,
 ): Promise<Trade | ErrorType | undefined> {
   return await putSpecialTrade(
-      { ...par, tradeType: convertMoneyTypeToTradeType(par.tradeType as  MoneyTypes,TradeTypes.Cash)},
-      sendResponse,
-      msgId,
-      userModif,
-      userId,
+    {
+      ...par,
+      tradeType: convertMoneyTypeToTradeType(
+        par.tradeType as MoneyTypes,
+        TradeTypes.Cash,
+      ),
+    },
+    sendResponse,
+    msgId,
+    userModif,
+    userId,
   );
 }
 
 export async function putInvestment(
-    par: PutInvestment,
-    sendResponse: (data: any) => void,
-    msgId: string,
-    userModif: string,
-    { userId }: UserData,
+  par: PutInvestment,
+  sendResponse: (data: any) => void,
+  msgId: string,
+  userModif: string,
+  { userId }: UserData,
 ): Promise<Trade | ErrorType | undefined> {
   return await putSpecialTrade(
-      { ...par, tradeType: TradeTypes.Investment},
-      sendResponse,
-      msgId,
-      userModif,
-      userId,
+    { ...par, tradeType: TradeTypes.Investment },
+    sendResponse,
+    msgId,
+    userModif,
+    userId,
   );
 }
 export async function putDividends(
-    par: PutDividends,
-    sendResponse: (data: any) => void,
-    msgId: string,
-    userModif: string,
-    { userId }: UserData,
+  par: PutDividends,
+  sendResponse: (data: any) => void,
+  msgId: string,
+  userModif: string,
+  { userId }: UserData,
 ): Promise<Trade | ErrorType | undefined> {
   if (!par.symbol) {
-     return errorMsgs.required1('symbol')
+    return errorMsgs.required1("symbol");
   }
   return await putSpecialTrade(
-      { ...par, tradeType: TradeTypes.Dividends },
-      sendResponse,
-      msgId,
-      userModif,
-      userId,
+    { ...par, tradeType: TradeTypes.Dividends },
+    sendResponse,
+    msgId,
+    userModif,
+    userId,
   );
 }
 
 export async function access(
-    { _id, access }: { _id: string; access: string },
+  { _id, access }: { _id: string; access: string },
 
-    sendResponse: (data: any) => void,
-    msgId: string,
-    userModif: string,
-    userData: UserData,
+  sendResponse: (data: any) => void,
+  msgId: string,
+  userModif: string,
+  userData: UserData,
 ) {
   if (!_id) {
     return errorMsgs.required1("_id");
@@ -208,71 +235,75 @@ export async function access(
     _id: realId,
     error,
     instance: portfolio,
-  } = await  getPortfolioInstanceByIDorName (_id, userData);
+  } = await getPortfolioInstanceByIDorName(_id, userData);
   if (error) {
     return error;
   }
   return await PortfolioModel.findByIdAndUpdate(
-      realId,
-      { access },
-      { new: true },
+    realId,
+    { access },
+    { new: true },
   );
 }
 
-
 export async function detailList(
-    { filter}: { filter:{} },
+  { filter }: { filter: {} },
 
-    sendResponse: (data: any) => void,
-    msgId: string,
-    userModif: string,
-    userData: UserData,
+  sendResponse: (data: any) => void,
+  msgId: string,
+  userModif: string,
+  userData: UserData,
 ) {
+  const isNotAdmin = userData.role !== "admin";
+  if (isNotAdmin)
+    filter = {
+      ...filter,
+      $or: [{ access: "public" }, { userId: userData.userId }],
+    };
+  console.log("FILTER", filter);
+  return await PortfolioModel.aggregate([
+    {
+      $addFields: {
+        userIdObject: {
+          $toObjectId: "$userId",
+        }, // Преобразование userId в ObjectId
+      },
+    },
+    {
+      $lookup: {
+        from: "users",
+        // Имя коллекции пользователей
+        localField: "userIdObject",
+        // Преобразованное поле
 
-    return await PortfolioModel.aggregate([
-
-        {
-          $addFields: {
-            userIdObject: {
-              $toObjectId: "$userId",
-            }, // Преобразование userId в ObjectId
-          },
-        },
-        {
-          $lookup: {
-            from: "users",
-            // Имя коллекции пользователей
-            localField: "userIdObject",
-            // Преобразованное поле
-
-            foreignField: "_id",
-            // Поле в коллекции пользователей
-            as: "userDetails", // Имя для объединенного результата
-          },
-        },
-        {
-          $unwind: "$userDetails", // Развернуть массив объединенных документов
-        },
-
-        {
-          $project: {
-            name: 1,
-            description: 1,
-            currency: 1,
-            userId: 1,
-            baseInstrument: 1,
-            portfolioType: 1,
-            portfolioIds: 1,
-            accountId: 1,
-            access: 1,
-            userName: "$userDetails.name", // Добавить поле userName с именем пользователя
-            userRole: "$userDetails.role",
-          },
-        },
-      ]);
-
-  };
-
+        foreignField: "_id",
+        // Поле в коллекции пользователей
+        as: "userDetails", // Имя для объединенного результата
+      },
+    },
+    {
+      $unwind: "$userDetails", // Развернуть массив объединенных документов
+    },
+    {
+      $match: filter || {},
+    },
+    {
+      $project: {
+        name: 1,
+        description: 1,
+        currency: 1,
+        userId: 1,
+        baseInstrument: 1,
+        portfolioType: 1,
+        portfolioIds: 1,
+        accountId: 1,
+        access: 1,
+        userName: "$userDetails.name", // Добавить поле userName с именем пользователя
+        userRole: "$userDetails.role",
+      },
+    },
+  ]);
+}
 
 export const description: CommandDescription = {
   history: {
@@ -280,7 +311,7 @@ export const description: CommandDescription = {
     value: `${JSON.stringify({ command: "portfolios.history", _id: "?", from: "", till: "", sample: "", detail: 0, precision: 2 })}
    
     `,
-    access: "public"
+    access: "public",
   },
   positions: {
     label: "Portfolio Positions",
@@ -292,8 +323,7 @@ export const description: CommandDescription = {
       basePrice: "4",
       closed: "all", //all|only|no
     })}`,
-    access: "public"
-
+    access: "public",
   },
 
   putCash: {
@@ -303,13 +333,13 @@ export const description: CommandDescription = {
       portfolioId: "?",
       amount: "?",
       currency: "?",
-      rate:"",
-      description:"",
+      rate: "",
+      description: "",
       fee: "",
-      userId: ""
+      userId: "",
     }),
+    access: "member",
   },
-
 
   putInvestment: {
     label: "Portfolio Put Cash",
@@ -320,10 +350,11 @@ export const description: CommandDescription = {
       currency: "?",
       shares: 1,
       userId: "",
-      rate:"",
-      descriptuion:"",
-      fee: ""
+      rate: "",
+      descriptuion: "",
+      fee: "",
     }),
+    access: "member",
   },
 
   putDividends: {
@@ -334,10 +365,11 @@ export const description: CommandDescription = {
       amount: "?",
       currency: "?",
       userId: "",
-      rate:"",
-      descriptuion:"",
-      fee: ""
+      rate: "",
+      descriptuion: "",
+      fee: "",
     }),
+    access: "member",
   },
 
   trades: {
@@ -347,10 +379,12 @@ export const description: CommandDescription = {
       _id: "?",
       from: "",
     }),
+    access: "member",
   },
 
   access: {
     label: "Change access",
+    access: "admin",
     value: JSON.stringify({
       command: "portfolios.access",
       _id: "?",
@@ -358,12 +392,12 @@ export const description: CommandDescription = {
     }),
   },
 
-  getPortfolioWithUsers: {
+  detailList: {
     label: "Portfolio detail list",
     value: JSON.stringify({
       command: "portfolios.detailList",
       filter: {},
     }),
-  }
-
+    access: "member",
+  },
 };

@@ -42,7 +42,7 @@ const SignUpPage = () => {
   const isMobile = useMediaQuery({ maxWidth: 769 });
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-
+  const [form] = Form.useForm();
   const dispatch = useAppDispatch();
   const onFinish = async (values: any) => {
     console.log('Success:', values);
@@ -76,6 +76,13 @@ const SignUpPage = () => {
     console.log('Failed:', errorInfo);
   };
 
+  const validateConfirmPassword = (rule: any, value:string) => {
+    const { password } = form.getFieldsValue();
+    if (!value || value === password) {
+      return Promise.resolve();
+    }
+    return Promise.reject(new Error('The two passwords that you entered do not match!'));
+  };
   return (
     <Row style={{ minHeight: isMobile ? 'auto' : '100vh', overflow: 'hidden' }}>
       <Col xs={24} lg={12}>
@@ -119,6 +126,7 @@ const SignUpPage = () => {
             onFinishFailed={onFinishFailed}
             autoComplete="off"
             requiredMark={false}
+            form={form}
           >
             <Row gutter={[8, 0]}>
               <Col xs={24} >
@@ -165,8 +173,12 @@ const SignUpPage = () => {
                   rules={[
                     {
                       required: true,
-                      message: 'Please ensure passwords match!',
+                      message: 'Please ensure passwords match!'
                     },
+                    {
+                      validator: validateConfirmPassword,
+                    },
+
                   ]}
                 >
                   <Input.Password />

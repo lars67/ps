@@ -134,7 +134,6 @@ const PortfoliosTable = () => {
   };
 
   const loadPortfolios = async () => {
-    console.log("loadPortfolios");
     setLoading(true);
     const reqPortfolios = {
       command: "portfolios.detailList",

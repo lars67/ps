@@ -87,7 +87,7 @@ export async function add(
   const {currency: portfolioCurrency} = await  PortfolioModel.findById(trade.portfolioId, {currency:1}) as Portfolio;
 
 
-  console.log('aaaaaaaaaaaa', trade.rate)
+
   if (!trade.rate) {
 
     const rateSymbol = isFX ? trade.symbol : `${trade.currency}${portfolioCurrency}:FX`
@@ -250,6 +250,7 @@ export const description: CommandDescription = {
       portfolioId: "?",
 
     }),
+    access:'member'
   },
 };
 
