@@ -40,7 +40,7 @@ export async function list(
   sendResponse: (data: object) => void,
   msgId: string,
   userModif: string,
-  { userId, role, name }: UserData,
+  { userId, role, login }: UserData,
 ): Promise<Command[] | null> {
   const maps = collectionNameToComPar(getMongoose());
 //  console.log("commands list", userId, role, name,maps);
@@ -163,7 +163,7 @@ export async function add(
   sendResponse: (data: object) => void,
   msgId: string,
   userModif: string,
-  { userId, role, name }: UserData,
+  { userId, role, login }: UserData,
 ): Promise<Command | ErrorType | null> {
   command.ownerId = userId;
 

@@ -7,7 +7,7 @@ import {
   Form,
   Input,
   message,
-  Row,
+  Row, Select,
   theme,
   Typography,
 } from 'antd';
@@ -20,21 +20,27 @@ import { Logo } from '../../components';
 import { useMediaQuery } from 'react-responsive';
 import {PATH_AUTH, PATH_CONSOLE} from '../../constants';
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import {useEffect, useState} from 'react';
 import {authLoginThunk, authSignUpThunk, UserState} from "../../store";
 import {useAppDispatch} from "../../store/useAppDispatch";
 import {PATH_LOGIN} from "../../constants/routes";
 import { Link as Link2 } from 'react-router-dom'
+import ReactCountryFlag from 'react-country-flag';
+import {safeFetch} from "../../utils/safeFetch";
 const { Title, Text, Link } = Typography;
 
 type FieldType = {
-  name?: string;
+  login?: string;
   email?: string;
   password?: string;
   cPassword?: string;
   terms?: boolean;
 };
 
+interface CountryA2Type  {
+  name: string;
+  a2: string;
+}
 const SignUpPage = () => {
   const {
     token: { colorPrimary },
@@ -43,20 +49,26 @@ const SignUpPage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
+  const [countries, setCountries] = useState<CountryA2Type[] | []>([])
   const dispatch = useAppDispatch();
   const onFinish = async (values: any) => {
     console.log('Success:', values);
     setLoading(true);
     const rez = await dispatch(
         authSignUpThunk({
-          name: values.name,
+          login: values.login,
           password: values.password,
           email:values.email,
+          firstName: values.firstName,
+          lastName: values.lastName ,
+          accountNumber: values.accountNumber,
+          telephone: values.telephone,
+          country: values.country
         })
     );
     console.log("R", rez);
     setLoading(false);
-    if ((rez.payload as UserState).name) {
+    if ((rez.payload as UserState).login) {
       message.open({
         type: 'success',
         content: 'Account signup successful',
@@ -72,6 +84,15 @@ const SignUpPage = () => {
 
   };
 
+  useEffect(()=> {
+     safeFetch<CountryA2Type[]>("countries", {method:'GET'})
+         .then ((countries)=> {
+    setCountries(countries.data as CountryA2Type[]);
+     })
+         .catch(error => {
+           console.error('Error fetching countries:', error);
+         });
+    }, [setCountries])
   const onFinishFailed = (errorInfo: any) => {
     console.log('Failed:', errorInfo);
   };
@@ -116,94 +137,175 @@ const SignUpPage = () => {
             <Link2 to="PATH_LOGIN">Sign in here</Link2>
           </Flex>
 
+
           <Form
-            name="sign-up-form"
-            layout="vertical"
-            labelCol={{ span: 8 }}
-            wrapperCol={{ span: 24 }}
-            initialValues={{ remember: true }}
-            onFinish={onFinish}
-            onFinishFailed={onFinishFailed}
-            autoComplete="off"
-            requiredMark={false}
-            form={form}
-          >
-            <Row gutter={[8, 0]}>
-              <Col xs={24} >
-                <Form.Item<FieldType>
-                  label="Name"
-                  name="name"
+          name="sign-up-form"
+          layout="vertical"
+          labelCol={{ span: 8 }}
+          wrapperCol={{ span: 24 }}
+          initialValues={{ remember: true }}
+          onFinish={onFinish}
+          onFinishFailed={onFinishFailed}
+          autoComplete="off"
+          requiredMark={false}
+          form={form}
+        >
+          <Row gutter={[16, 0]}>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                  label="Login"
+                  name="login"
                   rules={[
                     {
                       required: true,
-                      message: 'Please input your  name!',
+                      message: 'Please input your login!',
                     },
                   ]}
-                >
-                  <Input />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24}>
-                <Form.Item<FieldType>
+              >
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
                   label="Email"
                   name="email"
                   rules={[
                     { required: true, message: 'Please input your email' },
                   ]}
-                >
-                  <Input />
-                </Form.Item>
-              </Col>
-              <Col xs={24}>
-                <Form.Item<FieldType>
+              >
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                  label="First Name"
+                  name="firstName"
+                  rules={[
+                    {
+                      required: true,
+                      message: 'Please input your first name!',
+                    },
+                  ]}
+              >
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                  label="Last Name"
+                  name="lastName"
+                  rules={[
+                    {
+                      required: true,
+                      message: 'Please input your last name!',
+                    },
+                  ]}
+              >
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                  label="Account Number"
+                  name="accountNumber"
+                  rules={[
+                    {
+                      required: true,
+                      message: 'Please input your account number!',
+                    },
+                    {
+                      pattern: /^\d{10}$/,
+                      message: 'Account number must be 10 digits!',
+                    },
+                  ]}
+              >
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                  label="Telephone"
+                  name="telephone"
+                  rules={[
+                    {
+                      required: true,
+                      message: 'Please input your telephone number!',
+                    },
+                  ]}
+              >
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
                   label="Password"
                   name="password"
                   rules={[
                     { required: true, message: 'Please input your password!' },
                   ]}
-                >
-                  <Input.Password />
-                </Form.Item>
-              </Col>
-              <Col xs={24}>
-                <Form.Item<FieldType>
-                  label="Confirm password"
+              >
+                <Input.Password />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                  label="Confirm Password"
                   name="cPassword"
                   rules={[
                     {
                       required: true,
-                      message: 'Please ensure passwords match!'
+                      message: 'Please ensure passwords match!',
                     },
                     {
                       validator: validateConfirmPassword,
                     },
-
                   ]}
-                >
-                  <Input.Password />
-                </Form.Item>
-              </Col>
-              <Col xs={24}>
-                <Form.Item<FieldType> name="terms" valuePropName="checked">
-                  <Flex>
-                    <Checkbox>I agree to</Checkbox>
-                    <Link>terms and conditions</Link>
-                  </Flex>
-                </Form.Item>
-              </Col>
-            </Row>
-            <Form.Item>
-              <Button
+              >
+                <Input.Password />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                  label="Country"
+                  name="country"
+                  rules={[
+                    {
+                      required: true,
+                      message: 'Please select your country!',
+                    },
+                  ]}
+              >
+                <Select placeholder="Select your country">
+                  {countries.map((country) => (
+                      <Select.Option key={country.a2} value={country.name}>
+                        <ReactCountryFlag countryCode={country.a2} svg /> {country.name}
+                      </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+
+
+            <Col xs={24}>
+              <Form.Item name="terms" valuePropName="checked">
+                <Checkbox>I agree to</Checkbox>
+                <Link href="/terms">terms and conditions</Link>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item>
+            <Button
                 type="primary"
                 htmlType="submit"
                 size="middle"
                 loading={loading}
-              >
-                Submit
-              </Button>
-            </Form.Item>
-          </Form>
+            >
+              Submit
+            </Button>
+          </Form.Item>
+        </Form>
+
+
         </Flex>
       </Col>
     </Row>

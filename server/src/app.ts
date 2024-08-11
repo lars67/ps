@@ -3,7 +3,7 @@ import { dbConnection } from "./db";
 import { connect } from "mongoose";
 import cookieParser from "cookie-parser";
 import * as fs from "fs";
-import { initCountries } from "./services/app/countries";
+import {getAllCountries, initCountries} from "./services/app/countries";
 //import {initWatchers} from "./services/app/portfoliosState";
 import express from "express";
 import * as url from "url";
@@ -122,6 +122,12 @@ app.get("/check-cookie", (req, res) => {
     },
   );
 });
+
+app.get("/countries", async (req, res) => {
+
+  res.json(getAllCountries());
+});
+
 
 app.post("/clear-cookie", (req, res) => {
   res.clearCookie("ps2token", {

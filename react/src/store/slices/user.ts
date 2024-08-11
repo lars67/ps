@@ -3,12 +3,17 @@ import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 export interface UserState {
   loading?: "idle" | "pending" | "succeeded" | "failed";
   token?: string;
-  name?: string;
+  login?: string;
   password?: string;
   email?: string;
   role?: string;
   userId?: string;
   remember?: boolean;
+  firstName?: string,
+  lastName?: string,
+  accountNumber?: string,
+  telephone?: string,
+  country?: string
 }
 
 const initialState: UserState = {
@@ -30,7 +35,7 @@ export const authLoginThunk = createAsyncThunk(
       ws.onopen = () => {
         ws.send(
           JSON.stringify({
-            name: loginPayload.name,
+            login: loginPayload.login,
             remember: loginPayload.remember,
             ...(isGuest
               ? { role: "guest" }
@@ -67,10 +72,15 @@ export const authSignUpThunk = createAsyncThunk(
         // Send signup command when WebSocket connection is opened
         ws.send(
           JSON.stringify({
-            name: payload.name,
+            login: payload.login,
             password: payload.password,
             email: payload.email,
             cmd: "signup",
+            firstName: payload.firstName,
+            lastName: payload.lastName ,
+            accountNumber: payload.accountNumber,
+            telephone: payload.telephone,
+            country: payload.country
           }),
         );
       };
@@ -96,7 +106,7 @@ export const userSlice = createSlice({
      */
     token: "",
     hasFetchedToken: false,
-    name: "",
+    login: "",
     role: "member",
     userId: undefined,
     // ---------
@@ -106,7 +116,7 @@ export const userSlice = createSlice({
       state,
       action: PayloadAction<{
         token?: string;
-        name?: string;
+        login?: string;
         password?: string;
         role?: string;
         userId?: string;

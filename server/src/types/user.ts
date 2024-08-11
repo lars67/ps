@@ -3,11 +3,16 @@ import {Currency} from "@/types/currency";
 
 export type User = {
   _id?: string | null;
-  name?: string | null;
+  login?: string | null;
   email?: string | null;
   role?: string | null;
   password?: string | null;
   image?: string;
+  firstName?: string,
+  lastName?: string,
+  accountNumber?: string,
+  telephone?: string,
+  country?: string
  };
 
 

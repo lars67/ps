@@ -11,12 +11,18 @@ interface CountriesKnownProperties {
 interface Countries {
   [key: string]: CountriesKnownProperties;
 }
+
+export interface CountryA2Type  {
+    name: string;
+    a2: string;
+}
+
 let countries: Countries = {}//country=> CountriesKnownProperties
 let regionHolder = new Map();
 let subregionHolder = new Map();
-
+let all: Country[]=[];
 export const initCountries = async () => {
-  const all = await CountryModel.find({}).lean() as Country[];
+  all = await CountryModel.find({}).lean() as Country[];
   countries =  all.reduce((o: Record<string, CountriesKnownProperties>, c:Country)=> ({...o,
      [c.name]: {name:c.name, region:c.region, a2:c.a2, subRegion: c.subRegion,currency:c.currency}})
   , {})
@@ -42,6 +48,9 @@ export const getSubRegions = (region:string) =>
 
 export const getCountries = (subRegion:string) =>
     subregionHolder.has(subRegion) ? [...subregionHolder.get(subRegion)] : []
+
+export const getAllCountries = () =>
+    all.map(({name, a2})=>({name, a2}))
 
 export const getCountryField =  (name: string, field:keyof CountriesKnownProperties='a2'):string => {
   return countries[name] ? countries[name][field] as string : '';

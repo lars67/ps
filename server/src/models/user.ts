@@ -2,11 +2,16 @@ import { User } from "../types/user";
 import { Model, Schema, model, models } from "mongoose";
 
 const UserSchema = new Schema<User>({
-  name: String,
+  login: String,
   email: String,
   role: String,
   image: String,
   password: String,
+  firstName: String,
+  lastName: String,
+  accountNumber: String,
+  telephone: String,
+  country: String
 });
 
 export const UserModel: Model<User> =

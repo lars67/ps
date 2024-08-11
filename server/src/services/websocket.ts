@@ -1,6 +1,6 @@
 import { WebSocketServer, WebSocket } from "ws";
 import jwt, { JwtPayload } from "jsonwebtoken";
-import { login, signup } from "./auth";
+import { signin, signup } from "./auth";
 import controller from "../controllers/websocket";
 import logger from "../utils/logger";
 import * as https from "https";
@@ -9,6 +9,7 @@ import cookie from "cookie";
 import { guestAccessAllowed } from "../controllers/guestAccessAlowed";
 import * as http from "http";
 import * as process from "process";
+import {User} from "@/types/user";
 
 
 const expiresIn = "10h";
@@ -17,7 +18,7 @@ export type UserWebSocket = WebSocket & { userId: string; waitNum: number };
 
 export type UserData = {
   userId: string;
-  name: string;
+  login: string;
   role: string;
 };
 interface ClientType {
@@ -41,7 +42,7 @@ function generateJWT(userData: UserData): string {
 }
 
 function getCookie (name: string, cookies: string) {
-    const c = cookies.split(';').find(c => c.startsWith(`${name}=`))
+    const c = cookies?.split(';').find(c => c.startsWith(`${name}=`))
     return c  &&  c.split('='). pop();
 }
 export const initWS = (
@@ -55,30 +56,39 @@ export const initWS = (
 
   loginServer.on("connection", (socket, req) => {
    socket.on("message", async (data) => {
-      const {
-        name,
-        password,
+
+     const obj: User & {cmd?:string} = JSON.parse(data.toString());
+   console.log('obj', obj);
+     const {
+        login,
+        password= '',
         email = "",
         cmd = "login",
         role = "",
-      } = JSON.parse(data.toString());
+      } = obj || {};
+     if (!login || !password) {
+       socket.send(
+           JSON.stringify({ error: "Login or passwrod need set" }),
+       );
+       return;
+     }
       if (cmd === "signup") {
-        const user = await signup(name, password, email);
+        const user = await signup(obj);
         console.log("signup", user);
         socket.send(JSON.stringify(user));
       } else {
         const user = role
           ? {
-              name,
+              login,
               role: "guest",
               _id: Date.now().toString(),
             }
-          : await login(name, password);
+          : await signin(login, password);
         if (user) {
           //console.log("LOGIN RESULTUSER", user);
           const token = jwt.sign(
             {
-              name: user?.name,
+              login: user?.login,
               role: user?.role,
               userId: user?._id?.toString(),
             },
@@ -94,7 +104,7 @@ export const initWS = (
           );
         } else {
           socket.send(
-            JSON.stringify({ error: "Invalid user name or password" }),
+            JSON.stringify({ error: "Invalid user login or password" }),
           );
         }
       }
@@ -118,7 +128,7 @@ export const initWS = (
     const token = req.headers["ps2token"] || query;
     let userData: UserData;
 
-    if (!token  || token !== getCookie('ps2token', req.headers.cookie as string)) {
+    if (!token) {//  || token !== getCookie('ps2token', req.headers.cookie as string)) {
       return socket.close(4001, "Authentication error: Token missing");
     }
 
@@ -171,7 +181,7 @@ export const initWS = (
     let userData: UserData;
     (socket as UserWebSocket).userId = userId;
     (socket as UserWebSocket).waitNum = 0;
-    userData = { userId, role: "guest", name: userId };
+    userData = { userId, role: "guest", login: userId };
     guests.push({ socket, token: userData });
     logger.log(` guest connection open with ${userData}`);
 

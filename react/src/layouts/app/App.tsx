@@ -206,14 +206,14 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               <Button type="link" onClick={showDrawer}>
                 Help
               </Button>
-              <NameHolder>{user.name}</NameHolder>
+              <NameHolder>{user.login}</NameHolder>
               <Dropdown menu={{ items }} trigger={["click"]}>
                 <Flex>
-                  <Tooltip title={user.name}>
+                  <Tooltip title={user.login}>
                     <Avatar
                       style={{ color: "#eff3fc", backgroundColor: "#112e96" }}
                     >
-                      {user.name.toUpperCase().substring(0, 2)}
+                      {user.login.toUpperCase().substring(0, 2)}
                     </Avatar>
                   </Tooltip>
                 </Flex>

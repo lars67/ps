@@ -29,7 +29,7 @@ import { Link as Link2 } from "react-router-dom";
 const { Title, Text, Link } = Typography;
 
 type FieldType = {
-  name?: string;
+  login?: string;
   password?: string;
   remember?: boolean;
 };
@@ -68,7 +68,7 @@ console.log('err', err);
     setLoading(true);
     const rez = await dispatch(
       authLoginThunk({
-        name: values.name,
+        login: values.login,
         password: values.password,
         loading: "pending",
       }),
@@ -83,7 +83,7 @@ console.log('err', err);
       });
       // document.cookie =`ps2token=${token};httpOnly=true;secure=true;sameSite='strict'`
       //Cookies.set('ps2token', token, { expires: 5 });
-      dispatch(updateUser({ name: values.name, userId, role }));
+      dispatch(updateUser({ login: values.login, userId, role }));
       if (values.remember) {
         fetch(`${process.env.REACT_APP_URL_DATA}/set-cookie?token=${token}`, {credentials: 'include'})
             .then(response => {
@@ -162,10 +162,10 @@ console.log('err', err);
             <Row gutter={[8, 0]}>
               <Col xs={24}>
                 <Form.Item<FieldType>
-                  label="User Name"
-                  name="name"
+                  label="Login"
+                  name="login"
                   rules={[
-                    { required: true, message: "Please input your email" },
+                    { required: true, message: "Please input your login" },
                   ]}
                 >
                   <Input />
