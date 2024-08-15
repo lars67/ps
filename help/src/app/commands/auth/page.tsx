@@ -3,16 +3,16 @@ import CmdLine from "@/components/CmdLine";
 import Text from "@/components/Text";
 
 const Page = () => {
-    const ext =  process.env.NODE_ENV === 'production' ? '.html' : '';
+
     return (<div>
 
             <h1 className="firstItem">Auth</h1>
             <ul className="no-bullets">
                 <li>
-                    <Link href={`./auth${ext}/#to-login`}>Login</Link>
+                    <Link href={`./auth/#to-login`}>Login</Link>
                 </li>
                 <li>
-                    <Link href={`./auth${ext}/#to-signup`}>Signup</Link>
+                    <Link href={`./auth/#to-signup`}>Signup</Link>
                 </li>
             </ul>
         <p>These commands need send to special login websocket</p>
@@ -22,6 +22,8 @@ const Page = () => {
             cmd={`<div class="cm-activeLine cm-line"><span class="cm-matchingBracket">{</span><span class="ͼ1m">"cmd"</span>:<span class="ͼ19">"login"</span>,<span class="ͼ1m">"login"</span>:<span class="ͼ19">"login"</span>,<span class="ͼ1m">"password"</span>:<span class="ͼ19">"password"</span><span class="cm-matchingBracket">}</span></div>`} />
       </pre>
         <table>
+            <tbody>
+
             <tr>
                 <th>Parameter</th>
                 <th>Value</th>
@@ -37,6 +39,7 @@ const Page = () => {
                 <td>User password</td>
                 <td>Yes</td>
             </tr>
+            </tbody>
         </table>
         <p> Result:</p> <p>Successfull:</p><Text html={`<pre>{
 "token":"eyJhbGciOiJIU......",
@@ -51,6 +54,7 @@ const Page = () => {
             cmd={`<div class="cm-activeLine cm-line">{<span class="ͼ1m">"cmd"</span>:<span class="ͼ19">"signup"</span>,<span class="ͼ1m">"login"</span>:<span class="ͼ19">"login"</span>,<span class="ͼ1m">"password"</span>:<span class="ͼ19">"password"</span>, <span class="ͼ1m">"email"</span>:<span class="ͼ19">"cat@test.com"</span>,}</div>`} />
         </pre>
         <table>
+        <tbody>
             <tr>
                 <th>Parameter</th>
                 <th>Value</th>
@@ -97,6 +101,7 @@ const Page = () => {
                 <td>User email</td>
                 <td>Yes</td>
             </tr>
+        </tbody>
         </table>
         <p>Result:</p> <p>Successfull:</p>
         <p>Return new user json </p>

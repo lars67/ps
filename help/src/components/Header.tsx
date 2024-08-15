@@ -1,13 +1,8 @@
-"use client"
-import HorizontalMenu from "@/components/HorizontalMenu";
-import styled from "styled-components";
-const Wrapper = styled.div`
-  position: fixed;
-  top:0px;
-  width: 100%;
 
-`
+import HorizontalMenu from "@/components/HorizontalMenu";
+
+
 const Header = ({}) => {
-    return (<Wrapper><HorizontalMenu/></Wrapper>)
+    return (<div className="header-menu"><HorizontalMenu/></div>)
 }
 export default Header;

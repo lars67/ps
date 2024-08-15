@@ -9,13 +9,15 @@ const Tools = () => {
     <div>
       <h1 className="first-item">Tools</h1>
       <table>
+      <tbody>
         <tr>
           <th>Command</th>
           <th>Call</th>
         </tr>
+
         <tr>
           <td>
-            <Link href={`./tools${ext}/#to-statistic`}>Statistic</Link>
+            <Link href={`./tools/#to-statistic`}>Statistic</Link>
           </td>
           <td>
             <CmdLine
@@ -31,11 +33,13 @@ const Tools = () => {
             />
           </td>
         </tr>
+      </tbody>
       </table>
       <h3 id="to-statistic">
         Calculate statistic for portfolio or historical data
       </h3>
       <table>
+      <tbody>
         <tr>
           <th>Parameter</th>
           <th>Value</th>
@@ -65,6 +69,7 @@ const Tools = () => {
           <td>Till Date for historical data as YYYY-MM-DD</td>
           <td>No</td>
         </tr>
+      </tbody>
       </table>
       <p> Command return object with statistics </p>
     </div>

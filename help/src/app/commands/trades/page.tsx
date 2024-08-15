@@ -4,42 +4,45 @@ import Link from "next/link";
 const hi: string= 'HI';
 
 const Page = () => {
-    const ext =  process.env.NODE_ENV === 'production' ? '.html' : ''
+
     return (<div>
         <h1 className="firstItem">Trades</h1>
 
         <table>
+            <tbody>
             <tr>
                 <th>Command</th>
                 <th>Call</th>
             </tr>
             <tr>
-                <td><Link href={`./trades${ext}/#to-add`}>Add</Link></td>
+                <td><Link href={`./trades/#to-add`}>Add</Link></td>
                 <td>
                     <CmdLine cmd={`<div className="cm-activeLine cm-line">{<span className="ͼ1m">"command"</span>:<span class="ͼ19">"trades.add"</span>,<span class="ͼ1m">"portfolioId"</span>:<span class="ͼ19">"65f52f98ab7128acd188b300"</span>, <span class="ͼ1m">"tradeType"</span>:<span class="ͼ19">"1"</span>,<span class="ͼ1m">"side"</span>:<span class="ͼ19">"B"</span>,<span class="ͼ1m">"price"</span>:<span class="ͼ19">"73.6900"</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"USD"</span>,<span class="ͼ1m">"rate"</span>:<span class="ͼ19">"1.0000"</span>,<span class="ͼ1m">"volume"</span>:<span class="ͼ19">"575"</span>,<span class="ͼ1m">"fee"</span>:<span class="ͼ19">"21.185875"</span>,<span class="ͼ1m">"symbol"</span>:<span class="ͼ19">"XLC"</span>,<span class="ͼ1m">"tradeTime"</span>:<span class="ͼ19">"2024-01-10T00:00:02"</span>}</div>`} />
                 </td>
             </tr>
             <tr>
-                <td><Link href={`./trades${ext}/#to-removeAll`}>Remove all trades in portfolio </Link></td>
+                <td><Link href={`./trades/#to-removeAll`}>Remove all trades in portfolio </Link></td>
                 <td>
                     <CmdLine cmd={`<div className="cm-activeLine cm-line">{<span className="ͼ1m">"command"</span>:<span class="ͼ19">"trades.removeAll"</span>,<span class="ͼ1m">"portfolioId"</span>:<span class="ͼ19">"65f52f98ab7128acd188b300"</span>}</div></td>`} />
                 </td>
             </tr>
             <tr>
-                <td><Link href={`./trades${ext}/#to-update`}>Update</Link></td>
+                <td><Link href={`./trades/#to-update`}>Update</Link></td>
                 <td>
                 </td>
             </tr>
             <tr>
-                <td><Link href={`./trades${ext}/#to-remove`}>Remove</Link></td>
+                <td><Link href={`./trades/#to-remove`}>Remove</Link></td>
                 <td>
                 </td>
             </tr>
+            </tbody>
         </table>
 
         <h3 id="to-add">Add trade</h3>
 <p>Required fields:</p>
         <table>
+            <tbody>
             <tr>
                 <th>Parameter</th>
                 <th>Value</th>
@@ -81,10 +84,11 @@ const Page = () => {
                 <td>Trade Currency</td>
                 <td>Yes</td>
             </tr>
-
+            </tbody>
         </table>
 <p>Not Required fields which will be set when it not filled:</p>
         <table>
+            <tbody>
             <tr>
                 <th>Parameter</th>
                 <th>Value</th>
@@ -110,9 +114,11 @@ const Page = () => {
                 <td>Trade fee. Treat as 0</td>
                 <td></td>
             </tr>
+            </tbody>
         </table>
         <p> Additional not required filelds</p>
         <table>
+            <tbody>
             <tr>
                 <th>Parameter</th>
                 <th>Value</th>
@@ -168,10 +174,12 @@ const Page = () => {
                 <td></td>
                 <td></td>
             </tr>
+            </tbody>
         </table>
 
         <h3 id="to-removeAll">Remove all portfolio trades. Portfolio will be fully empty</h3>
 <table>
+    <tbody>
     <tr>
         <th>Parameter</th>
         <th>Value</th>
@@ -183,14 +191,14 @@ const Page = () => {
         <td>Yes</td>
     </tr>
 
-
+    </tbody>
 </table>
 
         <h3 id="to-update">Update</h3>
-        <p> ! For this moment this command is work similar to commoon <Link href={`commands/collections${ext}`}>collection.update </Link></p>
+        <p> ! For this moment this command is work similar to commoon <Link href={`commands/collections`}>collection.update </Link></p>
 
         <h3 id="to-update">Remove</h3>
-        <p> ! For this moment this command is work similar to commoon <Link href={`commands/collections${ext}`}>collection.remove </Link></p>
+        <p> ! For this moment this command is work similar to commoon <Link href={`commands/collections`}>collection.remove </Link></p>
 
 
     </div>)

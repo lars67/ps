@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 const Page = () => {
-  const ext = process.env.NODE_ENV === "production" ? ".html" : "";
 
   return (
     <div>

@@ -3,19 +3,20 @@ import TextDetail from "@/components/TextDetail";
 import Link from "next/link";
 
 const Portfolios = () => {
-  const ext = process.env.NODE_ENV === "production" ? ".html" : "";
+
 
   return (
     <div>
         <h1 className="firstItem">Portfolios</h1>
 
         <table>
+        <tbody>
         <tr>
           <th>Command</th>
           <th>Call</th>
         </tr>
         <tr>
-          <td><Link href={`./portfolios${ext}/#to-list`}>List</Link></td>
+          <td><Link href={`./portfolios/#to-list`}>List</Link></td>
           <td>
              <CmdLine
               cmd={`<div class="cm-activeLine cm-line"><span class="cm-matchingBracket">{</span><span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.list"</span>,<span class="ͼ1m">"filter"</span>:{}<span class="cm-matchingBracket">}</span></div>`}
@@ -23,7 +24,7 @@ const Portfolios = () => {
           </td>
         </tr>
           <tr>
-            <td><Link href={`./portfolios${ext}/#to-detailList`}>detailList</Link></td>
+            <td><Link href={`./portfolios/#to-detailList`}>detailList</Link></td>
             <td>
               <CmdLine
                   cmd={`<div class="cm-activeLine cm-line"><span class="cm-matchingBracket">{</span><span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.detailList"</span>,<span class="ͼ1m">"filter"</span>:{}<span class="cm-matchingBracket">}</span></div>`} />
@@ -32,7 +33,7 @@ const Portfolios = () => {
 
         <tr>
           <td>
-            <Link href={`./portfolios${ext}/#to-add`}>Add</Link>
+            <Link href={`./portfolios/#to-add`}>Add</Link>
           </td>
           <td>
             <CmdLine
@@ -43,7 +44,7 @@ const Portfolios = () => {
         </tr>
         <tr>
           <td>
-            <Link href={`./portfolios${ext}/#to-update`}>Update</Link>
+            <Link href={`./portfolios/#to-update`}>Update</Link>
           </td>
           <td>
             <CmdLine
@@ -53,7 +54,7 @@ const Portfolios = () => {
         </tr>
         <tr>
           <td>
-            <Link href={`./portfolios${ext}/#to-remove`}>Remove</Link>
+            <Link href={`./portfolios/#to-remove`}>Remove</Link>
           </td>
           <td>
             <CmdLine
@@ -63,7 +64,7 @@ const Portfolios = () => {
         </tr>
         <tr>
           <td>
-            <Link href={`./portfolios${ext}/#to-history`}>History</Link>
+            <Link href={`./portfolios/#to-history`}>History</Link>
           </td>
           <td>
             <CmdLine
@@ -73,7 +74,7 @@ const Portfolios = () => {
         </tr>
         <tr>
           <td>
-            <Link href={`./portfolios${ext}/#to-positions`}>Positions</Link>
+            <Link href={`./portfolios/#to-positions`}>Positions</Link>
           </td>
           <td>
             <CmdLine
@@ -83,7 +84,7 @@ const Portfolios = () => {
         </tr>
         <tr>
           <td>
-            <Link href={`./portfolios${ext}/#to-trades`}>Trades</Link>
+            <Link href={`./portfolios/#to-trades`}>Trades</Link>
           </td>
           <td>
             <CmdLine
@@ -93,7 +94,7 @@ const Portfolios = () => {
         </tr>
         <tr>
           <td>
-            <Link href={`./portfolios${ext}/#to-putCash`}>Put Cash</Link>
+            <Link href={`./portfolios/#to-putCash`}>Put Cash</Link>
           </td>
           <td>
             <CmdLine
@@ -102,12 +103,13 @@ const Portfolios = () => {
           </td>
         </tr>
         <tr>
-          <td><Link href={`./portfolios${ext}/#to-putDividends`}>Put Dividends</Link></td>
+          <td><Link href={`./portfolios/#to-putDividends`}>Put Dividends</Link></td>
           <td>
             <CmdLine
               cmd={`<div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.putDividends"</span>,<span class="ͼ1m">"portfolioId"</span>:<span class="ͼ19">"_testCashPortfolio2"</span>,<span class="ͼ1m">"tradeId"</span>:<span class="ͼ19">"t4"</span>,<span class="ͼ1m">"amount"</span>:<span class="ͼ19">"1"</span>,<span class="ͼ1m">"symbol"</span>:<span class="ͼ19">"CBK:XETR"</span>,  <span class="ͼ1m">"description"</span>:<span class="ͼ19">"put dividends CBK:XETR"</span>, <span class="ͼ1m">"tradeTime"</span>:<span class="ͼ19">"2024-01-15T00:00:02"</span>}</div>`}/>
           </td>
         </tr>
+        </tbody>
       </table>
       <p>
         In all portfolio commands which used <b>_id</b> as portfolio id, can be used also
@@ -144,6 +146,7 @@ const Portfolios = () => {
                className="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.add"</span>,<span class="ͼ1m">"_id"</span>: <span class="ͼ19">"65f52f98ab7128acd188b301"</span>,<span class="ͼ1m">"name"</span>:<span class="ͼ19">"testPortfolioName"</span>,<span class="ͼ1m">"description"</span>:<span class="ͼ19">""</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"USD"</span>,<span class="ͼ1m">"userId"</span>:<span class="ͼ19">""</span>,<span class="ͼ1m">"baseInstrument"</span>:<span class="ͼ19">"SPY"</span>}</div>`}
       /></pre>
       <table>
+        <tbody>
         <tr>
           <th>Parameter</th>
           <th>Value</th>
@@ -192,6 +195,7 @@ const Portfolios = () => {
           </td>
           <td>No</td>
         </tr>
+        </tbody>
       </table>
       <TextDetail
         summary={"Output"}
@@ -210,6 +214,7 @@ const Portfolios = () => {
       />
       <h3 id="to-update">Update</h3>
       <table>
+        <tbody>
         <tr>
           <th>Parameter</th>
           <th>Value</th>
@@ -225,13 +230,16 @@ const Portfolios = () => {
           <td>description,currency,baseInstrument</td>
           <td>No</td>
         </tr>
+        </tbody>
       </table>
       <h3 id="to-remove">Remove</h3>
       Remove portfolio with all portfolio trades
       <pre><CmdLine
         cmd={`<div class="cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.remove"</span>, <span class="ͼ1m">"_id"</span>:<span class="ͼ19">"_testPortfolio"</span>}</div>`}
       /></pre>
+
       <table>
+        <tbody>
         <tr>
           <th>Parameter</th>
           <th>Value</th>
@@ -242,6 +250,7 @@ const Portfolios = () => {
           <td>Portfolio , can be portfolio fields: _id or name or accountId</td>
           <td>Yes</td>
         </tr>
+        </tbody>
       </table>
       <TextDetail
         summary={"Output Succesful:"}
@@ -272,6 +281,7 @@ const Portfolios = () => {
       />
       <h3 id="to-history">History</h3>
       <table>
+        <tbody>
         <tr>
           <th>Parameter</th>
           <th>Value</th>
@@ -321,6 +331,7 @@ const Portfolios = () => {
           </td>
           <td>No</td>
         </tr>
+        </tbody>
       </table>
 
       <p>
@@ -391,6 +402,7 @@ const Portfolios = () => {
       />
       <h3 id="to-positions">Positions</h3>
       <table>
+        <tbody>
         <tr>
           <th>Parameter</th>
           <th>Value</th>
@@ -446,9 +458,11 @@ const Portfolios = () => {
           </td>
           <td>No</td>
         </tr>
+        </tbody>
       </table>
       <h3 id="to-trades">Return portfolio trades</h3>
       <table>
+        <tbody>
         <tr>
           <th>Parameter</th>
           <th>Value</th>
@@ -464,10 +478,12 @@ const Portfolios = () => {
           <td>Date from trades will be returned. Format YYYY-MM-DD</td>
           <td>No</td>
         </tr>
+        </tbody>
       </table>
       <h3 id="to-putCash">Put Cash</h3>
       <p>Put/Get cash to/from portfolio </p>
       <table>
+        <tbody>
         <tr>
           <th>Parameter</th>
           <th>Value</th>
@@ -542,12 +558,14 @@ const Portfolios = () => {
           <td>Some external system id</td>
           <td>No</td>
         </tr>
+        </tbody>
       </table>
 
       <h3 id="to-putDividends">Put Dividends</h3>
       <p>To current cash currency will be added value = current_symbol_volume*amount</p>
       <p>Put symnol dividends</p>
       <table>
+        <tbody>
         <tr>
           <th>Parameter</th>
           <th>Value</th>
@@ -611,6 +629,7 @@ const Portfolios = () => {
           <td>Some external system id</td>
           <td>No</td>
         </tr>
+        </tbody>
       </table>
 
 

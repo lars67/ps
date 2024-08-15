@@ -3,20 +3,20 @@ import Text from "@/components/Text";
 import Link from "next/link";
 
 const Prices = () => {
-  const ext = process.env.NODE_ENV === "production" ? ".html" : "";
+
 
   return (
     <div>
       <h1 className="first-item">Prices</h1>
 
-      <table>
+      <table><tbody>
         <tr>
           <th>Command</th>
           <th>Call</th>
         </tr>
         <tr>
           <td>
-            <Link href={`./prices${ext}/#to-prices`}>Prices</Link>
+            <Link href={`./prices/#to-prices`}>Prices</Link>
           </td>
           <td>
             <CmdLine
@@ -27,9 +27,9 @@ const Prices = () => {
             />
           </td>
         </tr>
-      </table>
+      </tbody></table>
 
-      <table>
+      <table><tbody>
         <tr>
           <th>Parameter</th>
           <th>Value</th>
@@ -66,7 +66,7 @@ const Prices = () => {
           <td>Number digits after point</td>
           <td>No. default 4</td>
         </tr>
-      </table>
+      </tbody></table>
       <Text
         html={`
       <p>

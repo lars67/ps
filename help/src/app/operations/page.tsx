@@ -6,26 +6,25 @@ import Link from "next/link";
 
 const Operations = () => {
 
-  const ext =  process.env.NODE_ENV === 'production' ? '.html' : '';
   return (
     <div>
       <h1 className="firstItem">Operations</h1>
       <ul className="no-bullets">
         <li>
-          <Link href={`./operations${ext}/#to-buy`}>Buy symbol</Link>
+          <Link href={`./operations/#to-buy`}>Buy symbol</Link>
         </li>
         <li>
-          <Link href={`./operations${ext}/#to-sell`}>Sell symbol</Link>
+          <Link href={`./operations/#to-sell`}>Sell symbol</Link>
         </li>
         <li>
-          <Link href={`./operations${ext}/#to-cash`}>Put Cash</Link>
+          <Link href={`./operations/#to-cash`}>Put Cash</Link>
         </li>
 
         <li>
-          <Link href={`./operations${ext}/#to-buyFX`}>Buy currency</Link>
+          <Link href={`./operations/#to-buyFX`}>Buy currency</Link>
         </li>
         <li>
-          <Link href={`./operations${ext}/#to-sellFX`}>Sell currency</Link>
+          <Link href={`./operations/#to-sellFX`}>Sell currency</Link>
         </li>
       </ul>
       Below in Results present fragments of portfolios.positions cash.

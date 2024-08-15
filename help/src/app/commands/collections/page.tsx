@@ -6,7 +6,7 @@ import Table from "@/components/Table";
 const Collections = () => {
   const page =
     process.env.NODE_ENV === "production" ? "collections.html" : "collections";
-    const ext = process.env.NODE_ENV === "production" ? ".html" : "";
+;
   return (
     <div>
       <h1 className="first-item">Collections</h1>
@@ -18,7 +18,7 @@ const Collections = () => {
         cmd={`<div class="cm-activeLine cm-line">{<span class="ͼ1m">"command"</span>:<span class="ͼ19">"portfolios.list"</span>,<span class="ͼ1m">"filter"</span>:{}}</div>`}
       /></pre>
         <p> It is general description collection methods <b>list, add, update, remove</b> But they can be extended for some collection. More details can be detected in
-            <Link href={`/commands/portfolios${ext}`}>Portfolios</Link></p>
+            <Link href={`/commands/portfolios`}>Portfolios</Link></p>
 
       <Table
         columns={["Command", "Call"]}

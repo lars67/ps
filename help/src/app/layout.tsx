@@ -1,7 +1,7 @@
-import ClientOnly from "@/components/ClientOnly";
+
 
 import Header from "@/components/Header";
-import Head from "next/head";
+
 import "./globals.css";
 
 export default function RootLayout({
@@ -17,7 +17,7 @@ export default function RootLayout({
           <style>
           {`
             #app-body {
-              display: none;
+             
               width: 100%;
               padding: 4px;
             }
@@ -61,8 +61,8 @@ export default function RootLayout({
           {children}
           </div>
         </div>
-        <ClientOnly />
-      </body>
+
+       </body>
     </html>
   );
 }

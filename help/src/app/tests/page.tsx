@@ -4,7 +4,7 @@ import Link from "next/link";
 import Text from "@/components/Text";
 
 const Tests = () => {
-  const ext = process.env.NODE_ENV === "production" ? ".html" : "";
+
 
   return (
     <div>
@@ -80,7 +80,7 @@ const Tests = () => {
 `}
       />
       <h3>Access to variable</h3>
-      <table>
+      <table><tbody>
         <tr>
           <th>Acceess</th>
           <th></th>
@@ -123,7 +123,7 @@ const Tests = () => {
             />
           </td>
         </tr>
-      </table>
+      </tbody></table>
       <CmdLine
         cmd={`<div class="cm-activeLine cm-line"><span class="cm-matchingBracket">{</span><span class="ͼ1m">"command"</span>:<span class="ͼ19">"tests.check"</span>,<span class="ͼ1m">"path"</span>:<span class="ͼ19">"history1.days.[date=2024-01-24]"</span>,<span class="ͼ1m">"conditions"</span>:{<span class="ͼ1m">"cash"</span>: {<span class="ͼ1m">"$sub"</span>: <span class="ͼ1a">8</span>},<span class="ͼ1m">"nav"</span>: {<span class="ͼ1m">"$sub"</span>: <span class="ͼ1a">101010</span>} }, <span class="ͼ1m">"description"</span>:<span class="ͼ19">"compare 2024-01-24 nav, cash with PS"</span><span class="cm-matchingBracket">}</span></div>`}
       />
@@ -145,7 +145,7 @@ const Tests = () => {
           operations
         </li>
       </ul>
-      <table>
+      <table><tbody>
         <tr>
           <th>Command</th>
           <th>Call</th>
@@ -191,12 +191,12 @@ const Tests = () => {
             />
           </td>
         </tr>
-      </table>
+      </tbody></table>
       <Text
         html={`
     <h3 id="to-check">Check</h3>
 
-    <table>
+    <table><tbody>
         <tr>
             <th>Parameter</th>
             <th>Value</th>
@@ -233,14 +233,14 @@ const Tests = () => {
             <td>Yes</td>
         </tr>
 
-    </table>
+    </tbody></table>
     `}
       />
       <h3 id="to-setVar">Set variable</h3>
       <p> Add variable object to variables. v</p>
       <Text
         html={`
-    <table>
+    <table><tbody>
         <tr>
             <th>Parameter</th>
             <th>Value</th>
@@ -252,11 +252,11 @@ const Tests = () => {
             <td>Yes</td>
         </tr>
 
-    </table>
+    </tbody></table>
 
     <h3 id="to-getVar">Get variable</h3>
     <p> Get variable (print)</p>
-    <table>
+    <table><tbody>
         <tr>
             <th>Parameter</th>
             <th>Value</th>
@@ -268,10 +268,10 @@ const Tests = () => {
             <td>Yes</td>
         </tr>
 
-    </table>
+    </tbody></table>
 
     <h3 id="to-setMode">Set output mode</h3>
-    <table>
+    <table><tbody>
         <tr>
             <th>Parameter</th>
             <th>Value</th>
@@ -283,11 +283,11 @@ const Tests = () => {
             <td>Yes</td>
         </tr>
 
-    </table>
+    </tbody></table>
 `}
       />
       <h1 id="toHelpCommands">Help Commands</h1>
-      <table>
+      <table><tbody>
         <tr>
           <th>Command</th>
           <th>Call</th>
@@ -308,7 +308,7 @@ const Tests = () => {
           <td>Find object in array with minimal field value</td>
           <td></td>
         </tr>
-      </table>
+      </tbody></table>
     </div>
   );
 };
