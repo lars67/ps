@@ -6,6 +6,8 @@ import React, { ReactNode, useEffect } from "react";
 import ProtectedRoute from "./ProtectedRoute";
 import {SignUpPage} from "../pages/authentication";
 import {BASE_NAME} from "../constants/routes";
+import Test2 from "../pages/test2";
+
 
 
 
@@ -59,7 +61,10 @@ const router = createBrowserRouter([
     path: "/import",
     element: <QuoteGrid />,
   },
-
+  {
+    path: "/test2",
+    element: <Test2 />,
+  },
   {
     element: <ProtectedRoute />,
     children: [

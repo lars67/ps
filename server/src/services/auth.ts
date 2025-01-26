@@ -17,7 +17,7 @@ export async function signin(
 ): Promise<User | null> {
   try {
     const user = await UserModel.findOne({ login }).lean();
-    //console.log(`Use.findOne --------------> ${JSON.stringify(user)}`);
+    console.log(`Use.findOne --------------> ${JSON.stringify(user)}`);
 
     if (!user) {
       throw new Error("Wrong credentials!");
@@ -27,8 +27,8 @@ export async function signin(
       password,
       user.password || "",
     );
-     //  console.log(`credentials.password : ${credentials.password}`)
-      //console.log(`isPasswordCorrect : $isPasswordCorrect} ${password}`)
+      // console.log(`credentials.password : ${credentials.password}`)
+      console.log(`isPasswordCorrect : $isPasswordCorrect} ${password}`)
 
     if (!isPasswordCorrect) throw new Error("Wrong credentials!");
 

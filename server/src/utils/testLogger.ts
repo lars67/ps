@@ -14,12 +14,12 @@ if (!fs.existsSync(logFolder)) {
 
 
 function logToFile(message: string) {
-  const fileName = 'testLog';
+  /*const fileName = 'testLog';
   const logFilePath = path.join(logFolder, fileName); // Assuming 'app.log' is the name of your log file
 
   const logStream = fs.createWriteStream(logFilePath, { flags: "a" });
   logStream.write(`${message}\n`);
-  logStream.end();
+  logStream.end();*/
 }
 
 const logger = {

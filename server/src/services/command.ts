@@ -112,6 +112,7 @@ export async function list(
     if (allCustomCommands.length === 0) {
       collections.forEach((col) => {
         const modelName = getModelNameByCollectionName(col);
+        console.log('>>>',col, modelName);
         if (modelName) {
           const des = require(`./${modelName?.toLowerCase()}`);
           //console.log('>>>', Object.keys(des));
@@ -134,6 +135,7 @@ export async function list(
       Object.keys(customCommands).map((g) => {
         // @ts-ignore
         const { description, ...rest } = customCommands[g];
+        console.log('>>>',g, description);
         if (description) {
           Object.keys(description).map((c) => {
             allCustomCommands.push({

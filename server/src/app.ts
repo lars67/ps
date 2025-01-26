@@ -8,7 +8,6 @@ import {getAllCountries, initCountries} from "./services/app/countries";
 import express from "express";
 import * as url from "url";
 import jwt, { JwtPayload, VerifyErrors } from "jsonwebtoken";
-import logger from "@/utils/logger";
 import process from "process";
 import {getDatePrices, getSymbolPrices} from "./services/app/priceCashe";
 import * as path from "path";

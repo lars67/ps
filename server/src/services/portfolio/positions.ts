@@ -37,6 +37,7 @@ import {
   getPortfolioInstanceByIDorName,
   mapKeyToName,
 } from "../../services/portfolio/helper";
+import logger from "../../utils/logger";
 const subscribers: Record<string, SubscribeMsgs> = {}; //userModif-> SubscribeMsgs
 
 type QuoteData2 = {
@@ -142,6 +143,7 @@ export async function positions(
   userData: UserData,
   socket: WebSocket,
 ): Promise<{} | undefined> {
+  logger.log(`POSITIONS CALL ${userModif}|${msgId} `);
   if (requestType === "77") {
     Object.values(subscribers[userModif]).forEach((subscriber) => {
       console.log("stop", subscriber.sseService.getEventName());
@@ -250,7 +252,7 @@ export async function positions(
   let totalRealized = 0;
 
   const subscriberOnTrades = async (ev: TradeOp) => {
-    console.log("subscriberOnTrades get event==========", ev);
+    console.log("subscriberOnTrades get event==========", ev,msgId, realId, portfolio);
     const allTrades = await TradeModel.find({
       portfolioId: realId,
       state: { $in: [1] },
@@ -291,6 +293,7 @@ export async function positions(
       });
     console.log("resubscribe if need ", symbols);
     subscribers[userModif][msgId].sseService.start(symbols.join(","), true);
+    logger.log(`[SSEService.start ${userModif}|${msgId}] ${symbols.join(",")} ${subscribers[userModif][msgId].sseService.getEventName()}`)
     rates = { [portfolio.currency]: 1.0 } as Record<string, number>;
     fees = positions.fees;
 
@@ -308,6 +311,7 @@ export async function positions(
     if (!subscribeId) {
       return { error: "subscribeId is required  in unsubscrube command" };
     }
+    logger.log(`[SSEService.stop ${userModif}${subscribeId} ${subscribers[userModif][subscribeId]? 'defined' : 'undefined'}]`)
     if (subscribers[userModif][subscribeId]) {
       subscribers[userModif][subscribeId].sseService.stop();
       eventEmitter.removeListener(
@@ -366,6 +370,9 @@ export async function positions(
 
   eventEmitter.on("trade.change", subscriberOnTrades);
   const sseService = new SSEService("quotes", symbols.join(","), eventName);
+  logger.log(`[new SSEService. ${userModif}|${msgId} ] ${symbols.join(",")}, ${eventName}`)
+
+
   //--
 
   rates = { [portfolio.currency]: 1.0 } as Record<string, number>;
@@ -403,6 +410,8 @@ export async function positions(
     });
     if (requestType === "0") {
       console.log("stop!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", rates);
+      logger.log(`[SSEService.stop for requestType=0 ${userModif}|${msgId} ${subscribers[userModif][msgId]? 'defined' : 'undefined'}]`)
+
       subscribers[userModif][msgId].sseService.stop();
       eventEmitter.removeListener(
         subscribers[userModif][msgId].sseService.getEventName(),
@@ -454,8 +463,12 @@ export async function positions(
 
     q2Symbols.forEach((p) => {
       const { symbol, marketPrice, marketClose } = p as QuoteData2;
-      //  console.log('symbol', symbol, Object.keys(portfolioPositions));
+      console.log('symbol', symbol, Object.keys(portfolioPositions));
       let change = {} as QuoteChange;
+      if (!portfolioPositions[symbol]) {
+        logger.error(`ERR for ${symbol}, portfolioPositions keys = ${Object.keys(portfolioPositions).join(',')}`)
+        logger.log(`q2Symbols = ${Object.keys(q2Symbols).join(',')}`)
+      }
       const cur = portfolioPositions[symbol].currency as string;
       const volume = Number(portfolioPositions[symbol].volume);
       const invested = Number(portfolioPositions[symbol].invested);
@@ -763,6 +776,8 @@ export async function positions(
         if (!(socket as UserWebSocket).waitNum) {
           (socket as UserWebSocket).waitNum = Date.now();
         } else if (Date.now() - (socket as UserWebSocket).waitNum > 30000) {
+          logger.log(`[SSEService  in closed state ${userModif}|${msgId} ${sseService.getEventName()}`)
+
           console.log(
             "STOPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP SSE",
             sseService.getEventName(),

@@ -52,7 +52,7 @@ export const initWS = (
 ) => {
   const loginServer = new WebSocket.Server({server:serverLogin});
 
-  console.log("-------------------- SOCKET SERVER -------------");
+  console.log("-------------------- SOCKET SERVER -------------", serverLogin);
 
   loginServer.on("connection", (socket, req) => {
    socket.on("message", async (data) => {
@@ -124,7 +124,7 @@ export const initWS = (
    // console.log(`Client connected with IP: ${ip}`, req.headers["ps2token"]);
 
     const fullQuery = req.url?.split("?")[1] || ""; // Get query parameters from URL
-    const [query, modif = ""] = fullQuery.split("@");
+    const [query, modif=`L_${Date.now()}` ] = fullQuery.split("@");
     const token = req.headers["ps2token"] || query;
     let userData: UserData;
 
@@ -228,7 +228,7 @@ const sendResponse = (socket: WebSocket, msg: any) => async (response: any) => {
       msgId: msg.msgId,
       ...(response.error ? { error: response.error } : { data: response }),
     });
-    logger.log(`< ${cmd}`);
+    logger.log(`< ${cmd.substring(0,60)}... |${msg.msgId}`);
     sendFragmented(socket, cmd, msg.msgId);
   }
 };
