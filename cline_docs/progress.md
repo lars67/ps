@@ -7,6 +7,7 @@ System is fully operational with production connections:
 - WebSocket connections stable
 - Command system fully functional
 - User authentication working
+- Data proxy configured for production (https://top.softcapital.com/scproxy)
 
 ## What Works
 1. Server Connections:
