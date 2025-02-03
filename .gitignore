@@ -1,8 +1,6 @@
 /react/node_modules/
-/react/.env
 /react/build/
 
-/server/.env
 /server/node_modules/
 /server/dist/
 /server/logs/
@@ -14,11 +12,6 @@
 /npm-debug.log*
 /yarn-error.log
 .DS_Store
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
 
 /server/public/help_prod/
 /server/src/tools/
