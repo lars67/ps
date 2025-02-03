@@ -3,10 +3,8 @@
 ## Core Technologies
 - **Backend:**
   - Node.js with TypeScript
-  - Express for HTTP server
   - WebSocket (ws) for real-time communication
-  - EventSource for SSE connections
-  - MongoDB with Mongoose
+  - MongoDB for command storage
   - JWT for authentication
 
 - **Frontend:**
@@ -20,58 +18,52 @@
   - Next.js for help system
   - Static CSS for styling
 
-## Development Setup
+## Production Setup
 
 ### Prerequisites
 - Node.js v20.18.0 or higher
 - MongoDB running on localhost:27017
-- SSL certificates in Certificate/ directory:
-  - STAR.softcapital.com.key
-  - STAR.softcapital.com.crt
-  - STAR.softcapital.com.ca.pem
+- SSL certificates for development testing
 
 ### Environment Configuration
-1. Server (.env):
+1. Production Environment (.env.production):
 ```
-MONGODB_URI=mongodb://127.0.0.1:27017/ps2
-LOGIN_PORT=3331
-APP_PORT=3332
-GUEST_PORT=3334
-SECRET_KEY=Secret_key!
-DOMAIN=localhost
-CORS_ORIGIN=http://localhost:3000
-DATA_PROXY=http://localhost:3333/scproxy
+REACT_APP_WS=wss://top.softcapital.com/ps2/
+REACT_APP_LOGIN_WS=wss://top.softcapital.com/ps2l/
+REACT_APP_URL_DATA=https://top.softcapital.com/ps2console
+REACT_APP_GUEST_WS=wss://top.softcapital.com/ps2g/
 ```
 
-2. React (.env):
+2. Development Environment (.env):
 ```
-REACT_APP_API_URL=https://localhost:3332
-REACT_APP_LOGIN_WS=wss://localhost:3331
-REACT_APP_WS_URL=wss://localhost:3332
+REACT_APP_API_URL=https://top.softcapital.com/ps2console
+REACT_APP_LOGIN_WS=wss://top.softcapital.com/ps2l/
+REACT_APP_WS=wss://top.softcapital.com/ps2/
+REACT_APP_WS_URL=wss://top.softcapital.com/ps2l/
 REACT_APP_BASE_NAME=/ps2console
-REACT_APP_DATA_PROXY=http://localhost:3333/scproxy
-REACT_APP_URL_DATA=https://localhost:3332
+REACT_APP_DATA_PROXY=https://top.softcapital.com/ps2console/scproxy
+REACT_APP_URL_DATA=https://top.softcapital.com/ps2console
 ```
 
-### Server Architecture
-- Login Server: Port 3331 (WebSocket)
-- Main Server: Port 3332 (WebSocket)
-- Guest Server: Port 3334 (WebSocket)
-- HTTPS Server: Port 3333
+### Production Architecture
+- Login WebSocket: wss://top.softcapital.com/ps2l/
+- Main WebSocket: wss://top.softcapital.com/ps2/
+- Guest WebSocket: wss://top.softcapital.com/ps2g/
+- API Endpoints: https://top.softcapital.com/ps2console/
 
 ### Development Commands
-1. Server:
-```bash
-cd server
-npm install
-npm run dev
-```
-
-2. React Client:
+1. React Client:
 ```bash
 cd react
 npm install
-npm start
+npm start  # Connects to production servers
+```
+
+2. Test Scripts:
+```bash
+cd server
+npm install
+node src/test-login.ts  # Test WebSocket connection
 ```
 
 3. Help System:
@@ -81,40 +73,88 @@ npm install
 npm run dev
 ```
 
-## Testing
-- Test scripts in server/src/
-- WebSocket connection tests
-- Authentication flow verification
+## Command System
+1. Command Types:
+   - All: No filtering
+   - User: User-created commands
+   - Custom: System custom commands
+   - Collection: Database collection commands
+   - Tests: Testing commands
+
+2. Command Structure:
+```typescript
+type Command = {
+    _id?: string | null;
+    label?: string | null;
+    value: string | null;
+    description?: string | null;
+    ownerId?: string | null;
+    commandType?: string;
+    extended?: object[];
+    access?: string;
+}
+```
+
+3. Command Access Levels:
+   - Public: Available to all users
+   - Member: Available to authenticated users
+   - Admin: Available to administrators only
+
+## WebSocket Communication
+1. Authentication Flow:
+   - Connect to login WebSocket
+   - Send credentials
+   - Receive JWT token
+   - Use token for main WebSocket
+
+2. Command Execution:
+   - Send command with unique msgId
+   - Receive fragmented responses
+   - Assemble response fragments
+   - Handle command result
 
 ## Security Requirements
-- SSL/TLS certificates required
-- JWT secret key configuration
-- CORS configuration for development
-- Secure cookie handling
+1. WebSocket Security:
+   - Secure WebSocket (WSS) required
+   - JWT token authentication
+   - Role-based access control
+
+2. API Security:
+   - HTTPS endpoints
+   - Token-based authentication
+   - CORS configuration
+
+## Development Testing
+1. Test Scripts:
+   - test-login.ts: WebSocket login testing
+   - test-client.ts: Connection testing
+
+2. Testing Focus:
+   - WebSocket connectivity
+   - Authentication flow
+   - Command execution
+   - Error handling
 
 ## Known Technical Constraints
-1. SSL Certificate Handling:
-   - Development requires handling self-signed certificates
-   - Certificate paths must be configured correctly
+1. WebSocket Connections:
+   - Must use secure WebSocket (WSS)
+   - Token required for authentication
+   - Command access based on user role
 
-2. WebSocket Connections:
-   - Connection pooling needed for multiple symbols
-   - Memory management for long-running connections
+2. MongoDB:
+   - Local instance for development
+   - Commands stored in local database
+   - User-specific command storage
 
-3. MongoDB:
-   - Local instance required
-   - Database name: ps2
-   - Default port: 27017
-
-4. Browser Requirements:
+3. Browser Requirements:
    - Modern browser with WebSocket support
-   - SSE (Server-Sent Events) support
-   - Secure context for cookies
+   - Secure context for WebSocket
+   - Local storage for preferences
 
 ## Monitoring Considerations
 - WebSocket connection status
-- SSE connection health
-- MongoDB connection state
-- Memory usage for long-running processes
-- Certificate expiration
+- Command execution success rate
+- Authentication success rate
 - Error logging and tracking
+- User session monitoring
+- Command usage metrics

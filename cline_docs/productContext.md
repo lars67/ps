@@ -2,35 +2,81 @@
 
 ## Purpose
 A real-time portfolio management system that provides:
-- Live market data through SSE connections
-- Portfolio tracking and management
-- User authentication and role-based access control
+- Command-based interface for portfolio operations
+- WebSocket-based real-time communication
+- Role-based access control with command filtering
+- User command customization and management
 
 ## Problems Solved
-- Real-time market data streaming for multiple financial instruments
-- Secure WebSocket-based communication for commands and data
-- Role-based access with admin and guest capabilities
-- Portfolio tracking and calculations
-- Multi-server architecture:
-  - Login server (3331): Handles authentication
-  - Main server (3332): Handles authenticated user operations
-  - Guest server (3334): Handles public/guest access
-  - HTTPS server (3333): Handles secure HTTP requests
+- Secure WebSocket-based communication for commands
+- Role-based command access control
+- Command history and management
+- User authentication and session management
+- Production architecture:
+  - Login WebSocket (wss://top.softcapital.com/ps2l/): Authentication
+  - Main WebSocket (wss://top.softcapital.com/ps2/): Command processing
+  - Guest WebSocket (wss://top.softcapital.com/ps2g/): Guest access
+  - API Endpoints (https://top.softcapital.com/ps2console/): HTTP/HTTPS endpoints
 
 ## Key Features
-- Real-time price quotes via Server-Sent Events (SSE)
-- WebSocket-based command interface
-- HTTPS with certificate-based security
-- MongoDB-based data persistence
+
+### Command System
+- Command type filtering:
+  - All commands view
+  - User-created commands
+  - System custom commands
+  - Collection commands
+  - Test commands
+
+### Access Control
+- Role-based command access:
+  - Public commands for all users
+  - Member commands for authenticated users
+  - Admin commands for administrators
+- User-specific command management
+- Command history tracking
+
+### User Interface
 - React-based web interface with:
-  - Live data visualization
-  - Portfolio management tools
-  - Command interface
-  - User authentication
+  - Command console
+  - Command filtering
+  - Command history
+  - Command execution
+  - Real-time responses
+
+### WebSocket Communication
+- Secure WebSocket connections
+- Token-based authentication
+- Command message fragmentation
+- Real-time command responses
 
 ## Technical Stack
-- Backend: Node.js with Express
-- Frontend: React with TypeScript
-- Database: MongoDB
-- Protocols: WebSocket, SSE, HTTPS
-- Authentication: JWT-based with cookie support
+- Frontend: 
+  - React 18 with TypeScript
+  - Redux Toolkit for state
+  - Ant Design components
+  - WebSocket client
+
+- Development:
+  - Local MongoDB for command storage
+  - Test scripts for WebSocket testing
+  - Production WebSocket endpoints
+
+## Future Enhancements
+1. Command Features:
+   - Command favorites
+   - Command templates
+   - Command suggestions
+   - Command batch processing
+
+2. User Experience:
+   - Enhanced loading states
+   - Better error messages
+   - Command execution feedback
+   - Command history persistence
+
+3. Testing:
+   - Command execution tests
+   - Connection stability tests
+   - User session tests
+   - Error recovery tests

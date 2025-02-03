@@ -1,80 +1,83 @@
 # Active Context
 
 ## Current Focus
-Investigating and resolving SSE connection stability issues:
-1. Server experiencing ECONNRESET errors after 2-3 days of runtime
-2. Memory usage growth from connection management
-3. WebSocket and SSE connection reliability
+WebSocket connection and command management:
+1. React app successfully connecting to production WebSocket server
+2. Commands loading from production server
+3. User authentication and session management
 
 ## Recent Changes
-1. Added test scripts for diagnostics:
-   - `server/src/test-login.ts`: WebSocket login testing
-   - `server/src/test-client.ts`: Connection testing
+1. Fixed WebSocket connections:
+   - Updated WebSocket URLs to production endpoints
+   - React app using wss://top.softcapital.com/ps2l/ for login
+   - Main connection using wss://top.softcapital.com/ps2/
+   - Removed local development proxy configuration
 
-2. Fixed certificate handling:
-   - Updated certificate paths in server configuration
-   - Improved error handling for SSL/TLS connections
+2. Environment Configuration:
+   - Updated .env and .env.production files
+   - Configured correct WebSocket endpoints
+   - Set up proper API URLs
 
-3. Documentation updates:
-   - Documented system architecture
-   - Added technical setup requirements
-   - Documented known issues and constraints
+3. Command Management:
+   - Commands loading from production server
+   - Command filtering by type working
+   - User-specific command access working
 
-## Current Issues
-1. SSE Connection Problems:
-   - ECONNRESET errors after extended runtime
-   - Potential memory leaks in connection management
-   - No automatic connection recovery
+## Current Status
+1. WebSocket Connections:
+   - ✅ Login WebSocket working
+   - ✅ Main WebSocket connection stable
+   - ✅ Command loading functional
 
-2. Resource Management:
-   - Uncleaned subscriber objects
-   - Growing memory usage
-   - No connection pooling
+2. Authentication:
+   - ✅ User login working
+   - ✅ Token management working
+   - ✅ Session persistence working
+
+3. Command System:
+   - ✅ Command list loading
+   - ✅ Command filtering by type
+   - ✅ Command execution working
 
 ## Next Steps
-1. Implement Connection Management Improvements:
-   - Add connection pooling for SSE connections
-   - Implement proper cleanup of stale connections
-   - Add connection health monitoring
+1. Enhance Command Management:
+   - Add better error handling for failed commands
+   - Implement command history persistence
+   - Add command favorites feature
 
-2. Add Memory Management:
-   - Clean up subscriber objects when connections close
-   - Implement periodic cleanup of stale resources
-   - Add memory usage monitoring
+2. Improve User Experience:
+   - Add loading states for command execution
+   - Implement better error messages
+   - Add command suggestions
 
-3. Enhance Error Recovery:
-   - Add automatic reconnection for failed SSE connections
-   - Implement exponential backoff for retries
-   - Add better error logging and tracking
-
-4. Testing Improvements:
-   - Add long-running connection tests
-   - Implement memory leak detection
-   - Add load testing for multiple connections
+3. Testing Improvements:
+   - Add command execution tests
+   - Implement WebSocket connection tests
+   - Add user session tests
 
 ## Testing Status
-1. Basic Functionality:
-   - ✅ WebSocket login working
-   - ✅ Authentication flow verified
-   - ❌ SSE connection stability needs improvement
+1. Core Functionality:
+   - ✅ WebSocket connections stable
+   - ✅ Command loading working
+   - ✅ User authentication working
 
 2. Current Test Coverage:
-   - Authentication flow
-   - Basic WebSocket connectivity
-   - Initial connection establishment
+   - WebSocket connectivity
+   - Command execution
+   - User authentication flow
 
 ## Monitoring Needs
-1. Connection Health:
-   - Number of active connections
-   - Connection duration
-   - Error rates
+1. WebSocket Health:
+   - Connection stability
+   - Command execution success rate
+   - Response times
 
-2. Resource Usage:
-   - Memory consumption
-   - Active subscribers
-   - Database connections
+2. User Sessions:
+   - Active sessions
+   - Authentication success rate
+   - Session duration
 
-3. Error Tracking:
-   - Connection reset counts
-   - Authentication failures
-   - SSE connection drops
+3. Command Usage:
+   - Most used commands
+   - Command error rates
+   - Command response times

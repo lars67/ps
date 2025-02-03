@@ -1,36 +1,32 @@
 # System Patterns
 
 ## Architecture Overview
-- **Multi-Server Architecture**
-  - Login Server (3331): WebSocket-based authentication
-  - Main Server (3332): WebSocket-based command processing
-  - Guest Server (3334): Limited access for unauthenticated users
-  - HTTPS Server (3333): HTTP/HTTPS endpoints
+- **Production WebSocket Architecture**
+  - Login WebSocket (wss://top.softcapital.com/ps2l/): Authentication
+  - Main WebSocket (wss://top.softcapital.com/ps2/): Command processing
+  - Guest WebSocket (wss://top.softcapital.com/ps2g/): Guest access
+  - API Endpoints (https://top.softcapital.com/ps2console/): HTTP/HTTPS endpoints
 
 ## Project Structure
 - **Server Project (`server/`):** 
-  - Core backend services and API
-  - WebSocket command processing
-  - Real-time data streaming via SSE
-  - MongoDB integration
+  - Test clients and diagnostics
+  - WebSocket connection testing
   - Files:
-    - `src/app.ts`: Main application setup
-    - `src/services/websocket.ts`: WebSocket handling
-    - `src/services/app/SSEService.ts`: Real-time data streaming
-    - `src/controllers/*`: Command handlers
-    - `src/models/*`: MongoDB schemas
-    - `src/types/*`: TypeScript type definitions
+    - `src/test-login.ts`: WebSocket login testing
+    - `src/test-client.ts`: Connection testing
+    - `src/app.ts`: Test server setup
+    - `src/services/websocket.ts`: WebSocket utilities
 
 - **React Project (`react/`):**
   - Web-based frontend application
-  - Real-time data visualization
-  - WebSocket client integration
+  - Production WebSocket integration
+  - Command management system
   - Files:
-    - `src/pages/*`: Application pages
-    - `src/components/*`: Reusable UI components
-    - `src/store/*`: Redux state management
-    - `src/hooks/*`: Custom React hooks
-    - `src/utils/*`: Utility functions
+    - `src/pages/console/*`: Command console
+    - `src/components/*`: UI components
+    - `src/store/slices/user.ts`: Authentication
+    - `src/hooks/useWSClient.ts`: WebSocket hook
+    - `src/utils/command.ts`: Command utilities
 
 - **Help Project (`help/`):**
   - Documentation and help system
@@ -46,58 +42,89 @@
    - Commands sent as JSON messages
    - Each command has a unique msgId
    - Responses fragmented for large payloads
-   - Example: `{ command: "prices.quotes", symbols: "..." }`
+   - Example: `{ command: "commands.list", msgId: "ws_commands" }`
 
-2. **Server-Sent Events (SSE)**
-   - Real-time price updates
-   - Connection pooling for multiple symbols
-   - Event-based data streaming
+2. **Command Management**
+   - Command type filtering
+   - User-specific command access
+   - Command history tracking
+   - Command execution flow
 
 3. **Authentication Flow**
-   - JWT-based authentication
-   - Token stored in secure cookies
+   - WebSocket-based authentication
+   - Token management
    - Role-based access control
 
 ### Data Management
-1. **MongoDB Integration**
-   - Mongoose schemas for data modeling
-   - Separate collections for users, portfolios, trades
-   - Indexes for efficient querying
+1. **Command System**
+   - Command loading from production
+   - Command filtering by type
+   - Command history tracking
+   - Command execution state
 
 2. **State Management**
    - Redux for frontend state
-   - Slices for different domains (user, portfolio)
-   - Thunks for async operations
+   - User authentication slice
+   - Command state management
+   - WebSocket connection state
 
 ### Error Handling
 1. **WebSocket Error Recovery**
    - Connection error logging
-   - Automatic reconnection
-   - Error event propagation
-
-2. **SSE Connection Management**
    - Error event handling
-   - Connection status monitoring
-   - Resource cleanup
+   - User feedback for errors
+
+2. **Command Error Handling**
+   - Command execution errors
+   - Response validation
+   - User feedback
 
 ## Testing Patterns
-- Test scripts for server diagnostics
 - WebSocket connection testing
 - Authentication flow verification
+- Command execution testing
 - Example: `server/src/test-login.ts`
 
 ## Security Patterns
-1. **SSL/TLS Security**
-   - HTTPS for all connections
-   - Certificate-based security
-   - Secure cookie handling
+1. **WebSocket Security**
+   - Secure WebSocket (WSS)
+   - Token-based authentication
+   - Role-based access control
 
 2. **Access Control**
-   - Role-based permissions
+   - Role-based command access
    - Guest access restrictions
    - Token validation
 
-## Known Issues
-- SSE connections may experience ECONNRESET after extended runtime
-- Memory usage can grow over time due to connection management
-- Certificate validation needs careful handling in development
+## Environment Configuration
+1. **Production Environment**
+   ```
+   REACT_APP_LOGIN_WS=wss://top.softcapital.com/ps2l/
+   REACT_APP_WS=wss://top.softcapital.com/ps2/
+   REACT_APP_GUEST_WS=wss://top.softcapital.com/ps2g/
+   ```
+
+2. **API Configuration**
+   ```
+   REACT_APP_API_URL=https://top.softcapital.com/ps2console
+   REACT_APP_DATA_PROXY=https://top.softcapital.com/ps2console/scproxy
+   ```
+
+## Future Improvements
+1. **Command System**
+   - Command favorites
+   - Command history persistence
+   - Command suggestions
+   - Command templates
+
+2. **User Experience**
+   - Better loading states
+   - Enhanced error messages
+   - Command execution feedback
+   - Command batch processing
+
+3. **Testing**
+   - Command execution tests
+   - Connection stability tests
+   - User session tests
+   - Error recovery tests
