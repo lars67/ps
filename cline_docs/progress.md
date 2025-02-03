@@ -8,6 +8,8 @@ System is fully operational with production connections:
 - Command system fully functional
 - User authentication working
 - Data proxy configured for production (https://top.softcapital.com/scproxy)
+- Complete setup documentation available in setup.md
+- Environment templates provided for easy configuration
 
 ## What Works
 1. Server Connections:

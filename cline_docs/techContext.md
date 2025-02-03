@@ -21,9 +21,34 @@
 ## Production Setup
 
 ### Prerequisites
-- Node.js v20.18.0 or higher
+- Node.js v18.20.0 or higher
 - MongoDB running on localhost:27017
-- SSL certificates for development testing
+- SSL certificates in the root Certificate/ directory:
+  - STAR.softcapital.com.key
+  - STAR.softcapital.com.crt
+  - STAR.softcapital.com.ca.pem
+  - STAR.softcapital.com.bundle.pem
+  - STAR.softcapital.com.pfx
+
+### First-Time Setup
+1. Install MongoDB and ensure it's running on localhost:27017
+2. Place SSL certificates in the Certificate/ directory at project root
+3. Configure environment files:
+   - server/.env for server configuration
+   - react/.env for frontend configuration
+4. Install dependencies and build:
+   ```bash
+   # Server setup
+   cd server
+   npm install
+   npx tsc
+   npm run dev  # or npm start for production
+
+   # React setup (in another terminal)
+   cd react
+   npm install
+   npm start
+   ```
 
 ### Environment Configuration
 1. Production Environment (.env.production):
