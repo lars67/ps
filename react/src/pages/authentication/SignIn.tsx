@@ -47,22 +47,6 @@ const SignInPage = () => {
 
   const dispatch = useAppDispatch();
 
-  useEffect(()=> {
-
-     fetch(`${process.env.REACT_APP_URL_DATA}/check-cookie`, {credentials: 'include'})
-        .then(async (response) => {
-        console.log('feeeeeeeeetch', response.ok);
-          if (response.ok) {
-            const jsonData = await response.json();
-            console.log('Received JSON data:', jsonData);
-            dispatch(updateUser(jsonData));
-            navigate(PATH_CONSOLE);
-          }
-        })
-        .catch((err:any) => {
-console.log('err', err);
-        })
-  }, []);
   const onFinish = async (values: any) => {
     console.log("Success:", values);
     setLoading(true);
@@ -84,22 +68,6 @@ console.log('err', err);
       // document.cookie =`ps2token=${token};httpOnly=true;secure=true;sameSite='strict'`
       //Cookies.set('ps2token', token, { expires: 5 });
       dispatch(updateUser({ login: values.login, userId, role }));
-      if (values.remember) {
-        fetch(`${process.env.REACT_APP_URL_DATA}/set-cookie?token=${token}`, {credentials: 'include'})
-            .then(response => {
-              // Check if the cookie was set correctly
-              console.log('COOKIES', document.cookie);
-
-              if (response.ok) {
-                console.log('Logged in successfully');
-              } else {
-                console.error('Login failed');
-              }
-            })
-            .catch(error => {
-              console.error('Error:', error);
-            });
-      }
       navigate(PATH_CONSOLE);
     } else {
       message.open({
