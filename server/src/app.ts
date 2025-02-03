@@ -19,12 +19,22 @@ const app = express();
 //app.use(cors());
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN, // Allowed origin
-    credentials: true, // Allow sending/receiving cookies
+    origin: process.env.CORS_ORIGIN,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'ps2token']
   }),
 );
 
-app.use(cookieParser());
+// Add security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
+
+app.use(cookieParser(process.env.SECRET_KEY));
 app.use(express.static("public"));
 
 
@@ -37,9 +47,9 @@ const guestServerPort = (process.env.GUEST_PORT || 3004) as number;
 const startServer = async () => {
   console.log(process.cwd(), process.env.MONGODB_URI);
   mongoose = await connect(dbConnection.url);
-  const key = fs.readFileSync("../../Certificate/STAR.softcapital.com.key");
-  const cert = fs.readFileSync("../../Certificate/STAR.softcapital.com.crt");
-  const ca = fs.readFileSync("../../Certificate/STAR.softcapital.com.ca.pem");
+  const key = fs.readFileSync(path.join(process.cwd(), "../Certificate/STAR.softcapital.com.key"));
+  const cert = fs.readFileSync(path.join(process.cwd(), "../Certificate/STAR.softcapital.com.crt"));
+  const ca = fs.readFileSync(path.join(process.cwd(), "../Certificate/STAR.softcapital.com.ca.pem"));
   var options = {
     key: key,
     cert: cert,
@@ -65,8 +75,6 @@ const startServer = async () => {
   httpsServer.listen(3333, () => {
     console.log(`HTTPS server running on port 3333`);
   });
-
-
 
   //initWatchers();
 };

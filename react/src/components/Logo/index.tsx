@@ -31,7 +31,7 @@ const Logo = ({
     <Link to={href || '#'} className="logo-link">
       <Flex gap={others.gap || 'small'} align="center" {...others}>
         <img
-          src="/logo-no-background.png"
+          src={`${process.env.PUBLIC_URL}/logo-no-background.png`}
           alt="design sparx logo"
           height={imgSize?.h || 48}
         />
@@ -53,7 +53,7 @@ const Logo = ({
   ) : (
     <Flex gap={others.gap || 'small'} align="center" {...others}>
       <img
-        src="/logo-no-background.png"
+        src={`${process.env.PUBLIC_URL}/logo-no-background.png`}
         alt="design sparx logo"
         height={imgSize?.h || 48}
       />

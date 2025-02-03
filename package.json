@@ -1,0 +1,9 @@
+{
+  "devDependencies": {
+    "@types/axios": "^0.9.36",
+    "@types/ws": "^8.5.14",
+    "axios": "^1.7.9",
+    "http-proxy-middleware": "^3.0.3",
+    "ws": "^8.18.0"
+  }
+}

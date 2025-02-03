@@ -29,9 +29,9 @@ export const authLoginThunk = createAsyncThunk(
       );
 
       const isGuest = loginPayload.role === "guest";
-      const ws = new WebSocket(
-        process.env.REACT_APP_LOGIN_WS || "wss://localhost:3331",
-      );
+      const wsUrl = process.env.REACT_APP_LOGIN_WS || "wss://localhost:3331";
+      console.log('Connecting to WebSocket:', wsUrl);
+      const ws = new WebSocket(wsUrl);
       ws.onopen = () => {
         ws.send(
           JSON.stringify({
@@ -51,7 +51,8 @@ export const authLoginThunk = createAsyncThunk(
       };
 
       ws.onerror = (error) => {
-        reject(new Error("WebSocket connection error"));
+        console.error('WebSocket error:', error);
+        reject(new Error('WebSocket connection error'));
       };
     });
   },
@@ -65,9 +66,9 @@ export const authSignUpThunk = createAsyncThunk(
         "process.env.REACT_APP_LOGIN_WS ||",
         process.env.REACT_APP_LOGIN_WS,
       );
-      const ws = new WebSocket(
-        process.env.REACT_APP_LOGIN_WS || "wss://localhost:3331",
-      );
+      const wsUrl = process.env.REACT_APP_LOGIN_WS || "wss://localhost:3331";
+      console.log('Connecting to WebSocket for signup:', wsUrl);
+      const ws = new WebSocket(wsUrl);
       ws.onopen = () => {
         // Send signup command when WebSocket connection is opened
         ws.send(
