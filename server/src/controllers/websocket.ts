@@ -1,4 +1,4 @@
-import * as sectors from "../services/sector";
+clsimport * as sectors from "../services/sector";
 import * as currencies from "../services/currency";
 import * as commands from "../services/command";
 import * as users from "../services/user";
@@ -53,6 +53,9 @@ export default async function handler(data, sendResponse, userModif, userData, s
   }
   const parts = command.split(".");
   const com = command.toLowerCase();
+  if (com.indexOf("subscribequotes") !== -1) {
+    console.log("[Instrumentation] subscribeQuotes command received with id: " + (params.id || "N/A") + ", symbols: " + (params.symbols || "N/A"));
+  }
 
 //console.log('controller', com);
   if (handlers[com]) {
