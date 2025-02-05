@@ -1,4 +1,4 @@
-clsimport * as sectors from "../services/sector";
+import * as sectors from "../services/sector";
 import * as currencies from "../services/currency";
 import * as commands from "../services/command";
 import * as users from "../services/user";
