@@ -17,3 +17,9 @@
 /server/src/tools/
 /server/Certificate/
 /server/public/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+!.env.template
