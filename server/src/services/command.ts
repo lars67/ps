@@ -33,6 +33,7 @@ const checkAccessByRole = (role:string) => (c:Command) => {
   return false
 }
 let allCustomCommands: CommandItem[] = [];
+let customCommandsInitialized = false;
 let guestAllowedCommands: string[] = [];
 let  memberAllowedCommands: string[] = [];
 export async function list(
@@ -109,7 +110,7 @@ export async function list(
     const filter = filterConditions[role] as FilterQuery<Command>;
     const userCommands = await CommandModel.find(filter).lean();
 
-    if (allCustomCommands.length === 0) {
+    if (!customCommandsInitialized) {
       collections.forEach((col) => {
         const modelName = getModelNameByCollectionName(col);
         console.log('>>>',col, modelName);
@@ -148,6 +149,7 @@ export async function list(
         }
       });
     }
+    customCommandsInitialized = true;
 
     if (isGuest) {
       return [...allCustomCommands.filter((c) => c.access === "public")];

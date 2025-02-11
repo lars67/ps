@@ -1,4 +1,4 @@
-clsimport * as sectors from "../services/sector";
+import * as sectors from "../services/sector";
 import * as currencies from "../services/currency";
 import * as commands from "../services/command";
 import * as users from "../services/user";
@@ -50,6 +50,7 @@ export default async function handler(data, sendResponse, userModif, userData, s
   const { command, msgId, ...params } = data;
   if (!command) {
     sendResponse({ error: "Command is absent", msgId });
+    return;
   }
   const parts = command.split(".");
   const com = command.toLowerCase();

@@ -1,140 +1,40 @@
-# Server Debugging Guide
+# Updated Server Debugging Guide
+**Revised: 2/11/2025**
 
-## Current Issue: Server Instability After Extended Runtime
-After 2-3 days of operation, the server exhibits connection issues characterized by ECONNRESET errors on SSE connections to the quotes endpoint.
+## Overview
+This guide addresses two critical areas affecting server stability:
+1. WebSocket command handling race condition due to missing early returns on error.
+2. SSE connection instability resulting in ECONNRESET errors and eventual server crashes after prolonged runtime.
 
-## Required Debugging Capabilities
+## Critical Issue 1: WebSocket Command Handling
+- **Problem**: When an incoming WebSocket message lacks the "command" field, the error response is sent but processing continues, leading to a call to command.split() on undefined. This can cause runtime exceptions and race conditions under high load.
+- **Immediate Debugging Step**: Add an immediate return after sending the error response when a command is missing.
+- **Instrumentation**: Enhance logging to capture instances of missing commands with context (user, timestamp, etc.) to validate improvements.
 
-### 1. Connection Monitoring
-- **SSE Connection Tracking**
-  - Number of active SSE connections
-  - Connection duration statistics
-  - Connection close reasons
-  - Reconnection attempts
+## Critical Issue 2: SSE Connection Instability
+- **Problem**: Extended operation (1-3 days) leads to repeated ECONNRESET errors in SSE connections on the quotes endpoint, likely due to inadequate reconnection logic, lack of resource cleanup, and absence of connection pooling metrics.
+- **Immediate Debugging Step**: 
+  - Introduce detailed logging for connection lifecycle events: open, error, close.
+  - Monitor SSE connection age, error count, and resource allocation.
+  - Incorporate health checks and rotate connections that exceed defined thresholds.
+- **Long-Term Plan**: Reference the SSE Connection Management Improvement Plan for a comprehensive resolution including reconnection logic, resource cleanup, and connection pooling.
 
-- **WebSocket State**
-  - Active connection count
-  - Connection age
-  - Message queue sizes
-  - Failed connection attempts
+## Enhanced Debugging Capabilities
+1. **Advanced Logging**:
+   - Log full stack traces and request contexts on error.
+   - Capture key metrics: active connection count, connection age, retry attempts, and error rates.
+2. **Resource Monitoring**:
+   - Add memory profiling and monitoring of CPU/network usage to identify resource leaks.
+   - Audit and record file descriptor usage and network I/O statistics.
+3. **Integrated Alerting**:
+   - Set up automated alerts for abnormal patterns in connection failures or memory spikes.
+   - Correlate errors with system state and usage metrics for rapid diagnosis.
 
-### 2. Resource Monitoring
-- **Memory Usage**
-  - Process memory consumption
-  - Memory leak detection
-  - Garbage collection metrics
-  - Heap snapshots capability
+## Next Steps
+- Patch the WebSocket controller to return early when missing commands.
+- Deploy updated logging on SSE connections to capture detailed telemetry.
+- Analyze logs for patterns correlating with server instability.
+- Iteratively update connection management infrastructure as per the SSE Improvement Plan.
 
-- **System Resources**
-  - CPU utilization
-  - Network socket states
-  - File descriptor usage
-  - Network I/O statistics
-
-### 3. Error Tracking
-- **Error Logging Requirements**
-  - Full stack traces
-  - Request context at time of error
-  - System state metrics
-  - Correlation IDs for related errors
-
-- **Error Patterns**
-  - Error frequency over time
-  - Error clustering by type
-  - Error correlation with system events
-  - Impact on other services
-
-### 4. Performance Metrics
-- **Response Times**
-  - API endpoint latency
-  - Database query timing
-  - External service call duration
-  - WebSocket message processing time
-
-- **Throughput Metrics**
-  - Requests per second
-  - Data transfer rates
-  - Queue processing rates
-  - Cache hit/miss ratios
-
-## Current Debugging Gaps
-
-1. **Connection Management**
-   - Need visibility into SSE connection lifecycle
-   - Missing connection pool statistics
-   - No tracking of connection age
-   - Limited error context for connection failures
-
-2. **Resource Tracking**
-   - Insufficient memory usage monitoring
-   - No automated resource leak detection
-   - Limited system resource utilization tracking
-   - Missing connection pool metrics
-
-3. **Error Handling**
-   - Basic error logging only
-   - No correlation between related errors
-   - Missing system state context in error logs
-   - Limited error pattern analysis
-
-## Recommendations for Investigation
-
-1. **Immediate Investigation**
-   - Enable detailed logging for SSE connections
-   - Monitor system resources during uptime
-   - Track connection pool statistics
-   - Log memory usage patterns
-
-2. **Long-term Monitoring**
-   - Implement connection lifecycle tracking
-   - Add resource utilization monitoring
-   - Enable detailed error context logging
-   - Set up performance metric collection
-
-3. **Analysis Tools Needed**
-   - Memory profiling tools
-   - Network connection analyzers
-   - System resource monitors
-   - Log aggregation and analysis tools
-
-## Debug Data Collection Plan
-
-1. **Before Issue Occurs**
-   - Baseline memory usage
-   - Normal connection patterns
-   - Typical error rates
-   - System resource utilization
-
-2. **During Issue**
-   - Active connection count
-   - Memory consumption spike detection
-   - Error pattern analysis
-   - System resource state
-
-3. **After Issue**
-   - Error log analysis
-   - Resource usage patterns
-   - Connection lifecycle review
-   - System state correlation
-
-## Implementation Priority
-
-1. **High Priority**
-   - SSE connection tracking
-   - Memory usage monitoring
-   - Error context logging
-   - System resource tracking
-
-2. **Medium Priority**
-   - Performance metrics collection
-   - Connection pool statistics
-   - Error pattern analysis
-   - Log aggregation
-
-3. **Low Priority**
-   - Automated analysis tools
-   - Historical trend analysis
-   - Predictive monitoring
-   - Advanced diagnostics
-
-This debugging capability assessment reveals significant gaps in our ability to diagnose the ECONNRESET issues. The current logging and monitoring setup is insufficient for proper root cause analysis of connection stability issues that manifest after extended runtime.
+## Summary
+This updated debugging guide consolidates critical insights and introduces enhanced monitoring and instrumentation steps. It is intended to provide practical, actionable steps to diagnose and resolve the server stability issues identified during recent analysis.
