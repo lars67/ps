@@ -2,12 +2,13 @@ import { sendEvent } from "../../services/app/eventEmiter";
 import testLogger from "../../utils/testLogger";
 import {extractUniqueValues} from "../../utils";
 const EventSource = require("eventsource");
+import { EventEmitter } from 'events';
 
 export interface SSEServiceInst {
   stop: () => void;
 }
 
-export default class SSEService implements SSEServiceInst {
+export default class SSEService extends EventEmitter implements SSEServiceInst {
   private stopped: boolean;
   private url: string;
   private onData?: (data: any) => void;
@@ -26,6 +27,7 @@ export default class SSEService implements SSEServiceInst {
     onOpen?: () => void,
 
   ) {
+    super();
     this.endPoint = endPoint;
     this.stopped = true;
     this.url = `${process.env.DATA_PROXY}/${this.endPoint}?symbols=${symbols}`;
@@ -79,9 +81,11 @@ export default class SSEService implements SSEServiceInst {
       }
 
     };
-    this.source.onerror = (event) => {
+    this.source.onerror = (event: any) => {
       console.log("SSEServicce onerror", event, this.url);
+      this.emit("error", this.url, event);
     };
+    this.emit("connection", this.url);
   }
 
   public stop(): void {
@@ -89,6 +93,7 @@ export default class SSEService implements SSEServiceInst {
     if (!this.stopped && this.source) {
       console.log("SSEServicce CLOSE", this.url);
       this.source.close();
+      this.emit("close", this.url);
       this.source = null;
       this.stopped = true;
     }

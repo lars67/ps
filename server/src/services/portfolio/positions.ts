@@ -16,6 +16,7 @@ import {
   toNum,
 } from "../../utils";
 import SSEService, { QuoteData } from "../../services/app/SSEService";
+import { monitorSSEConnection } from "../../monitoring";
 import eventEmitter, { sendEvent } from "../../services/app/eventEmiter";
 import {
   getCompanyField,
@@ -370,6 +371,7 @@ export async function positions(
 
   eventEmitter.on("trade.change", subscriberOnTrades);
   const sseService = new SSEService("quotes", symbols.join(","), eventName);
+  monitorSSEConnection(sseService);
   logger.log(`[new SSEService. ${userModif}|${msgId} ] ${symbols.join(",")}, ${eventName}`)
 
 

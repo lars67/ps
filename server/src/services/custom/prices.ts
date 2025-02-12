@@ -5,6 +5,7 @@ import {SubscribeMsgs} from "../../types/other";
 import moment from "moment";
 import eventEmitter, {sendEvent} from "../../services/app/eventEmiter";
 import SSEService, {QuoteData} from "../../services/app/SSEService";
+import { monitorSSEConnection } from "../../monitoring";
 import {formatYMD} from "../../constants";
 import {UserData} from "../../services/websocket";
 import {QuoteChange} from "@/services/portfolio/positions";
@@ -132,6 +133,7 @@ export const quotes = async (
     }
 
     const sseService = new SSEService("quotes", par.symbols, eventName);
+    monitorSSEConnection(sseService);
 //--
 
 
