@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "proxy": "https://localhost:3332",
-  "homepage": "/ps2console",
+  "homepage": ".",
   "dependencies": {
     "@ant-design/icons": "^5.3.3",
     "@codemirror/lang-javascript": "^6.2.2",
