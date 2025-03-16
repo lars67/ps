@@ -10,7 +10,7 @@ console.log('Current directory:', process.cwd());
 const certificatePath = path.join(__dirname, '..', 'Certificate', 'STAR.softcapital.com.ca.pem');
 console.log('Certificate path:', certificatePath);
 
-const ws = new WebSocket('wss://top.softcapital.com/ps2l/', {
+const ws = new WebSocket('wss://localhost:3331/ps2l/', {
     rejectUnauthorized: false,
     ca: fs.readFileSync(certificatePath)
 });
