@@ -47,9 +47,9 @@ const guestServerPort = (process.env.GUEST_PORT || 3004) as number;
 const startServer = async () => {
   console.log(process.cwd(), process.env.MONGODB_URI);
   mongoose = await connect(dbConnection.url);
-  const key = fs.readFileSync(path.join(process.cwd(), "../Certificate/STAR.softcapital.com.key"));
-  const cert = fs.readFileSync(path.join(process.cwd(), "../Certificate/STAR.softcapital.com.crt"));
-  const ca = fs.readFileSync(path.join(process.cwd(), "../Certificate/STAR.softcapital.com.ca.pem"));
+  const key = fs.readFileSync(path.join(process.cwd(), "../CertFinPension/finpension.dk.key"));
+  const cert = fs.readFileSync(path.join(process.cwd(), "../CertFinPension/finpension_dk.crt"));
+  const ca = fs.readFileSync(path.join(process.cwd(), "../CertFinPension/My_CA_Bundle.ca-bundle"));
   var options = {
     key: key,
     cert: cert,
