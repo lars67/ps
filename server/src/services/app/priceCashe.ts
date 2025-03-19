@@ -1,4 +1,5 @@
 import moment from "moment";
+
 import { fetchHistory, loadCompany } from "../../utils/fetchData";
 
 import { StringRecord } from "../../types/other";
@@ -44,13 +45,12 @@ export async function checkPrices(
   try {
     for (const symbol of portfolioSymbols) {
       if (!histories[symbol] || histories[symbol] > startDate) {
-        // console.log("fetchHistory", symbol);
+        console.log("fetchHistory", symbol, startDate);
         const history = await fetchHistory({ symbol, from: startDate });
-   //     console.log(symbol, history);
+        console.log(symbol, history);
         if (history.length === 0) {
           withoutPrices.push(symbol);
         }
-        //console.log("/fetchHistory", symbol);
         histories[symbol] = startDate;
         for (const h of history) {
           const { date, close } = h;
@@ -60,6 +60,7 @@ export async function checkPrices(
             dateHistory[date][symbol] = close;
           }
         }
+       console.log('dateHistory', dateHistory);
       }
     }
   } catch (error) {

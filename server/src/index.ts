@@ -1,3 +1,4 @@
+console.log('Node.js version:', process.version);
 import * as dotenv from "dotenv";
 process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = '0'
 dotenv.config();

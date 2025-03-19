@@ -47,34 +47,151 @@ const guestServerPort = (process.env.GUEST_PORT || 3004) as number;
 const startServer = async () => {
   console.log(process.cwd(), process.env.MONGODB_URI);
   mongoose = await connect(dbConnection.url);
-  const key = fs.readFileSync(path.join(process.cwd(), "../CertFinPension/finpension.dk.key"));
-  const cert = fs.readFileSync(path.join(process.cwd(), "../CertFinPension/finpension_dk.crt"));
-  const ca = fs.readFileSync(path.join(process.cwd(), "../CertFinPension/My_CA_Bundle.ca-bundle"));
-  var options = {
-    key: key,
-    cert: cert,
-    ca: ca,
-  };
+  
+  // Support both HTTP and HTTPS simultaneously
+  const http = require('http');
+  
+  // Create HTTPS servers (for production)
+  let httpsServerLogin, httpsServerApp, httpsServerGuest, httpsMainServer;
+  
+  try {
+    console.log("Creating HTTPS servers for production mode");
+    const certPath = path.join(process.cwd(), "../CertFinPension");
+    console.log("Using certificates from:", certPath);
+    
+    const key = fs.readFileSync(path.join(certPath, "finpension.dk.key"));
+    const cert = fs.readFileSync(path.join(certPath, "finpension_dk.crt"));
+    const ca = fs.readFileSync(path.join(certPath, "My_CA_Bundle.ca-bundle"));
+    
+    var options = {
+      key: key,
+      cert: cert,
+      ca: ca,
+    };
+    
+    httpsServerLogin = https.createServer(options, app);
+    httpsServerApp = https.createServer(options, app);
+    httpsServerGuest = https.createServer(options, app);
+    httpsMainServer = https.createServer(options, app);
+  } catch (error) {
+    console.error("Error loading SSL certificates:", error);
+    console.error("HTTPS servers will not be available");
+  }
+  
+  // Create HTTP servers (for development)
+  console.log("Creating HTTP servers for development mode");
+  const httpServerLogin = http.createServer(app);
+  const httpServerApp = http.createServer(app);
+  const httpServerGuest = http.createServer(app);
+  const httpMainServer = http.createServer(app);
+  
+  // Determine which servers to use as primary (HTTPS if available, otherwise HTTP)
+  let serverLogin, serverApp, serverGuest, mainServer;
+  let isDev = false;
+  
+  if (httpsServerLogin && httpsServerApp && httpsServerGuest && httpsMainServer) {
+    // Use HTTPS servers as primary
+    console.log("Using HTTPS servers as primary");
+    serverLogin = httpsServerLogin;
+    serverApp = httpsServerApp;
+    serverGuest = httpsServerGuest;
+    mainServer = httpsMainServer;
+    isDev = false;
+  } else {
+    // Use HTTP servers as primary
+    console.log("Using HTTP servers as primary (HTTPS not available)");
+    serverLogin = httpServerLogin;
+    serverApp = httpServerApp;
+    serverGuest = httpServerGuest;
+    mainServer = httpMainServer;
+    isDev = true;
+  }
+  
   await initCountries();
-  const httpsServerLogin = https.createServer(options, app);
-  const httpsServerApp = https.createServer(options, app);
-  const httpsServerGuest = https.createServer(options, app);
-
-  await initWS(httpsServerLogin, httpsServerApp, httpsServerGuest);
+  // Initialize WebSocket for primary servers
+  await initWS(serverLogin, serverApp, serverGuest);
+  
   console.log("DATA_PROXY", process.env.DATA_PROXY);
-  httpsServerLogin.listen(loginPort, () => {
-    console.log(`Login server running on port ${loginPort}`);
+  
+  // Start primary servers (HTTPS or HTTP)
+  serverLogin.listen(loginPort, () => {
+    console.log(`${isDev ? 'HTTP' : 'HTTPS'} Login server running on port ${loginPort}`);
   });
-  httpsServerApp.listen(mainServerPort, () => {
-    console.log(`Main server running on port ${mainServerPort}`);
+  
+  serverApp.listen(mainServerPort, () => {
+    console.log(`${isDev ? 'HTTP' : 'HTTPS'} Main server running on port ${mainServerPort}`);
   });
-  httpsServerGuest.listen(guestServerPort, () => {
-    console.log(`Guest server running on port ${guestServerPort}`);
+  
+  serverGuest.listen(guestServerPort, () => {
+    console.log(`${isDev ? 'HTTP' : 'HTTPS'} Guest server running on port ${guestServerPort}`);
   });
-  const httpsServer = https.createServer(options, app);
-  httpsServer.listen(3333, () => {
-    console.log(`HTTPS server running on port 3333`);
+  
+  mainServer.listen(3333, () => {
+    console.log(`${isDev ? 'HTTP' : 'HTTPS'} Main server running on port 3333`);
   });
+  
+  // Start secondary servers (HTTP if primary is HTTPS, or vice versa)
+  if (isDev) {
+    // Primary is HTTP, secondary is HTTPS (if available)
+    if (httpsServerLogin && httpsServerApp && httpsServerGuest && httpsMainServer) {
+      // Use different ports for HTTPS servers
+      const httpsLoginPort = Number(loginPort) + 10000; // 13331
+      const httpsAppPort = Number(mainServerPort) + 10000; // 13332
+      const httpsGuestPort = Number(guestServerPort) + 10000; // 13334
+      const httpsMainPort = 13333;
+      
+      // Initialize WebSocket for HTTPS servers
+      await initWS(httpsServerLogin, httpsServerApp, httpsServerGuest);
+      
+      httpsServerLogin.listen(httpsLoginPort, () => {
+        console.log(`HTTPS Login server running on port ${httpsLoginPort}`);
+      });
+      
+      httpsServerApp.listen(httpsAppPort, () => {
+        console.log(`HTTPS Main server running on port ${httpsAppPort}`);
+      });
+      
+      httpsServerGuest.listen(httpsGuestPort, () => {
+        console.log(`HTTPS Guest server running on port ${httpsGuestPort}`);
+      });
+      
+      httpsMainServer.listen(httpsMainPort, () => {
+        console.log(`HTTPS Main server running on port ${httpsMainPort}`);
+      });
+      
+      console.log("HTTPS servers are available on ports 13331, 13332, 13333, and 13334");
+    } else {
+      console.log("HTTPS servers are not available");
+    }
+  } else {
+    // Primary is HTTPS, secondary is HTTP
+    // Use different ports for HTTP servers
+    const httpLoginPort = Number(loginPort) + 10000; // 13331
+    const httpAppPort = Number(mainServerPort) + 10000; // 13332
+    const httpGuestPort = Number(guestServerPort) + 10000; // 13334
+    const httpMainPort = 13333;
+    
+    // Initialize WebSocket for HTTP servers
+    await initWS(httpServerLogin, httpServerApp, httpServerGuest);
+    
+    httpServerLogin.listen(httpLoginPort, () => {
+      console.log(`HTTP Login server running on port ${httpLoginPort}`);
+    });
+    
+    httpServerApp.listen(httpAppPort, () => {
+      console.log(`HTTP Main server running on port ${httpAppPort}`);
+    });
+    
+    httpServerGuest.listen(httpGuestPort, () => {
+      console.log(`HTTP Guest server running on port ${httpGuestPort}`);
+    });
+    
+    httpMainServer.listen(httpMainPort, () => {
+      console.log(`HTTP Main server running on port ${httpMainPort}`);
+    });
+    
+    console.log("HTTP servers are available on ports 13331, 13332, 13333, and 13334");
+  }
 
   //initWatchers();
 };
