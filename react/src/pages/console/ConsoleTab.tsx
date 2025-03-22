@@ -300,16 +300,18 @@ const Console = ({
     [clearAlwaysCommand],
   );
   const handleChangeCommand = useCallback(
-    (value: string, option: Command | Command[]) => {
+    (value: string, option?: Command | Command[]) => {
       setCommand(value);
       setValue((oldValue) =>
         clearAlwaysCommand ? value : oldValue + "\n" + value,
       );
       setCommandOption(option);
-      setCommandLabel((option as Command).label || "");
-      //setShowHelpForm(true);
-      if ((option as Command).extended) {
-        setCommandBar(option as Command);
+      if (option) {
+        setCommandLabel((option as Command).label || "");
+        //setShowHelpForm(true);
+        if ((option as Command).extended) {
+          setCommandBar(option as Command);
+        }
       }
     },
     [actualCommands, clearAlwaysCommand],

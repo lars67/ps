@@ -29,7 +29,7 @@ export const authLoginThunk = createAsyncThunk(
       );
 
       const isGuest = loginPayload.role === "guest";
-      const wsUrl = process.env.REACT_APP_LOGIN_WS || 'wss://top1.softcapital.com:3331/ps2l/';
+      const wsUrl = process.env.REACT_APP_LOGIN_WS || 'wss://localhost:3331/ps2l/';
       console.log('Connecting to WebSocket:', wsUrl);
       const ws = new WebSocket(wsUrl);
       ws.onopen = () => {
