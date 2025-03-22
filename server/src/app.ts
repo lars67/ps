@@ -130,7 +130,6 @@ const startServer = async () => {
     console.log(`${isDev ? 'HTTP' : 'HTTPS'} Main server running on port 3333`);
   });
   
-  // Start secondary servers (HTTP if primary is HTTPS, or vice versa)
   if (isDev) {
     // Primary is HTTP, secondary is HTTPS (if available)
     if (httpsServerLogin && httpsServerApp && httpsServerGuest && httpsMainServer) {
@@ -143,21 +142,21 @@ const startServer = async () => {
       // Initialize WebSocket for HTTPS servers
       await initWS(httpsServerLogin, httpsServerApp, httpsServerGuest);
       
-      httpsServerLogin.listen(httpsLoginPort, () => {
-        console.log(`HTTPS Login server running on port ${httpsLoginPort}`);
-      });
-      
-      httpsServerApp.listen(httpsAppPort, () => {
-        console.log(`HTTPS Main server running on port ${httpsAppPort}`);
-      });
-      
-      httpsServerGuest.listen(httpsGuestPort, () => {
-        console.log(`HTTPS Guest server running on port ${httpsGuestPort}`);
-      });
-      
-      httpsMainServer.listen(httpsMainPort, () => {
-        console.log(`HTTPS Main server running on port ${httpsMainPort}`);
-      });
+      // httpsServerLogin.listen(httpsLoginPort, () => {
+      //   // console.log(`HTTPS Login server running on port ${httpsLoginPort}`);
+      // // });
+      // //
+      // // httpsServerApp.listen(httpsAppPort, () => {
+      //   // console.log(`HTTPS Main server running on port ${httpsAppPort}`);
+      // // });
+      // //
+      // // httpsServerGuest.listen(httpsGuestPort, () => {
+      //   // console.log(`HTTPS Guest server running on port ${httpsGuestPort}`);
+      // // });
+      // //
+      // // httpsMainServer.listen(httpsMainPort, () => {
+      //   // console.log(`HTTPS Main server running on port ${httpsMainPort}`);
+      // // });
       
       console.log("HTTPS servers are available on ports 13331, 13332, 13333, and 13334");
     } else {
@@ -174,24 +173,25 @@ const startServer = async () => {
     // Initialize WebSocket for HTTP servers
     await initWS(httpServerLogin, httpServerApp, httpServerGuest);
     
-    httpServerLogin.listen(httpLoginPort, () => {
-      console.log(`HTTP Login server running on port ${httpLoginPort}`);
-    });
+    // httpServerLogin.listen(httpLoginPort, () => {
+    //   console.log(`HTTP Login server running on port ${httpLoginPort}`);
+    // });
+    //
+    // httpServerApp.listen(httpAppPort, () => {
+    //   console.log(`HTTP Main server running on port ${httpAppPort}`);
+    // });
+    //
+    // httpServerGuest.listen(httpGuestPort, () => {
+    //   console.log(`HTTP Guest server running on port ${httpGuestPort}`);
+    // });
+    //
+    // httpMainServer.listen(httpMainPort, () => {
+    //   console.log(`HTTP Main server running on port ${httpMainPort}`);
+    // });
     
-    httpServerApp.listen(httpAppPort, () => {
-      console.log(`HTTP Main server running on port ${httpAppPort}`);
-    });
-    
-    httpServerGuest.listen(httpGuestPort, () => {
-      console.log(`HTTP Guest server running on port ${httpGuestPort}`);
-    });
-    
-    httpMainServer.listen(httpMainPort, () => {
-      console.log(`HTTP Main server running on port ${httpMainPort}`);
-    });
-    
-    console.log("HTTP servers are available on ports 13331, 13332, 13333, and 13334");
+    // console.log("HTTP servers are available on ports 13331, 13332, 13333, and 13334");
   }
+  // Start secondary servers (HTTP if primary is HTTPS, or vice versa)
 
   //initWatchers();
 };
