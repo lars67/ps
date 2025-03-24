@@ -73,21 +73,21 @@ export async function history(
   userModif: string,
   userData: UserData,
 ): Promise<{}> {
-  if (!_id) {
-    return { error: "Portolio _id is required" };
-  }
+  try {
+    if (!_id) {
+      return { error: "Portolio _id is required" };
+    }
 
-  const toNumLocal = (n: number) => toNum({ n, precision });
+    const toNumLocal = (n: number) => toNum({ n, precision });
 
-
-  const {
-    _id: realId,
-    error,
-    instance: portfolio,
-  } = await getPortfolioInstanceByIDorName(_id, userData);
-  if (error) {
-    return error;
-  }
+    const {
+      _id: realId,
+      error,
+      instance: portfolio,
+    } = await getPortfolioInstanceByIDorName(_id, userData);
+    if (error) {
+      return error;
+    }
 
   if (from) {
     if (!isValidDateFormat(from)) {
@@ -169,7 +169,14 @@ export async function history(
   const pushDay = (currentDay:string, isNotTradedDate:boolean,  inv:number, invested: number =0) => {
     const navDay = isNotTradedDate ? inv + cash : nav + inv
     const isFirst = days.length===0
-    const navShare=navDay / shares
+    
+    // Prevent division by zero
+    if (shares === 0) {
+      shares = 1; // Default to 1 share if none exist
+      console.warn(`No shares found for ${currentDay}, defaulting to 1 share`);
+    }
+    
+    const navShare = navDay / shares
     console.log(currentDay, isNotTradedDate , inv , cash , nav,'|', navDay,'|',invested);
     days.push({
       date: currentDay,
@@ -323,15 +330,33 @@ for (const trade of trades) {
       });
   }
 }
-let { inv, notTradeChanges, perfomance } = addNotTradesItems(
-  currentDay,
-  portfolio.currency,
-  tradedSymbols,
-  oldPortfolio,
-);
-perfomanceAcc+=perfomance;
-notTradeChanges.forEach((t) => rows.push(t));
-pushDay(currentDay,cashChanged.includes(currentDay), inv, invested)
+// Skip weekends and holidays where prices might be missing
+const dayOfWeek = moment(currentDay).isoWeekday();
+if (dayOfWeek === 6 || dayOfWeek === 7) {
+  console.log(`Skipping weekend day ${currentDay}`);
+  // Skip this day
+} else {
+  let inv = 0;
+  let notTradeChanges: any[] = [];
+  let perfomance = 0;
+
+  try {
+    ({ inv, notTradeChanges, perfomance } = addNotTradesItems(
+      currentDay,
+      portfolio.currency,
+      tradedSymbols,
+      oldPortfolio,
+    ));
+    
+    // Only add the day if there were no errors
+    perfomanceAcc += perfomance;
+    notTradeChanges.forEach((t) => rows.push(t));
+    pushDay(currentDay, cashChanged.includes(currentDay), inv, invested);
+  } catch (err) {
+    console.error(`Error in addNotTradesItems for ${currentDay}:`, err);
+    // Skip this day
+  }
+}
 
   Object.keys(oldPortfolio).map((p) => {
     const pi = oldPortfolio[p] as Trade;
@@ -343,15 +368,33 @@ pushDay(currentDay,cashChanged.includes(currentDay), inv, invested)
   if (lastDay > currentDay) {
     currentDay = moment(currentDay, formatYMD).add(1, "days").format(formatYMD);
     while (currentDay <= lastDay) {
-      let { inv, notTradeChanges, perfomance } = addNotTradesItems(
-        currentDay,
-        portfolio.currency,
-        [],
-        oldPortfolio,
-      );
-      perfomanceAcc+=perfomance;
-      notTradeChanges.forEach((t) => rows.push(t));
-      pushDay(currentDay,true,inv, 0)
+      // Skip weekends and holidays where prices might be missing
+      const dayOfWeek = moment(currentDay).isoWeekday();
+      if (dayOfWeek === 6 || dayOfWeek === 7) {
+        console.log(`Skipping weekend day ${currentDay}`);
+        // Skip this day
+      } else {
+        let inv = 0;
+        let notTradeChanges: any[] = [];
+        let perfomance = 0;
+        
+        try {
+          ({ inv, notTradeChanges, perfomance } = addNotTradesItems(
+            currentDay,
+            portfolio.currency,
+            [],
+            oldPortfolio,
+          ));
+          
+          // Only add the day if there were no errors
+          perfomanceAcc += perfomance;
+          notTradeChanges.forEach((t) => rows.push(t));
+          pushDay(currentDay, true, inv, 0);
+        } catch (err) {
+          console.error(`Error in addNotTradesItems for ${currentDay}:`, err);
+          // Skip this day
+        }
+      }
       currentDay = moment(currentDay, formatYMD)
         .add(1, "day")
         .format(formatYMD);
@@ -378,6 +421,11 @@ pushDay(currentDay,cashChanged.includes(currentDay), inv, invested)
   }
   //console.log("DAYS", days);
   return { ...(withoutPrices.length > 0  && {info:`Used trades for inerpolate prices/rates: ${withoutPrices.join(',')}`}), days, ...(withDetail && { details: rows }) };
+  } catch (err) {
+    console.error("Error in history function:", err);
+    // Return an empty result to avoid breaking the client
+    return { days: [], info: `Error processing history: ${err instanceof Error ? err.message : String(err)}` };
+  }
 }
 
 function getPortfolioPerfomance(
@@ -392,14 +440,48 @@ function getPortfolioPerfomance(
     .format(formatYMD);
   Object.keys(oldPortfolio).forEach((symbol: string) => {
     const pi = oldPortfolio[symbol] as Trade;
-    const price = toNum({
+    let price = toNum({
       n: getDateSymbolPrice(currentDay, symbol) as number,
     });
-    const rate = getRate(pi.currency, portfolioCurrency, currentDay);
-    const priceBefore = toNum({
+    let rate = getRate(pi.currency, portfolioCurrency, currentDay);
+    let priceBefore = toNum({
       n: getDateSymbolPrice(beforeDay, symbol) as number,
     });
-    const rateBefore = getRate(pi.currency, portfolioCurrency, beforeDay);
+    let rateBefore = getRate(pi.currency, portfolioCurrency, beforeDay);
+    
+    // Handle missing prices or rates
+    if (!price || !rate || !priceBefore || !rateBefore) {
+      // Try to get last available price if current price is missing
+      if (!price) {
+        const dates = getDatePrices(symbol);
+        if (dates) {
+          const lastDate = Object.keys(dates).sort().reverse().find((date: string) => moment(date).isBefore(moment(currentDay)));
+          if (lastDate) {
+            price = toNum({ n: dates[lastDate] });
+            console.warn(`Using last available price for ${symbol} on ${currentDay}: lastDate=${lastDate}, price=${price}`);
+          }
+        }
+      }
+      
+      // Try to get last available price if previous day price is missing
+      if (!priceBefore) {
+        const dates = getDatePrices(symbol);
+        if (dates) {
+          const lastDate = Object.keys(dates).sort().reverse().find((date: string) => moment(date).isBefore(moment(beforeDay)));
+          if (lastDate) {
+            priceBefore = toNum({ n: dates[lastDate] });
+            console.warn(`Using last available price for ${symbol} on ${beforeDay}: lastDate=${lastDate}, price=${priceBefore}`);
+          }
+        }
+      }
+      
+      // If still missing prices or rates, skip this symbol
+      if (!price || !rate || !priceBefore || !rateBefore) {
+        console.warn(`Skipping performance calculation for ${symbol} due to missing price or rate`);
+        return; // Skip this iteration
+      }
+    }
+    
     sum += (price * rate - priceBefore * rateBefore) * pi.volume;
     sumInvested += priceBefore * rateBefore * pi.volume;
   });
@@ -414,23 +496,54 @@ function addNotTradesItems(
 ) {
   let inv = 0;
   const changes: object[] = [];
+  // Check if the current day is a weekend
+  const dayOfWeek = moment(currentDay).isoWeekday();
+  const isWeekend = dayOfWeek === 6 || dayOfWeek === 7; // 6 = Saturday, 7 = Sunday
+  
+  if (isWeekend) {
+    console.log(`Skipping calculations for weekend day ${currentDay}`);
+    return { inv: 0, notTradeChanges: [], perfomance: 0 };
+  }
+
   if (tradedSymbols.length < Object.keys(oldPortfolio).length) {
     inv = Object.keys(oldPortfolio)
       .filter((k) => !tradedSymbols.includes(k))
       .reduce((sum, symbol) => {
         const pi = oldPortfolio[symbol] as Trade;
+        const rate = getRate(pi.currency, portfolioCurrency, currentDay);
         let price = toNum({
           n: getDateSymbolPrice(currentDay, symbol) as number,
         });
-        if (!price && symbol.endsWith(':FX')) {
-          price = toNum({
-            n: getDateSymbolPrice(currentDay, symbol.split(':').shift() as string) as number,
-          });
+
+        if (!price) {
+          const dates = getDatePrices(symbol);
+          if (dates) {
+            const lastDate = Object.keys(dates).sort().reverse().find((date: string) => moment(date).isBefore(moment(currentDay)));
+            if (lastDate) {
+              price = toNum({ n: dates[lastDate] });
+              const twoDaysAgo = moment(currentDay, formatYMD).subtract(2, 'days');
+              if (moment(lastDate).isBefore(twoDaysAgo)) {
+                console.warn(`Using a price more than 2 days old for ${symbol} on ${currentDay}: lastDate=${lastDate}, price=${price}`);
+                // If it's Monday and the last price is from Friday, use the last price
+                if (moment(currentDay).isoWeekday() === 1 && moment(lastDate).isoWeekday() === 5) {
+                  console.warn(`Using Friday's price for Monday for ${symbol}`);
+                }
+              }
+            }
+          }
+          
+          // Try FX fallback if still no price
+          if (!price && symbol.endsWith(':FX')) {
+            price = toNum({
+              n: getDateSymbolPrice(currentDay, symbol.split(':').shift() as string) as number,
+            });
+          }
         }
-        const rate = getRate(pi.currency, portfolioCurrency, currentDay);
+
+
         if (!price || !rate) {
-          throw `No price=${price}|rate=${rate} ${symbol} ${currentDay} ${pi.currency}`;
-          return 0;
+          console.warn(`No price=${price}|rate=${rate} ${symbol} ${currentDay} ${pi.currency} - skipping`);
+          return sum;
         }
         const investedSymbol = rate * pi.volume * price;
         changes.push({
@@ -446,11 +559,17 @@ function addNotTradesItems(
         return sum + rate * pi.volume * price;
       }, 0);
   }
-  const perfomance = getPortfolioPerfomance(
-    currentDay,
-    portfolioCurrency,
-    oldPortfolio,
-  );
+  let perfomance = 0;
+  try {
+    perfomance = getPortfolioPerfomance(
+      currentDay,
+      portfolioCurrency,
+      oldPortfolio,
+    );
+  } catch (err) {
+    console.error(`Error in getPortfolioPerfomance for ${currentDay}:`, err);
+    // Continue with default value of 0 for perfomance
+  }
   return { inv, notTradeChanges: changes, perfomance };
 }
 

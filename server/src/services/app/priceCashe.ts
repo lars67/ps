@@ -396,7 +396,33 @@ export const getRate = (
   //console.log(date,dateHistory[date])
   const rate1 = getDateSymbolPrice(date, `${currency}${balanceCurrency}`);
   const rate2 = getDateSymbolPrice(date, `${balanceCurrency}${currency}`);
-  const r = rate1 ? rate1 : rate2 ? 1 / rate2 : 0;
+  
+  // If both rates are null, try to find the last available rate
+  if (!rate1 && !rate2) {
+    console.warn(`No rate found for ${currency}${balanceCurrency} or ${balanceCurrency}${currency} on ${date}, trying to find last available rate`);
+    
+    // Try to find the last available rate for currency+balanceCurrency
+    let prevDate = moment(date, formatYMD);
+    for (let i = 1; i < SEARCH_DAY; i++) {
+      prevDate = prevDate.add(-1, "days");
+      const d = prevDate.format(formatYMD);
+      
+      const prevRate1 = getDateSymbolPrice(d, `${currency}${balanceCurrency}`);
+      const prevRate2 = getDateSymbolPrice(d, `${balanceCurrency}${currency}`);
+      
+      if (prevRate1 || prevRate2) {
+        const prevR = prevRate1 ? prevRate1 : prevRate2 ? 1 / prevRate2 : 0;
+        console.warn(`Using rate from ${d}: ${prevR}`);
+        return Number(prevR.toFixed(4));
+      }
+    }
+    
+    // If still no rate found, return 1 as a fallback to avoid division by zero
+    console.warn(`No rate found for ${currency}${balanceCurrency} or ${balanceCurrency}${currency} within ${SEARCH_DAY} days, using 1 as fallback`);
+    return 1;
+  }
+  
+  const r = rate1 ? rate1 : rate2 ? 1 / rate2 : 1; // Use 1 as fallback instead of 0
   //console.log(`RATES '${currency}${balanceCurrency}' '${date}'`, rate1, rate2, '=>', r)
   return Number(r.toFixed(4));
 };

@@ -82,9 +82,9 @@ export default async function handler(data, sendResponse, userModif, userData, s
         return sendResponse({error: `Command "${command}" unknown`, msgId});
       }
     } catch (error) {
-      console.log(error);
+      console.log('Command execution error:', error);
       return sendResponse({
-        error: `Command "${command}" execution error`,
+        error: `Command "${command}" execution error: ${error instanceof Error ? error.message : String(error)}`,
         msgId,
       });
     }
