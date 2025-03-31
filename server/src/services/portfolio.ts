@@ -31,8 +31,9 @@ import { getPortfolioTrades } from "../utils/portfolio";
 import { UserData } from "@/services/websocket";
 import { generateAccountID } from "../utils/idGenerator";
 
-export { history } from "./portfolio/history";
+export { history } from "./portfolio/history"; // Use the updated history file
 export { positions } from "./portfolio/positions";
+// Removed export for historyV2 as it's now integrated into history.ts
 
 export const validationsAddRequired: string[] = [
   "name",
@@ -313,6 +314,8 @@ export const description: CommandDescription = {
     `,
     access: "public",
   },
+  // Removed description for historyV2
+  // Removed extra closing brace from previous diff
   positions: {
     label: "Portfolio Positions",
     value: `${JSON.stringify({
