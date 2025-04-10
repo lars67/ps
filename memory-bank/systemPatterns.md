@@ -65,6 +65,7 @@
   - Server (`controllers/websocket.ts`) parses command, checks access (`isAccessAllowed`), routes to service function.
   - Responses reference `msgId`.
   - Large responses are fragmented and need reassembly on the client.
+  - A plan exists (`cline_docs/historyV2_plan.md`) to add a new `portfolios.historyV2` command with improved calculation logic.
 - **Service Layer:** Backend logic organized by domain in `services/*`.
 - **Centralized Request Handler (Front Controller):** `controllers/websocket.ts` handles all incoming WebSocket commands.
 - **Single Page Application (SPA):** Frontend architecture.

@@ -31,8 +31,10 @@ System was previously considered operational with production connections, but re
 ## Remaining Work / Next Development Phase (from cline_docs)
 
 - **Memory Bank:**
-    - Merge remaining relevant info from `cline_docs` (`projectbrief.md`, `attempted_solutions.md`, `path_problem_description.md`).
+    - Merge remaining relevant info from `cline_docs` (`projectbrief.md` - not found).
     - Further refinement of `projectbrief.md` and `productContext.md` (requires user input).
+- **Feature Implementation:**
+    - Implement `portfolios.historyV2` command as planned in `cline_docs/historyV2_plan.md` to provide accurate daily portfolio snapshots, addressing issues with the original `history` command. *(Implementation status unknown)*.
 - **Server Stability (High Priority):**
     - Implement SSE connection management improvements as outlined in `cline_docs/sse_improvement_plan.md` (includes robust reconnection, resource cleanup, state management, connection pooling, health checks, monitoring).
     - Implement enhanced monitoring for memory/resource usage.

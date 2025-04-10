@@ -30,6 +30,7 @@ A real-time portfolio management system providing a secure, command-based interf
 - **Filtering:** The UI allows filtering commands by type (All, User, Custom, Collection, Tests).
 - **History:** The UI tracks command history for the session.
 - **Access Control:** The backend enforces RBAC, allowing only permitted commands for the user's role.
+- **Portfolio History:** Provides portfolio history calculation (original `portfolios.history` command has known inaccuracies, plan exists for `portfolios.historyV2`).
 
 ### User Interface (React App)
 - **Command Console:** Primary interface for typing/selecting and executing commands.
@@ -55,5 +56,5 @@ A real-time portfolio management system providing a secure, command-based interf
 
 ## Future Enhancements (from cline_docs)
 
-- **Command Features:** Favorites, templates, suggestions, batch processing.
+- **Command Features:** Favorites, templates, suggestions, batch processing. Implement planned `portfolios.historyV2` command.
 - **User Experience:** Enhanced loading states, better error messages, execution feedback, history persistence.
