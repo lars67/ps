@@ -259,6 +259,39 @@ function drawdown_details(drawdown: DataPoint[]): { days: number, min: number }[
     return result;
 }
 
+function calculate_rolling_std(data: DataPoint[], window: number): DataPoint[] {
+    if (data.length < window) {
+        return []; // Not enough data for the window
+    }
+    const results: DataPoint[] = [];
+    for (let i = window - 1; i < data.length; i++) {
+        const windowData = data.slice(i - window + 1, i + 1);
+        // Calculate std for the window, annualize assuming daily data (252 trading days)
+        const windowStd = std(windowData, 1) * Math.sqrt(252);
+        results.push([data[i][0], windowStd]);
+    }
+    return results;
+}
+
+function calculate_percentile(data: DataPoint[], percentile: number): number | null {
+    if (data.length === 0 || percentile <= 0 || percentile >= 1) {
+        return null; // Invalid input
+    }
+    const sortedValues = data.map(dp => dp[1]).sort((a, b) => a - b);
+    const index = Math.floor(percentile * sortedValues.length);
+    return sortedValues[index];
+}
+
+function calculate_average_below_threshold(data: DataPoint[], threshold: number): number | null {
+    const belowThreshold = data.filter(dp => dp[1] < threshold);
+    if (belowThreshold.length === 0) {
+        return null; // No data points below threshold
+    }
+    const sum = belowThreshold.reduce((acc, dp) => acc + dp[1], 0);
+    return sum / belowThreshold.length;
+}
+
+
 export default {
     resample,
     to_returns,
@@ -278,5 +311,9 @@ export default {
     findMax,
     getInterval,
     getIntervalFrom,
-    drawdown_details
+    drawdown_details,
+    // New functions
+    calculate_rolling_std,
+    calculate_percentile,
+    calculate_average_below_threshold
 };
