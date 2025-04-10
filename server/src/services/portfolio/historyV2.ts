@@ -15,23 +15,10 @@ import {
 import { getPortfolioInstanceByIDorName } from "../../services/portfolio/helper";
 import { isValidDateFormat, toNum } from "../../utils";
 import { formatYMD, errorMsgs } from "../../constants";
-
-// Define DayType locally as it might differ slightly or be removed from original history.ts eventually
-export type DayType = {
-  date: string;
-  invested: number,
-  investedWithoutTrades: number, // Represents market value change without trades
-  cash: number,
-  nav: number,
-  index: number, // Value of the base instrument
-  perfomance: number; // Daily performance (placeholder)
-  shares: number;
-  navShare: number;
-  perfShare: number;
-}
+import { DayType } from "./history"; // Re-use DayType from original history
 
 // Define Params type locally
-type HistoryParams = {
+type HistoryV2Params = {
   _id: string;
   from?: string;
   till?: string;
@@ -43,9 +30,8 @@ type HistoryParams = {
 // Helper type for daily holdings state
 type HoldingsMap = Record<string, { volume: number; currency: string }>;
 
-// Renamed function back to 'history'
-export async function history(
-  { _id, from, till, detail = "0", sample, precision = 2 }: HistoryParams,
+export async function historyV2(
+  { _id, from, till, detail = "0", sample, precision = 2 }: HistoryV2Params,
   sendResponse: (data: any) => void,
   msgId: string,
   userModif: string,
@@ -156,7 +142,7 @@ export async function history(
     let lastKnownInvested = 0;
     let lastKnownCash = 0;
     let lastKnownShares = 0;
-    let perfomanceAcc = 0; // Placeholder
+    let perfomanceAcc = 0; // TODO: Implement performance calculation logic if needed
     let baseIndexValue = 100000; // Default base index
 
     // --- 6. Process Initial State (Trades Before Start Date) ---
@@ -238,7 +224,7 @@ export async function history(
       // Start with state from end of previous day
       cash = lastKnownCash;
       shares = lastKnownShares;
-      // currentHoldings is implicitly carried over (it's modified in place)
+      // currentHoldings is already carried over
 
       try {
         // --- 7a. Process Trades for Current Day ---
@@ -261,7 +247,7 @@ export async function history(
                         }
                         const dir = trade.side === "B" ? 1 : -1;
                         const cashChange = -dir * (trade.price * tradeRate * trade.volume) - (trade.fee * tradeRate);
-                        const previousVolume = currentHoldings[symbol].volume;
+                        const previousVolume = currentHoldings[symbol].volume; // Store before update
                         currentHoldings[symbol].volume += dir * trade.volume;
                         cash += cashChange;
 
@@ -275,8 +261,9 @@ export async function history(
                                 volume: trade.volume,
                                 price: trade.price,
                                 fee: trade.fee,
-                                cash: toNumLocal(cash),
+                                cash: toNumLocal(cash), // Cash *after* this trade
                                 newVolume: currentHoldings[symbol].volume,
+                                // NAV/Invested calculated later
                             };
                         }
                         break;
@@ -284,28 +271,30 @@ export async function history(
                     case TradeTypes.Dividends:
                     case TradeTypes.Investment:
                         const dividendMultiplier = (trade.tradeType === TradeTypes.Dividends ? (currentHoldings[trade.symbol]?.volume || 1) : 1);
-                        const cashPut = (trade.price * tradeRate * dividendMultiplier) + (trade.fee * tradeRate); // Check fee logic
+                        const cashPut = (trade.price * tradeRate * dividendMultiplier) + (trade.fee * tradeRate); // Check fee logic - assuming fee adds to cash for PUT?
                         cash += cashPut;
                         let sharesAdded = 0;
                         if (trade.shares) {
                             sharesAdded = trade.shares;
                         } else if (trade.tradeType === TradeTypes.Investment) {
-                            sharesAdded = 1;
+                            sharesAdded = 1; // Default share increase?
                         }
                         shares += sharesAdded;
 
                         if (withDetail) {
                              currentTradeDetail = {
-                                operation: "PUT",
+                                operation: "PUT", // Or specific type?
                                 tradeTime: trade.tradeTime,
                                 currency: trade.currency,
                                 shares: sharesAdded,
                                 rate: tradeRate,
-                                cash: toNumLocal(cash),
+                                cash: toNumLocal(cash), // Cash *after* this operation
+                                // NAV/Invested calculated later
                             };
                         }
                         break;
                 }
+                 // Add detail after processing individual trade
                  if (currentTradeDetail) {
                     tradeDetails.push(currentTradeDetail);
                  }
@@ -322,12 +311,14 @@ export async function history(
         let currentDayInv = 0;
         for (const symbol in currentHoldings) {
             const holding = currentHoldings[symbol];
+            // Price/Rate lookup uses fallback logic from priceCashe.ts
             const price = getDateSymbolPrice(currentDayString, symbol);
             const rate = getRate(holding.currency, portfolio.currency, currentDayString);
 
             if (price != null && rate != null) {
                 const holdingValue = price * rate * holding.volume;
                 currentDayInv += holdingValue;
+                 // Add daily holding detail if requested AND no trade happened for this symbol today
                  const symbolTradedToday = todaysTrades.some(t => t.symbol === symbol && t.tradeType === TradeTypes.Trade);
                  if (withDetail && !symbolTradedToday) {
                     tradeDetails.push({
@@ -341,16 +332,7 @@ export async function history(
                     });
                  }
             } else {
-                console.warn(`Could not get price/rate for ${symbol} on ${currentDayString}. Using last known value for NAV calculation.`);
-                // Fallback: Use the last known invested value for this specific symbol if possible
-                const prevDayStr = loopMoment.clone().subtract(1, 'day').format(formatYMD);
-                const lastPrice = getDateSymbolPrice(prevDayStr, symbol);
-                const lastRate = getRate(holding.currency, portfolio.currency, prevDayStr);
-                 if (lastPrice != null && lastRate != null) {
-                    currentDayInv += lastPrice * lastRate * holding.volume;
-                 } else {
-                     console.error(`CRITICAL: Could not find any price/rate for ${symbol} on or before ${currentDayString}. Excluding from value.`);
-                 }
+                console.warn(`Could not get price/rate for ${symbol} on ${currentDayString}. Excluding from day's value.`);
             }
         }
         dayInvestedValue = currentDayInv;
@@ -366,33 +348,36 @@ export async function history(
           console.error(`Error processing day ${currentDayString}:`, err, ". Carrying forward previous day's state.");
           // On error, use last known good values from the *previous* day
           dayInvestedValue = lastKnownInvested;
-          cash = lastKnownCash;
-          shares = lastKnownShares;
-          dayNav = lastKnownNav;
-          // Holdings remain as they were at the start of the try block
+          cash = lastKnownCash; // Use previous day's cash
+          shares = lastKnownShares; // Use previous day's shares
+          dayNav = lastKnownNav; // Use previous day's NAV
+          // Holdings remain as they were at the start of the try block (end of previous day)
       }
 
       // --- 7c. Store Daily Snapshot ---
       const finalShares = shares > 0 ? shares : 1;
       const navShare = finalShares > 0 ? dayNav / finalShares : 0;
+      // Use the NAV share from the *first calculated day* as the base for perfShare
       const firstNavShare = days[0]?.navShare ?? (navShare || 1);
 
+      // Get base instrument index value for the day
       const currentIndexValue = getDateSymbolPrice(currentDayString, portfolio.baseInstrument) || baseIndexValue;
-      if (currentIndexValue !== baseIndexValue && days.length === 0) {
+      if (currentIndexValue !== baseIndexValue && days.length === 0) { // Update baseIndex if first day has a valid index price
           baseIndexValue = currentIndexValue;
       }
+
 
       days.push({
         date: currentDayString,
         invested: toNumLocal(dayInvestedValue),
-        investedWithoutTrades: toNumLocal(dayInvestedValue), // Using same value
+        investedWithoutTrades: toNumLocal(dayInvestedValue), // Using same value for now
         cash: toNumLocal(cash),
         nav: toNumLocal(dayNav),
-        index: toNumLocal(currentIndexValue),
-        perfomance: 0, // Placeholder
+        index: toNumLocal(currentIndexValue), // Base instrument value
+        perfomance: 0, // Placeholder - requires more complex calculation
         shares: finalShares,
         navShare: toNumLocal(navShare),
-        perfShare: toNumLocal(100 * navShare / (firstNavShare !== 0 ? firstNavShare : 1))
+        perfShare: toNumLocal(100 * navShare / (firstNavShare !== 0 ? firstNavShare : 1)) // Avoid division by zero
       });
 
       // Move to the next day
@@ -409,7 +394,7 @@ export async function history(
     };
 
   } catch (err) {
-    console.error("Critical error in history function:", err); // Changed historyV2 to history
+    console.error("Critical error in historyV2 function:", err);
     return { error: `Failed to generate history: ${err instanceof Error ? err.message : String(err)}` };
   }
 }

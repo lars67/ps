@@ -3,7 +3,6 @@ import { CloseOutlined } from '@ant-design/icons';
 import { ButtonProps } from 'antd/es/button/button';
 
 interface CloseableButtonProps extends ButtonProps {
-    color?: string;
     onClick: () => void;
 }
 

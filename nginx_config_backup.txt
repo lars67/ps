@@ -1,0 +1,126 @@
+worker_processes  1;
+pid        /run/nginx.pid;
+
+events {
+    worker_connections  2048;
+}
+
+http {
+    include       mime.types;
+    
+    default_type  application/octet-stream;
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+    sendfile        on;
+    keepalive_timeout  65;
+    gzip  on;
+    client_max_body_size 50M;
+    map $http_upgrade $connection_upgrade {
+        default upgrade;
+        '' close;
+    }
+
+    # HTTP server for finex.dk (redirect to HTTPS)
+    server {
+        listen 80;
+        server_name finex.dk;
+        return 301 https://$server_name$request_uri;
+    }
+
+    # HTTPS server for finex.dk
+    server {
+        listen 443 ssl;
+        server_name finex.dk;
+        client_max_body_size 50M;
+
+        ssl_certificate /home/lars/www/finex/CertFinex/finex_dk.crt;
+        ssl_certificate_key /home/lars/www/finex/CertFinex/finex_dk.key;
+        ssl_trusted_certificate /home/lars/www/finex/CertFinex/My_CA_Bundle.ca-bundle;
+        ssl_session_cache    shared:SSL:1m;
+        ssl_session_timeout  5m;
+        ssl_ciphers  HIGH:!aNULL:!MD5;
+        ssl_prefer_server_ciphers  on;
+
+        root /home/lars/www/finex;
+        index index.html index.htm;
+
+        # Handle relative paths for images (./images/)
+        location ~ ^/\./images/(.*)$ {
+            alias /home/lars/www/finex/images/$1;
+            autoindex off;
+        }
+
+        # Handle absolute paths for images (/images/)
+        location /images/ {
+            alias /home/lars/www/finex/images/;
+            autoindex off;
+        }
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+
+        location /api/ {
+            proxy_pass http://localhost:3001;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_cache_bypass $http_upgrade;
+            proxy_read_timeout 600s;
+            proxy_connect_timeout 600s;
+            proxy_send_timeout 600s;
+        }
+
+        location /ws {
+            proxy_pass http://localhost:3001;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+            proxy_cache_bypass $http_upgrade;
+            proxy_read_timeout 600s;
+            proxy_connect_timeout 600s;
+            proxy_send_timeout 600s;
+        }
+
+        # WebSocket proxy for PS2 login endpoint
+        location /ps2l/ {
+            proxy_pass https://finex.dk:3331;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_read_timeout 600s;
+            proxy_connect_timeout 600s;
+            proxy_send_timeout 600s;
+        }
+        
+        # WebSocket proxy for PS2 main endpoint
+        location /ps2/ {
+            proxy_pass https://finex.dk:3332;
+            proxy_set_header Connection $connection_upgrade;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_read_timeout 36000s;
+            proxy_send_timeout 36000s;
+            client_max_body_size 80M;
+        }
+        
+        # PS2 Console React app
+        location /ps2console/ {
+            alias /home/lars/www/ps2console/;
+            try_files $uri $uri/ /ps2console/index.html;
+            index index.html;
+            expires max;
+            log_not_found on;
+        }
+    }
+
+    # Existing server blocks remain unchanged
+    include /etc/nginx/conf.d/*.conf;
+}
