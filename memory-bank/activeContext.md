@@ -26,10 +26,11 @@ Merging historical context from `cline_docs` into the initialized Memory Bank.
 - **WS Command Handling:** Issue identified (missing early return) and fix recommended (add `return`).
 - **SSE Stability:** Issue identified (`ECONNRESET`) and improvement plan recommended.
 - **Test Script Path Issue:** Historical problem running `test-ps2-connection.js` due to Node.js resolving paths from project root (`ps2/`) instead of the script's directory (`server/`), exacerbated by duplicate test files. Fix involved using `__dirname` for certificate paths. (See `cline_docs/path_problem_description.md`).
+- **Portfolio History V2 Plan:** Plan created (`cline_docs/historyV2_plan.md`) to implement a new `portfolios.historyV2` command with improved accuracy, leaving the original `history` command untouched. *(Implementation status unknown)*.
 
 ## Next Steps (Current Session)
 
-- Continue merging remaining relevant files from `cline_docs` into Memory Bank (`sse_stress_test_plan.md`).
+- Finish merging `cline_docs/historyV2_plan.md` details into Memory Bank.
 - Commit merged Memory Bank updates.
 - Address any pending implementation tasks or user requests.
 - Further refinement of `projectbrief.md` and `productContext.md` requires user input on project goals/scope.
