@@ -178,6 +178,7 @@ export const description: CommandDescription = {
     historical: {
         label: "Get historical prices",
         value: JSON.stringify({ command: "prices.historical", symbols: "?", "date":"?", "from": "", "till":"", "precision":4 }),
+        access: 'member', // Allow members to access this command
     },
     quotes: {
         label: "Get quotes prices",
