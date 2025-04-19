@@ -4,6 +4,8 @@ import { signin, signup } from "./auth";
 import controller from "../controllers/websocket";
 import logger from "../utils/logger";
 import * as https from "https";
+import * as fs from "fs"; // Added for file logging
+import * as path from "path"; // Added for file path construction
 import { ErrorType } from "../types/other";
 import cookie from "cookie";
 import { guestAccessAllowed } from "../controllers/guestAccessAlowed";
@@ -229,6 +231,29 @@ const sendResponse = (socket: WebSocket, msg: any) => async (response: any) => {
       ...(response.error ? { error: response.error } : { data: response }),
     });
     logger.log(`< ${cmd.substring(0,60)}... |${msg.msgId}`);
+
+    // --- Start: Added logging logic ---
+    // Log if the variable exists and is not explicitly 'false'
+    if (process.env.LOG_OUTGOING_WS_MESSAGES && process.env.LOG_OUTGOING_WS_MESSAGES.toLowerCase() !== 'false') {
+      console.log(`[WS Logger] Attempting to log outgoing message for msgId: ${msg.msgId || 'N/A'}`); // Added console log
+      try {
+        // Use process.cwd() assuming server runs from 'server' directory
+        const logFilePath = path.join(process.cwd(), 'logs/outgoing_ws.log');
+        const timestamp = new Date().toISOString();
+        const logEntry = `[${timestamp}] [${msg.msgId || 'N/A'}] ${cmd}\n`;
+        // Ensure logs directory exists (optional, but good practice)
+        const logDir = path.dirname(logFilePath);
+        if (!fs.existsSync(logDir)) {
+          fs.mkdirSync(logDir, { recursive: true });
+        }
+        // Use synchronous append for easier debugging
+        fs.appendFileSync(logFilePath, logEntry);
+      } catch (logError) {
+        console.error("Error writing to outgoing WS log:", logError); // Changed error message slightly
+      }
+    }
+    // --- End: Added logging logic ---
+
     sendFragmented(socket, cmd, msg.msgId);
   }
 };
