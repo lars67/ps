@@ -618,10 +618,11 @@ export async function positions(
       return undefined;
     }
     // console.log('$#$ portfolioPositions', portfolioPositions)
-    const marketValue = Object.keys(portfolioPositions).reduce(
-      (sum, symbol) => sum + Number(portfolioPositions[symbol].marketValue),
-      0,
-    );
+    const marketValue = Object.keys(portfolioPositions).reduce((sum, symbol) => {
+      const posValue = Number(portfolioPositions[symbol]?.marketValue);
+      // Ensure NaN or undefined values don't corrupt the sum, treat them as 0
+      return sum + (isNaN(posValue) ? 0 : posValue);
+    }, 0);
     const result = Object.keys(portfolioPositions).reduce(
       (sum, symbol) => sum + Number(portfolioPositions[symbol].result),
       0,
