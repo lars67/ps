@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-Merging historical context from `cline_docs` into the initialized Memory Bank.
+The Memory Bank has been initialized and populated with project information. There are no current tasks or to-dos.
 
 ## Recent Changes (Current Session)
 
@@ -28,16 +28,10 @@ Merging historical context from `cline_docs` into the initialized Memory Bank.
 - **Test Script Path Issue:** Historical problem running `test-ps2-connection.js` due to Node.js resolving paths from project root (`ps2/`) instead of the script's directory (`server/`), exacerbated by duplicate test files. Fix involved using `__dirname` for certificate paths. (See `cline_docs/path_problem_description.md`).
 - **Portfolio History V2 Plan:** Plan created (`cline_docs/historyV2_plan.md`) to implement a new `portfolios.historyV2` command with improved accuracy, leaving the original `history` command untouched. *(Implementation status unknown)*.
 
-## Next Steps (Current Session)
-
-- Finish merging `cline_docs/historyV2_plan.md` details into Memory Bank.
-- Commit merged Memory Bank updates.
-- Address any pending implementation tasks or user requests.
-- Further refinement of `projectbrief.md` and `productContext.md` requires user input on project goals/scope.
 
 ## Open Questions/Issues
 
 - Mechanism for sending JWT from server to client after login WS authentication needs clarification (WS message or HTTP endpoint?).
 - Purpose of `REACT_APP_DATA_PROXY` environment variable.
 - Usage of `.bundle.pem` and `.pfx` certificate files mentioned in `cline_docs/techContext.md`.
-- See "Known Issues/Blockers" in `progress.md` for previously identified areas needing attention (stability, monitoring, logging, UX).
+- See "Historical Issues/Considerations" in `progress.md` for previously documented areas (stability, monitoring, logging, UX).

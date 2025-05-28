@@ -28,40 +28,20 @@ System was previously considered operational with production connections, but re
     - User authentication and session management implemented.
     - Command loading, execution, filtering, access control, history tracking implemented.
 
-## Remaining Work / Next Development Phase (from cline_docs)
+## Historical Considerations (from cline_docs)
 
-- **Memory Bank:**
-    - Merge remaining relevant info from `cline_docs` (`projectbrief.md` - not found).
-    - Further refinement of `projectbrief.md` and `productContext.md` (requires user input).
-- **Feature Implementation:**
-    - Implement `portfolios.historyV2` command as planned in `cline_docs/historyV2_plan.md` to provide accurate daily portfolio snapshots, addressing issues with the original `history` command. *(Implementation status unknown)*.
-- **Server Stability (High Priority):**
-    - Implement SSE connection management improvements as outlined in `cline_docs/sse_improvement_plan.md` (includes robust reconnection, resource cleanup, state management, connection pooling, health checks, monitoring).
-    - Implement enhanced monitoring for memory/resource usage.
-    - Implement comprehensive error logging.
-    - Verify fix for WebSocket command handling race condition (missing `return`).
-- **User Experience Enhancements:**
-    - Command favorites system.
-    - Improved error handling & messages.
-    - Command suggestions.
-    - Better loading states.
-    - Command history persistence.
-    - Command batch processing.
-    - Command templates.
-- **Testing Expansion:**
-    - Command execution test suite.
-    - Connection stability tests.
-    - User session testing.
-    - Error recovery testing.
-    - Implement SSE stress testing script/framework as planned in `cline_docs/sse_stress_test_plan.md` to reproduce stability issues.
-- **Monitoring:**
-    - Implement WebSocket health monitoring.
-    - Add command execution metrics.
-    - Implement user session tracking.
-    - Add performance monitoring.
-- **Address Pending User Requests:** Continue with any outstanding tasks.
+The following items were previously documented in `cline_docs` as potential areas for consideration. There are currently no active tasks or to-dos.
 
-## Known Issues/Blockers / Needs Improvement (from cline_docs)
+- **Memory Bank:** Historical notes mentioned potential refinement of `projectbrief.md` and `productContext.md`.
+- **Feature Considerations:** Previous documentation mentioned a `portfolios.historyV2` command concept in `cline_docs/historyV2_plan.md`.
+- **Server Stability:** Previous documentation noted SSE connection management concepts.
+- **User Experience:** Previous documentation referenced potential enhancements to the command system.
+- **Testing:** Previous documentation mentioned potential test expansion concepts.
+- **Monitoring:** Previous documentation referenced monitoring concepts.
+
+## Historical Issues/Considerations (from cline_docs)
+
+The following items were previously documented in `cline_docs`. There are currently no active tasks or to-dos.
 
 - **High Priority:**
     - Server stability after extended runtime.
