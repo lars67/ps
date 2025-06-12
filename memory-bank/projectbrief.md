@@ -2,12 +2,26 @@
 
 ## Core Requirements & Goals
 
-*(Please fill in the primary goals and essential requirements of this project.)*
+Build a real-time portfolio management system with a command-based interface over WebSockets. Key requirements:
+- Secure, real-time command execution via WebSockets.
+- Role-based access control (RBAC) for commands (Public, Member, Admin).
+- User command customization and management.
+- JWT-based authentication with secure cookie storage.
+- Separate WebSocket endpoints for Login, Main App, and Guest access.
 
 ## Scope
 
-*(Define the boundaries of the project. What is included? What is explicitly excluded?)*
+Included:
+- Backend server (Node.js/TypeScript) handling WebSocket connections, command execution, and authentication.
+- Frontend React application for command execution and response display.
+- MongoDB for data storage (commands, user data, etc.).
+- Help system (Next.js) for documentation.
+
+Excluded:
+- (To be determined)
 
 ## Key Stakeholders
 
-*(List the main individuals or groups involved or affected by this project.)*
+- Members: Users managing financial portfolios.
+- Administrators: System overseers.
+- Guests: Public users with limited read-only access.
