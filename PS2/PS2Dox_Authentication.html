@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PS2Dox Reference Manual - Authentication</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        code {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 2px 5px;
+            font-family: Consolas, monospace;
+        }
+        pre {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 10px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <a href="PS2Dox_Reference_Manual.html">Back to Main Document</a>
+    <h1>PS2Dox Reference Manual - Authentication</h1>
+    
+    <p>Authentication in PS2Dox is handled through specific commands for login and signup.</p>
+
+    <h2>1. Login</h2>
+    <p>Command:</p>
+    <pre><code>{"cmd":"login","login":"username","password":"userpassword"}</code></pre>
+
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>login</td>
+            <td>User's username</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>password</td>
+            <td>User's password</td>
+            <td>Yes</td>
+        </tr>
+    </table>
+
+    <p>Successful Response:</p>
+    <pre><code>{
+  "token": "eyJhbGciOiJIU...",
+  "role": "member",
+  "userId": "66450cb15e1f94688db59355"
+}</code></pre>
+
+    <p>Error Response:</p>
+    <pre><code>{"error": "Invalid credentials"}</code></pre>
+
+    <p>Help Text: Authenticates a user and returns a token for subsequent API calls. This token is required for accessing protected resources and performing operations within the system.</p>
+
+    <h2>2. Signup</h2>
+    <p>Command:</p>
+    <pre><code>{
+  "cmd": "signup",
+  "login": "newuser",
+  "password": "newpassword",
+  "email": "user@example.com",
+  "firstName": "John",
+  "secondName": "Doe",
+  "accountNumber": "ACC123456",
+  "telephone": "+1234567890",
+  "country": "USA"
+}</code></pre>
+
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>login</td>
+            <td>Desired username</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>password</td>
+            <td>Desired password</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>email</td>
+            <td>User's email address</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>firstName</td>
+            <td>User's first name</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>secondName</td>
+            <td>User's last name</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>accountNumber</td>
+            <td>User's account number</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>telephone</td>
+            <td>User's phone number</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>country</td>
+            <td>User's country</td>
+            <td>Yes</td>
+        </tr>
+    </table>
+
+    <p>Successful Response: Returns the newly created user object.</p>
+
+    <p>Error Response:</p>
+    <pre><code>{"error": "Username already exists"}</code></pre>
+
+    <p>Help Text: Creates a new user account in the system. All fields are required for a successful registration. The account number must be unique and will be used for financial operations.</p>
+
+</body>
+</html>

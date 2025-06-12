@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PS2Dox Reference Manual - Trades</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2, h3, h4 {
+            color: #2c3e50;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        code {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 2px 5px;
+            font-family: Consolas, monospace;
+        }
+        pre {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 10px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <a href="PS2Dox_Reference_Manual.html">Back to Main Document</a>
+    <h1>PS2Dox Reference Manual - Trades</h1>
+    
+    <h2>Trades</h2>
+    <p>The Trades module manages all aspects of trading operations in PS2Dox.</p>
+
+    <h3>Trade Operations</h3>
+
+    <h4>1. Place Order</h4>
+    <p>Command:</p>
+    <pre><code>{
+  "command": "trades.placeOrder",
+  "portfolioId": "portfolio_id",
+  "symbol": "AAPL",
+  "type": "buy",
+  "quantity": 100,
+  "price": 150.00,
+  "orderType": "limit"
+}</code></pre>
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>portfolioId</td>
+            <td>ID of the portfolio for the trade</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>symbol</td>
+            <td>Ticker symbol of the asset</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>type</td>
+            <td>Order type (buy or sell)</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>quantity</td>
+            <td>Number of shares to trade</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>price</td>
+            <td>Limit price (for limit orders)</td>
+            <td>Yes for limit orders</td>
+        </tr>
+        <tr>
+            <td>orderType</td>
+            <td>Type of order (market or limit)</td>
+            <td>Yes</td>
+        </tr>
+    </table>
+    <p>Output: Returns an order confirmation object with order details and status.</p>
+    <p>Help Text: Places a new order for a specified symbol within a portfolio. The order type can be 'market' or 'limit'. For limit orders, you must specify the price. Invested money in symbol back to symbol currency cash. Commission will be applied to portfolio currency.</p>
+
+    <h4>2. Modify Order</h4>
+    <p>Command:</p>
+    <pre><code>{
+  "command": "trades.modifyOrder",
+  "orderId": "order_id",
+  "newQuantity": 150,
+  "newPrice": 155.00
+}</code></pre>
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>orderId</td>
+            <td>ID of the order to modify</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>newQuantity</td>
+            <td>New quantity for the order</td>
+            <td>No</td>
+        </tr>
+        <tr>
+            <td>newPrice</td>
+            <td>New price for the order (limit orders only)</td>
+            <td>No</td>
+        </tr>
+    </table>
+    <p>Output: Returns the updated order object.</p>
+    <p>Help Text: Modifies an existing, unfilled order. You can change the quantity or price of a limit order. Note that modifying an order may affect its priority in the order book.</p>
+
+    <h4>3. Cancel Order</h4>
+    <p>Command:</p>
+    <pre><code>{
+  "command": "trades.cancelOrder",
+  "orderId": "order_id"
+}</code></pre>
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>orderId</td>
+            <td>ID of the order to cancel</td>
+            <td>Yes</td>
+        </tr>
+    </table>
+    <p>Output: Returns a confirmation of the cancellation.</p>
+    <p>Help Text: Cancels an unfilled order. Once cancelled, the order cannot be reinstated, and a new order must be placed if desired.</p>
+
+    <h4>4. Get Trade History</h4>
+    <p>Command:</p>
+    <pre><code>{
+  "command": "trades.getHistory",
+  "_id": "portfolio_id",
+  "from": "2023-01-01",
+  "till": "2023-12-31",
+  "sample": "day",
+  "detail": 1
+}</code></pre>
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Value</th>
+            <th>Required</th>
+            <th>Description</th>
+        </tr>
+        <tr>
+            <td>_id</td>
+            <td>Portfolio selection, can be portfolio fields: _id or name</td>
+            <td>Yes</td>
+            <td>Identifies the portfolio for which to retrieve history</td>
+        </tr>
+        <tr>
+            <td>from</td>
+            <td>Date from which trades will be returned. Format YYYY-MM-DD</td>
+            <td>No</td>
+            <td>Start date of the history range</td>
+        </tr>
+        <tr>
+            <td>till</td>
+            <td>Date until which trades will be returned. Format YYYY-MM-DD</td>
+            <td>No</td>
+            <td>End date of the history range. If not provided, all trades from the 'from' date will be included</td>
+        </tr>
+        <tr>
+            <td>sample</td>
+            <td>Output date sampling:<br>not set or 0 - trade dates (default)<br>'day' or 1 - daily step<br>'week' or 2 - weekly step<br>'month' or 3 - monthly step</td>
+            <td>No</td>
+            <td>Determines the granularity of the output data</td>
+        </tr>
+        <tr>
+            <td>detail</td>
+            <td>0: show summary result only by trade dates<br>1: show summary and trades result</td>
+            <td>No</td>
+            <td>Determines the level of detail in the output</td>
+        </tr>
+    </table>
+    <p>Output Format: The output contains an array with date history results in the property 'days', and when detail=1, a property 'details' with symbol information. Each day contains:</p>
+    <ul>
+        <li>nav: Net Asset Value</li>
+        <li>cash: Amount not invested in symbols</li>
+        <li>invested: Part invested via trade on this day</li>
+        <li>investedWithoutTrades: Part invested earlier, but without trade on this day (at current prices)</li>
+    </ul>
+    <p>Note: nav = cash + invested + investedWithoutTrades</p>
+    <p>Help Text: Retrieves the trading history for a specified portfolio over a given date range. This includes all executed trades, providing details such as symbol, quantity, price, and timestamp.</p>
+
+    <h4>5. Calculate Trade Performance</h4>
+    <p>Command:</p>
+    <pre><code>{
+  "command": "trades.calculatePerformance",
+  "tradeId": "trade_id"
+}</code></pre>
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>tradeId</td>
+            <td>ID of the trade to analyze</td>
+            <td>Yes</td>
+        </tr>
+    </table>
+    <p>Output: Returns a performance metrics object for the specified trade.</p>
+    <p>Help Text: Calculates the performance metrics for a specific trade, including profit/loss, return on investment, and impact on the overall portfolio performance.</p>
+
+</body>
+</html>

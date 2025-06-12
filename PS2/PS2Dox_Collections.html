@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PS2Dox Reference Manual - Collections</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2, h3, h4 {
+            color: #2c3e50;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        code {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 2px 5px;
+            font-family: Consolas, monospace;
+        }
+        pre {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 10px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <a href="PS2Dox_Reference_Manual.html">Back to Main Document</a>
+    <h1>PS2Dox Reference Manual - Collections</h1>
+    
+    <p>Collections in PS2Dox represent groups of related data. Common operations on collections include list, add, update, and remove.</p>
+
+    <h2>1. General Syntax</h2>
+    <p>Collection operations follow the syntax: <code>collection_name.method</code></p>
+    <p>Example:</p>
+    <pre><code>{"command": "portfolios.list", "filter": {}}</code></pre>
+    <p>Help Text: Collections are the core data structures in PS2Dox. They represent various entities such as portfolios, trades, and user data. Operations on collections allow you to manage and interact with these data sets.</p>
+
+    <h2>2. Common Methods</h2>
+
+    <h3>2.1 List</h3>
+    <p>Command:</p>
+    <pre><code>{"command": "collection_name.list", "filter": {}}</code></pre>
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>filter</td>
+            <td>Object with collection fields to filter results</td>
+            <td>No</td>
+        </tr>
+    </table>
+    <p>Output: Returns an array of objects matching the filter criteria.</p>
+    <p>Help Text: Retrieves a list of items from the specified collection. You can use the filter parameter to narrow down the results based on specific criteria.</p>
+
+    <h3>2.2 Add</h3>
+    <p>Command:</p>
+    <pre><code>{"command": "collection_name.add", "field1": "value1", "field2": "value2"}</code></pre>
+    <p>Parameters: Fields depend on the specific collection.</p>
+    <p>Output: Returns the newly created object, including its assigned _id.</p>
+    <p>Help Text: Adds a new item to the specified collection. The fields required depend on the collection you're adding to. Ensure all required fields are provided to successfully create a new item.</p>
+
+    <h3>2.3 Update</h3>
+    <p>Command:</p>
+    <pre><code>{"command": "collection_name.update", "_id": "record_id", "field1": "new_value"}</code></pre>
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>_id</td>
+            <td>MongoDB key for the record to update</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>field1, field2, etc.</td>
+            <td>Fields to update with their new values</td>
+            <td>At least one</td>
+        </tr>
+    </table>
+    <p>Output: Returns the updated object.</p>
+    <p>Help Text: Updates an existing item in the collection. You must provide the _id of the item you want to update, along with the fields you wish to change. Only the specified fields will be modified.</p>
+
+    <h3>2.4 Remove</h3>
+    <p>Command:</p>
+    <pre><code>{"command": "collection_name.remove", "_id": "record_id"}</code></pre>
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>_id</td>
+            <td>MongoDB key for the record to remove</td>
+            <td>Yes</td>
+        </tr>
+    </table>
+    <p>Output: Returns a success message or the removed object.</p>
+    <p>Help Text: Removes an item from the collection. This operation is irreversible, so use it with caution. You must provide the _id of the item you want to remove.</p>
+
+</body>
+</html>

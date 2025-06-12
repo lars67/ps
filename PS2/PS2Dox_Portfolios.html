@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PS2Dox Reference Manual - Portfolios</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        code {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 2px 5px;
+            font-family: Consolas, monospace;
+        }
+        pre {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 10px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <a href="PS2Dox_Reference_Manual.html">Back to Main Document</a>
+    <h1>PS2Dox Reference Manual - Portfolios</h1>
+    
+    <h2>Portfolios</h2>
+    <p>Portfolios in PS2Dox represent collections of financial instruments or assets.</p>
+
+    <h3>Portfolio Operations</h3>
+
+    <h4>1. Create Portfolio</h4>
+    <p>Command:</p>
+    <pre><code>{
+  "command": "portfolios.add",
+  "name": "Growth Portfolio",
+  "description": "High-risk, high-reward strategy",
+  "currency": "USD",
+  "baseInstrument": "SPY"
+}</code></pre>
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>name</td>
+            <td>Name of the portfolio</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>description</td>
+            <td>Description of the portfolio strategy</td>
+            <td>No</td>
+        </tr>
+        <tr>
+            <td>currency</td>
+            <td>Base currency for the portfolio</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>baseInstrument</td>
+            <td>Benchmark instrument for performance comparison</td>
+            <td>Yes</td>
+        </tr>
+    </table>
+    <p>Output: Returns the newly created portfolio object.</p>
+    <p>Help Text: Creates a new portfolio with the specified details. The baseInstrument is used as a benchmark for performance calculations.</p>
+
+    <h4>2. List Portfolios</h4>
+    <p>Command:</p>
+    <pre><code>{
+  "command": "portfolios.list",
+  "filter": {"currency": "USD"}
+}</code></pre>
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>filter</td>
+            <td>Object with portfolio fields to filter results</td>
+            <td>No</td>
+        </tr>
+    </table>
+    <p>Output: Returns an array of portfolio objects matching the filter criteria.</p>
+    <p>Help Text: Retrieves a list of portfolios. You can use the filter to narrow down the results, for example, to show only portfolios in a specific currency.</p>
+
+    <h4>3. Update Portfolio</h4>
+    <p>Command:</p>
+    <pre><code>{
+  "command": "portfolios.update",
+  "_id": "portfolio_id",
+  "description": "Updated portfolio description"
+}</code></pre>
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>_id</td>
+            <td>ID of the portfolio to update</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>name, description, currency, baseInstrument</td>
+            <td>Fields to update</td>
+            <td>At least one</td>
+        </tr>
+    </table>
+    <p>Output: Returns the updated portfolio object.</p>
+    <p>Help Text: Modifies an existing portfolio. You can update various fields such as name, description, or baseInstrument.</p>
+
+    <h4>4. Remove Portfolio</h4>
+    <p>Command:</p>
+    <pre><code>{
+  "command": "portfolios.remove",
+  "_id": "portfolio_id"
+}</code></pre>
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>_id</td>
+            <td>ID of the portfolio to remove</td>
+            <td>Yes</td>
+        </tr>
+    </table>
+    <p>Output: Returns a success message or the removed portfolio object.</p>
+    <p>Help Text: Deletes a portfolio from the system. This action is irreversible and will also remove all associated trades and performance data.</p>
+
+    <h4>5. Get Portfolio Performance</h4>
+    <p>Command:</p>
+    <pre><code>{
+  "command": "portfolios.getPerformance",
+  "_id": "portfolio_id",
+  "startDate": "2023-01-01",
+  "endDate": "2023-12-31"
+}</code></pre>
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>_id</td>
+            <td>ID of the portfolio</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>startDate</td>
+            <td>Start date for performance calculation (YYYY-MM-DD)</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>endDate</td>
+            <td>End date for performance calculation (YYYY-MM-DD)</td>
+            <td>Yes</td>
+        </tr>
+    </table>
+    <p>Output: Returns an object with performance metrics including returns, volatility, and comparison to the baseInstrument.</p>
+    <p>Help Text: Calculates and returns the performance metrics for a specified portfolio over a given date range. This includes returns, volatility, and comparison to the baseInstrument.</p>
+
+</body>
+</html>

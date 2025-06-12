@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PS2Dox Reference Manual - Tests</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2, h3, h4 {
+            color: #2c3e50;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        code {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 2px 5px;
+            font-family: Consolas, monospace;
+        }
+        pre {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 10px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <a href="PS2Dox_Reference_Manual.html">Back to Main Document</a>
+    <h1>PS2Dox Reference Manual - Tests</h1>
+    
+    <h2>Tests</h2>
+    <p>The Tests module in PS2Dox ensures system reliability and performance.</p>
+
+    <h3>Types of Tests</h3>
+
+    <h4>1. Unit Tests</h4>
+    <p>Command:</p>
+    <pre><code>{
+  "command": "tests.runUnit",
+  "module": "authentication"
+}</code></pre>
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>module</td>
+            <td>Name of the module to test</td>
+            <td>Yes</td>
+        </tr>
+    </table>
+    <p>Output: Returns a detailed report of the unit test results.</p>
+    <p>Help Text: Executes unit tests for a specific module. This helps in isolating and fixing issues in individual components of the system.</p>
+
+    <h4>2. Integration Tests</h4>
+    <p>Command:</p>
+    <pre><code>{
+  "command": "tests.runIntegration",
+  "scenario": "full_trade_cycle"
+}</code></pre>
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>scenario</td>
+            <td>Name of the integration test scenario</td>
+            <td>Yes</td>
+        </tr>
+    </table>
+    <p>Output: Returns a comprehensive report of the integration test results.</p>
+    <p>Help Text: Runs integration tests to ensure different parts of the system work correctly together. The 'full_trade_cycle' scenario, for example, tests the entire process from creating a portfolio to executing trades and calculating performance.</p>
+
+    <h4>3. Performance Tests</h4>
+    <p>Command:</p>
+    <pre><code>{
+  "command": "tests.runPerformance",
+  "testCase": "high_volume_trading"
+}</code></pre>
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>testCase</td>
+            <td>Name of the performance test case</td>
+            <td>Yes</td>
+        </tr>
+    </table>
+    <p>Output: Returns a detailed performance report including metrics like response times and throughput.</p>
+    <p>Help Text: Executes performance tests to evaluate the system's behavior under various load conditions. The 'high_volume_trading' test case simulates a high number of concurrent trades to stress-test the system.</p>
+
+    <h4>4. Automated Test Suite</h4>
+    <p>Command:</p>
+    <pre><code>{
+  "command": "tests.runSuite",
+  "suite": "daily_regression"
+}</code></pre>
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>suite</td>
+            <td>Name of the test suite to run</td>
+            <td>Yes</td>
+        </tr>
+    </table>
+    <p>Output: Returns a comprehensive report of all tests run in the suite, including unit, integration, and performance test results.</p>
+    <p>Help Text: Runs a predefined suite of tests, which may include a combination of unit, integration, and performance tests. The 'daily_regression' suite is typically used to ensure no regressions have been introduced by recent changes.</p>
+
+</body>
+</html>

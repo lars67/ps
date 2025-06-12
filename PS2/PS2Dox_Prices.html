@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PS2Dox Reference Manual - Prices</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2, h3, h4 {
+            color: #2c3e50;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        code {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 2px 5px;
+            font-family: Consolas, monospace;
+        }
+        pre {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 10px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <a href="PS2Dox_Reference_Manual.html">Back to Main Document</a>
+    <h1>PS2Dox Reference Manual - Prices</h1>
+    
+    <h2>Prices</h2>
+    <p>The Prices module in PS2Dox handles asset pricing data.</p>
+
+    <h3>Price Operations</h3>
+
+    <h4>1. Get Current Price</h4>
+    <p>Command:</p>
+    <pre><code>{
+  "command": "prices.getCurrent",
+  "symbol": "AAPL",
+  "exchange": "NASDAQ"
+}</code></pre>
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>symbol</td>
+            <td>Ticker symbol of the asset</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>exchange</td>
+            <td>Exchange where the asset is traded</td>
+            <td>Yes</td>
+        </tr>
+    </table>
+    <p>Output: Returns an object with the current price and timestamp.</p>
+    <p>Help Text: Retrieves the most recent price for a specified symbol. Ensure you provide the correct exchange for accurate pricing.</p>
+
+    <h4>2. Get Historical Prices</h4>
+    <p>Command:</p>
+    <pre><code>{
+  "command": "prices.getHistorical",
+  "symbol": "GOOGL",
+  "startDate": "2023-01-01",
+  "endDate": "2023-12-31",
+  "interval": "daily"
+}</code></pre>
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>symbol</td>
+            <td>Ticker symbol of the asset</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>startDate</td>
+            <td>Start date for historical data (YYYY-MM-DD)</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>endDate</td>
+            <td>End date for historical data (YYYY-MM-DD)</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>interval</td>
+            <td>Data interval (daily, weekly, monthly)</td>
+            <td>Yes</td>
+        </tr>
+    </table>
+    <p>Output: Returns an array of objects, each containing a date and corresponding price data.</p>
+    <p>Help Text: Fetches historical price data for a symbol over a specified date range. The interval can be set to daily, weekly, or monthly.</p>
+
+    <h4>3. Set Price Alert</h4>
+    <p>Command:</p>
+    <pre><code>{
+  "command": "prices.setAlert",
+  "symbol": "TSLA",
+  "condition": "above",
+  "price": 800.00
+}</code></pre>
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>symbol</td>
+            <td>Ticker symbol of the asset</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>condition</td>
+            <td>Alert condition (above, below)</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>price</td>
+            <td>Target price for the alert</td>
+            <td>Yes</td>
+        </tr>
+    </table>
+    <p>Output: Returns a confirmation object with the alert details.</p>
+    <p>Help Text: Creates a price alert for a specific symbol. You'll be notified when the price meets the specified condition.</p>
+
+    <h4>4. Manage Price Feed</h4>
+    <p>Command:</p>
+    <pre><code>{
+  "command": "prices.manageFeed",
+  "action": "subscribe",
+  "symbols": ["AAPL", "GOOGL", "MSFT"]
+}</code></pre>
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>action</td>
+            <td>Action to perform (subscribe, unsubscribe)</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>symbols</td>
+            <td>Array of ticker symbols</td>
+            <td>Yes</td>
+        </tr>
+    </table>
+    <p>Output: Returns a confirmation object with the updated subscription status.</p>
+    <p>Help Text: Allows you to subscribe to or unsubscribe from real-time price feeds for specified symbols. This affects the data you receive in real-time updates.</p>
+
+</body>
+</html>

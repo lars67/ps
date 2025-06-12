@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PS2Dox Reference Manual - Tools</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2, h3, h4 {
+            color: #2c3e50;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        code {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 2px 5px;
+            font-family: Consolas, monospace;
+        }
+        pre {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 10px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <a href="PS2Dox_Reference_Manual.html">Back to Main Document</a>
+    <h1>PS2Dox Reference Manual - Tools</h1>
+    
+    <h2>Tools</h2>
+    <p>PS2Dox provides various tools to assist users in their operations.</p>
+
+    <h3>Available Tools</h3>
+
+    <h4>1. Data Analysis</h4>
+    <p>Command:</p>
+    <pre><code>{
+  "command": "tools.analyzeData",
+  "dataset": "portfolio_returns",
+  "method": "regression"
+}</code></pre>
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>dataset</td>
+            <td>Name of the dataset to analyze</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>method</td>
+            <td>Analysis method to apply</td>
+            <td>Yes</td>
+        </tr>
+    </table>
+    <p>Output: Returns the results of the analysis, which vary based on the chosen method.</p>
+    <p>Help Text: Performs statistical analysis on specified datasets. The 'regression' method, for example, can be used to analyze the relationship between portfolio returns and market indicators.</p>
+
+    <h4>2. Report Generation</h4>
+    <p>Command:</p>
+    <pre><code>{
+  "command": "tools.generateReport",
+  "type": "monthly_performance",
+  "portfolioId": "portfolio_id"
+}</code></pre>
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>type</td>
+            <td>Type of report to generate</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>portfolioId</td>
+            <td>ID of the portfolio for the report</td>
+            <td>Yes</td>
+        </tr>
+    </table>
+    <p>Output: Returns a detailed report object or a link to download the report.</p>
+    <p>Help Text: Creates detailed reports based on portfolio data. The 'monthly_performance' report type provides a comprehensive overview of a portfolio's performance over the past month.</p>
+
+    <h4>3. Risk Assessment</h4>
+    <p>Command:</p>
+    <pre><code>{
+  "command": "tools.assessRisk",
+  "portfolioId": "portfolio_id",
+  "method": "var"
+}</code></pre>
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>portfolioId</td>
+            <td>ID of the portfolio to assess</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>method</td>
+            <td>Risk assessment method to use</td>
+            <td>Yes</td>
+        </tr>
+    </table>
+    <p>Output: Returns a risk assessment report with various risk metrics.</p>
+    <p>Help Text: Evaluates the risk associated with a portfolio. The 'var' (Value at Risk) method estimates the potential loss in value of a portfolio over a defined period for a given confidence interval.</p>
+
+    <h4>4. API Integration</h4>
+    <p>Command:</p>
+    <pre><code>{
+  "command": "tools.integrateAPI",
+  "externalService": "marketDataProvider",
+  "apiKey": "your_api_key"
+}</code></pre>
+    <p>Parameters:</p>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>externalService</td>
+            <td>Name of the external service to integrate</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>apiKey</td>
+            <td>API key for the external service</td>
+            <td>Yes</td>
+        </tr>
+    </table>
+    <p>Output: Returns a confirmation object with integration status and details.</p>
+    <p>Help Text: Sets up integration with external APIs. This tool allows you to connect PS2Dox with external data providers or services to enhance its functionality.</p>
+
+</body>
+</html>
