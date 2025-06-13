@@ -31,6 +31,6 @@ if (process.env.LOG_OUTGOING_WS_MESSAGES && process.env.LOG_OUTGOING_WS_MESSAGES
 import app from "./app";
 import { startMemoryMonitoring } from "./monitoring";
 
-startMemoryMonitoring();
+// startMemoryMonitoring();
 app();
 //https://github.com/ahmadjoya/typescript-express-mongoose-starter/blob/main/tsconfig.json
