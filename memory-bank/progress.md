@@ -21,8 +21,9 @@ System was previously considered operational with production connections, but re
     - Committed initial Memory Bank files and permission fix.
     - Committed Memory Bank updates from analysis and `cline_docs` merge.
     - Updated projectbrief.md with core requirements, scope, and stakeholders.
+    - Refactored `getGICS` and `getGICSAr` in `server/src/services/app/companies.ts` to use the `Aktia.Symbols` MongoDB collection for sector/industry lookups, resolving an issue with the `portfolios.positions` command.
 - **Historical (From cline_docs - Assumed):**
-    - Production WebSocket endpoints configured.
+  - Production WebSocket endpoints configured.
     - API endpoints configured.
     - Authentication flow implemented.
     - React frontend connected to production.

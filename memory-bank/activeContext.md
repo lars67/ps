@@ -13,6 +13,8 @@ Updating the project brief in the Memory Bank to provide a solid foundation for 
 - Committed permission change and Memory Bank initialization.
 - Committed initial Memory Bank population updates.
 - Updated projectbrief.md with core requirements, scope, and stakeholders.
+- Modified `server/src/services/app/companies.ts` to use MongoDB (`Aktia.Symbols` collection) for `getGICS` and `getGICSAr` functions, replacing the external API call.
+- Updated caching logic in `getGICS` to store data retrieved from MongoDB, including company name.
 
 ## Historical Context (from cline_docs/activeContext.md)
 

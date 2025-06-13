@@ -1,4 +1,5 @@
 import { loadCompany, loadInstruments } from "../../utils/fetchData";
+import { MongoClient } from 'mongodb';
 
 interface CompanyCnownProperties {
   name: string;
@@ -73,23 +74,66 @@ export const getSymbolCurrency = async (
 export const getGICS = async (
   symbol: string,
 ): Promise<{ sector: string; industry: string }> => {
-  if (companies[symbol]) {
+  // Check cache first
+  if (companies[symbol] && companies[symbol].sector !== undefined && companies[symbol].industry !== undefined) {
     return {
       sector: companies[symbol].sector || "",
       industry: companies[symbol].industry || "",
     };
   }
 
+  // If not in cache, fetch from MongoDB
+  if (!process.env.MONGODB_URI) {
+    console.error('MONGODB_URI environment variable not set for getGICS');
+    return { sector: "", industry: "" };
+  }
+
+  const client = new MongoClient(process.env.MONGODB_URI);
+
   try {
-    const c = await loadCompany(symbol);
-    companies[symbol] = c;
+    await client.connect();
+    const db = client.db('Aktia'); // Explicitly specify the Aktia database
+    const collection = db.collection('Symbols');
+
+    let doc = await collection.findOne({ 'Symbol-Mic': symbol });
+
+    if (!doc) {
+      doc = await collection.findOne({
+        $or: [
+          { Symbol: symbol },
+          { 'Symbol-Mic': new RegExp(`^${symbol}:`) },
+          { 'Symbol-Ric': new RegExp(`^${symbol}\\.`) }
+        ]
+      });
+    }
+
+    if (doc) {
+      // Update cache
+      companies[symbol] = {
+        ...companies[symbol], // Preserve other potential fields if any
+        symbol: doc.Symbol || symbol,
+        name: doc.Description || companies[symbol]?.name || "", // Use Description as name
+        sector: doc.Sector || "",
+        industry: doc.Industry || "",
+      };
+      return {
+        sector: companies[symbol].sector || "",
+        industry: companies[symbol].industry || "",
+      };
+    }
+    // If not found in DB, cache an empty result to avoid repeated lookups for this symbol
+    companies[symbol] = { ...companies[symbol], symbol, name: companies[symbol]?.name || "", sector: "", industry: "" };
     return {
-      sector: companies[symbol].sector || "",
-      industry: companies[symbol].industry || "",
+      sector: "",
+      industry: "",
     };
   } catch (err) {
-    console.log("Error getCompany", symbol, err);
+    console.log("Error in getGICS fetching from MongoDB for symbol:", symbol, err);
+    // Cache an empty result on error as well
+    companies[symbol] = { ...companies[symbol], symbol, name: companies[symbol]?.name || "", sector: "", industry: "" };
     return { sector: "", industry: "" };
+  } finally {
+    await client.close();
   }
 };
 export const getGICSAr = async (
@@ -98,12 +142,13 @@ export const getGICSAr = async (
   const reqSymbols = symbolsAr.filter((s) => !companies[s]);
   if (reqSymbols.length > 0) {
     try {
+      // Call the modified getGICS for each symbol not in cache
+      // This will populate the cache
       for (let symbol of reqSymbols) {
-        const c = await loadCompany(symbol);
-        companies[symbol] = c;
+        await getGICS(symbol);
       }
     } catch (err) {
-      console.log("Error getCompany", err);
+      console.log("Error getGICSAr", err);
       return {};
     }
   }
