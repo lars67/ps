@@ -33,6 +33,7 @@ import { generateAccountID } from "../utils/idGenerator";
 
 export { history } from "./portfolio/history"; // Use the updated history file
 export { positions } from "./portfolio/positions";
+export { debug } from "./portfolio/debug";
 // Removed export for historyV2 as it's now integrated into history.ts
 
 export const validationsAddRequired: string[] = [
@@ -403,4 +404,14 @@ export const description: CommandDescription = {
     }),
     access: "member",
   },
+  debug: {
+    label: "Portfolio debug report",
+    value: JSON.stringify({
+      command: "portfolios.debug",
+      portfolioId: "?",
+      fee: "?",
+      granularity: "day", // or "trade"
+    }),
+    access: "member", // Assuming this will be a member-access command
+  }
 };

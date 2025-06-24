@@ -63,6 +63,12 @@ export default async function handler(data, sendResponse, userModif, userData, s
     sendResponse(await handlers[com].list(params));
   } else {
     try {
+      console.log(`[DEBUG] parts[0]: ${parts[0]} typeof handlers[parts[0]]: ${typeof handlers[parts[0]]}`);
+      if (handlers[parts[0]]) {
+         console.log(`[DEBUG] handlers[parts[0]] keys: ${Object.keys(handlers[parts[0]])}`);
+         console.log(`[DEBUG] parts[1]: ${parts[1]} typeof handlers[parts[0]][parts[1]]: ${typeof handlers[parts[0]][parts[1]]}`);
+      }
+
       if (handlers[parts[0]] && isFunction(handlers[parts[0]][parts[1]])) {
         if (!isAccessAllowed(com, userData.role)) {
           return sendResponse({error: `Command "${command}" is not allowed`, msgId});
@@ -78,7 +84,7 @@ export default async function handler(data, sendResponse, userModif, userData, s
         );
         return sendResponse(resp);
       } else {
-        console.error(`Handler group "${parts[0]}" not found.`);
+        console.error(`Handler group "${parts[0]}" not found, or command "${parts[1]}" is not a function.`);
         return sendResponse({error: `Command "${command}" unknown`, msgId});
       }
     } catch (error) {

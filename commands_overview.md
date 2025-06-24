@@ -89,6 +89,63 @@ This command retrieves a list of portfolios, with optional filtering capabilitie
     *   **Description**: An object used to filter the list of portfolios returned. You can specify one or more portfolio fields and their desired values to narrow down the results.
     *   **Possible Values**: An object with key-value pairs matching portfolio properties (e.g., `{"currency": "USD"}`, `{"name": "My Investment Portfolio"}`).
 
+## `portfolios.detailList`
+
+This command is assumed to retrieve a detailed list of portfolios, with optional filtering capabilities. The exact structure of the "detailed" output is not explicitly defined in the current documentation but is expected to contain more comprehensive information than `portfolios.list`.
+
+### Parameters:
+
+*   **`filter`** (Optional)
+    *   **Description**: An object used to filter the list of portfolios returned. You can specify one or more portfolio fields and their desired values to narrow down the results.
+    *   **Possible Values**: An object with key-value pairs matching portfolio properties (e.g., `{"currency": "USD"}`, `{"name": "My Detailed Portfolio"}`).
+
+## `portfolios.debug`
+
+This command provides a row-based output with detailed metrics for each day or trade, designed to help identify errors in portfolio calculations.
+
+### Parameters:
+
+*   **`portfolioId`** (Required)
+    *   **Description**: The unique identifier (ID or name) of the portfolio to debug.
+    *   **Possible Values**: A string representing a portfolio ID or name.
+
+*   **`fee`** (Required)
+    *   **Description**: The fee value to be applied in calculations for debugging purposes.
+    *   **Possible Values**: A numerical value (e.g., `0.0`, `1.5`).
+
+*   **`granularity`** (Optional)
+    *   **Description**: Specifies whether the output should provide a new row for every trade or aggregate data daily.
+    *   **Possible Values**: `"day"`, `"trade"`.
+
+### Output Metrics:
+
+*   **`Date`**: The date of the data point.
+*   **`Type`**: Categorization of the entry (e.g., "Money", "Trade", "Holding").
+*   **`Symbol`**: The financial instrument symbol.
+*   **`Volume`**: The quantity or number of units of the financial instrument.
+*   **`Original price`**: The price per unit at which the original transaction occurred (e.g., cost basis).
+*   **`MarketPrice`**: The current market price per unit of the financial instrument.
+*   **`Original FX`**: The foreign exchange rate at the time of the original transaction, relative to the portfolio's base currency.
+*   **`MarketFX`**: The current foreign exchange rate, relative to the portfolio's base currency.
+*   **`Fee`**: The transaction fee associated with the entry.
+*   **`Invested`**: The total amount invested in the original transaction currency.
+*   **`InvestedBase`**: The total amount invested, converted to the portfolio's base currency.
+*   **`MarketValue`**: The current market value of the position in the original transaction currency.
+*   **`BaseMarketValue`**: The current market value of the position, converted to the portfolio's base currency.
+*   **`Realized`**: The profit or loss realized from closed positions or transactions.
+*   **`Result`**: The overall profit or loss for the entry (combining realized and unrealized components if applicable).
+*   **`resultBase`**: The overall profit or loss, converted to the portfolio's base currency.
+*   **`Unrealized Result`**: The unrealized profit or loss.
+*   **`Cash`**: The cash balance in the original transaction currency.
+*   **`CashBase`**: The cash balance, converted to the portfolio's base currency.
+*   **`Acc. Result`**: The accumulated (cumulative) profit or loss.
+*   **`AccMarketVvalue`**: The accumulated (cumulative) market value.
+*   **`AccMarketValueBase`**: The accumulated (cumulative) market value, converted to the portfolio's base currency.
+*   **`AccCash`**: The accumulated (cumulative) cash balance.
+*   **`AccCashBase`**: The accumulated (cumulative) cash balance, converted to the portfolio's base currency.
+*   **`NAV`**: The Net Asset Value of the portfolio.
+*   **`NavBase`**: The Net Asset Value of the portfolio, converted to the portfolio's base currency.
+
 ## `portfolios.positions`
 
 This command provides information about the current positions held within a portfolio, or can be used for subscription to real-time updates or to emulate market changes.
@@ -583,4 +640,329 @@ This command retrieves a list of users, with optional filtering.
 
 *   **`filter`** (Optional)
     *   **Description**: An object used to filter the list of users returned. You can specify one or more user fields and their desired values to narrow down the results (e.g., `name`, `email`).
-    *   **Possible Values**: An object with key-value pairs matching user properties (e.g., `{"name": "admin"}`, `{"email": "lars@softcapital.com"}`).
+## `login`
+
+Authenticates a user and returns a token for subsequent API calls.
+
+### Parameters:
+
+*   **`login`** (Required)
+    *   **Description**: User's username.
+    *   **Possible Values**: A string.
+
+*   **`password`** (Required)
+    *   **Description**: User's password.
+    *   **Possible Values**: A string.
+
+## `collection_name.add`
+
+Adds a new item to the specified collection.
+
+### Parameters:
+
+*   Fields depend on the specific collection.
+
+## `collection_name.list`
+
+Retrieves a list of items from the specified collection.
+
+### Parameters:
+
+*   **`filter`** (Optional)
+    *   **Description**: Object with collection fields to filter results.
+    *   **Possible Values**: An object with key-value pairs.
+
+## `collection_name.remove`
+
+Removes an item from the collection.
+
+### Parameters:
+
+*   **`_id`** (Required)
+    *   **Description**: MongoDB key for the record to remove.
+    *   **Possible Values**: A string.
+
+## `collection_name.update`
+
+Updates an existing item in the collection.
+
+### Parameters:
+
+*   **`_id`** (Required)
+    *   **Description**: MongoDB key for the record to update.
+    *   **Possible Values**: A string.
+## `portfolios.getPerformance`
+
+Calculates and returns the performance metrics for a specified portfolio over a given date range.
+
+### Parameters:
+
+*   **`_id`** (Required)
+    *   **Description**: ID of the portfolio.
+    *   **Possible Values**: A string representing a portfolio ID.
+
+*   **`startDate`** (Required)
+    *   **Description**: Start date for performance calculation.
+    *   **Format**: `YYYY-MM-DD`
+    *   **Possible Values**: A date string (e.g., `"2023-01-01"`).
+
+*   **`endDate`** (Required)
+    *   **Description**: End date for performance calculation.
+    *   **Format**: `YYYY-MM-DD`
+    *   **Possible Values**: A date string (e.g., `"2023-12-31"`).
+
+## `portfolios.update`
+
+Modifies an existing portfolio.
+
+### Parameters:
+
+## `prices.getCurrent`
+
+Retrieves the most recent price for a specified symbol.
+
+### Parameters:
+
+*   **`symbol`** (Required)
+    *   **Description**: Ticker symbol of the asset.
+    *   **Possible Values**: A string representing an asset ticker (e.g., `"AAPL"`).
+
+*   **`exchange`** (Optional)
+    *   **Description**: Exchange where the asset is traded.
+    *   **Possible Values**: A string (e.g., `"NASDAQ"`).
+
+## `prices.getHistorical`
+
+Fetches historical price data for a symbol over a specified date range.
+
+### Parameters:
+
+*   **`symbol`** (Required)
+    *   **Description**: Ticker symbol of the asset.
+    *   **Possible Values**: A string representing an asset ticker (e.g., `"GOOGL"`).
+
+*   **`startDate`** (Required)
+    *   **Description**: Start date for historical data.
+    *   **Format**: `YYYY-MM-DD`
+    *   **Possible Values**: A date string in `YYYY-MM-DD` format (e.g., `"2023-01-01"`).
+
+*   **`endDate`** (Required)
+    *   **Description**: End date for historical data.
+    *   **Format**: `YYYY-MM-DD`
+    *   **Possible Values**: A date string in `YYYY-MM-DD` format (e.g., `"2023-12-31"`).
+
+*   **`interval`** (Required)
+    *   **Description**: Data interval.
+    *   **Possible Values**: `"daily"`, `"weekly"`, `"monthly"`.
+
+## `prices.manageFeed`
+
+Allows you to subscribe to or unsubscribe from real-time price feeds for specified symbols.
+
+### Parameters:
+
+*   **`action`** (Required)
+    *   **Description**: Action to perform.
+    *   **Possible Values**: `"subscribe"`, `"unsubscribe"`.
+
+*   **`symbols`** (Required)
+    *   **Description**: Array of ticker symbols.
+    *   **Possible Values**: An array of strings (e.g., `["AAPL", "GOOGL"]`).
+
+## `prices.setAlert`
+
+Creates a price alert for a specific symbol.
+
+### Parameters:
+
+*   **`symbol`** (Required)
+    *   **Description**: Ticker symbol of the asset.
+    *   **Possible Values**: A string representing an asset ticker (e.g., `"TSLA"`).
+
+*   **`condition`** (Required)
+    *   **Description**: Alert condition.
+    *   **Possible Values**: `"above"`, `"below"`.
+
+## `tests.runIntegration`
+
+Runs integration tests to ensure different parts of the system work correctly together.
+
+### Parameters:
+
+*   **`scenario`** (Required)
+    *   **Description**: Name of the integration test scenario.
+    *   **Possible Values**: A string (e.g., `"full_trade_cycle"`).
+
+## `tests.runPerformance`
+
+Executes performance tests to evaluate the system's behavior under various load conditions.
+
+### Parameters:
+
+*   **`testCase`** (Required)
+    *   **Description**: Name of the performance test case.
+    *   **Possible Values**: A string (e.g., `"high_volume_trading"`).
+
+## `tests.runSuite`
+
+Runs a predefined suite of tests, which may include a combination of unit, integration, and performance tests.
+
+### Parameters:
+
+*   **`suite`** (Required)
+    *   **Description**: Name of the test suite to run.
+    *   **Possible Values**: A string (e.g., `"daily_regression"`).
+
+## `tests.runUnit`
+
+Executes unit tests for a specific module.
+
+### Parameters:
+
+## `tools.analyzeData`
+
+Performs statistical analysis on specified datasets.
+
+### Parameters:
+
+*   **`dataset`** (Required)
+    *   **Description**: Name of the dataset to analyze.
+    *   **Possible Values**: A string (e.g., `"portfolio_returns"`).
+
+*   **`method`** (Required)
+    *   **Description**: Analysis method to apply.
+    *   **Possible Values**: A string (e.g., `"regression"`).
+
+## `tools.assessRisk`
+
+Evaluates the risk associated with a portfolio.
+
+### Parameters:
+
+*   **`portfolioId`** (Required)
+    *   **Description**: ID of the portfolio to assess.
+    *   **Possible Values**: A string representing a portfolio ID.
+
+*   **`method`** (Required)
+    *   **Description**: Risk assessment method to use.
+    *   **Possible Values**: A string (e.g., `"var"`).
+
+## `tools.generateReport`
+
+Creates detailed reports based on portfolio data.
+
+### Parameters:
+
+*   **`type`** (Required)
+    *   **Description**: Type of report to generate.
+    *   **Possible Values**: A string (e.g., `"monthly_performance"`).
+
+*   **`portfolioId`** (Required)
+    *   **Description**: ID of the portfolio for the report.
+    *   **Possible Values**: A string representing a portfolio ID.
+
+## `tools.integrateAPI`
+
+Sets up integration with external APIs.
+
+### Parameters:
+
+*   **`externalService`** (Required)
+    *   **Description**: Name of the external service to integrate.
+    *   **Possible Values**: A string (e.g., `"marketDataProvider"`).
+
+## `trades.cancelOrder`
+
+Cancels an unfilled order.
+
+### Parameters:
+
+*   **`orderId`** (Required)
+    *   **Description**: ID of the order to cancel.
+    *   **Possible Values**: A string representing an order ID.
+
+## `trades.getHistory`
+
+Retrieves the trading history for a specified portfolio over a given date range.
+
+### Parameters:
+
+*   **`_id`** (Required)
+    *   **Description**: ID of the portfolio.
+    *   **Possible Values**: A string representing a portfolio ID.
+
+*   **`from`** (Required)
+    *   **Description**: Start date for history.
+    *   **Format**: `YYYY-MM-DD`
+    *   **Possible Values**: A date string.
+
+*   **`till`** (Required)
+    *   **Description**: End date for history.
+    *   **Format**: `YYYY-MM-DD`
+    *   **Possible Values**: A date string.
+
+*   **`sample`** (Optional)
+    *   **Description**: Data interval (e.g., "day").
+    *   **Possible Values**: `"day"`, `"week"`, `"month"`.
+
+*   **`detail`** (Optional)
+    *   **Description**: Level of detail for the history.
+    *   **Possible Values**: `0`, `1`.
+
+## `trades.modifyOrder`
+
+Modifies an existing, unfilled order.
+
+### Parameters:
+
+*   **`orderId`** (Required)
+    *   **Description**: ID of the order to modify.
+    *   **Possible Values**: A string representing an order ID.
+
+*   **`newQuantity`** (Optional)
+    *   **Description**: New quantity for the order.
+    *   **Possible Values**: A numerical value.
+
+*   **`newPrice`** (Optional)
+    *   **Description**: New price for the order (limit orders only).
+    *   **Possible Values**: A numerical value.
+
+## `trades.placeOrder`
+
+Places a new order for a specified symbol within a portfolio.
+
+### Parameters:
+
+*   **`portfolioId`** (Required)
+    *   **Description**: ID of the portfolio for the trade.
+    *   **Possible Values**: A string representing a portfolio ID.
+
+*   **`symbol`** (Required)
+    *   **Description**: Ticker symbol of the asset.
+    *   **Possible Values**: A string.
+
+*   **`type`** (Required)
+    *   **Description**: Order type.
+    *   **Possible Values**: `"buy"`, `"sell"`.
+
+*   **`quantity`** (Required)
+    *   **Description**: Number of shares to trade.
+    *   **Possible Values**: A numerical value.
+
+*   **`price`** (Optional)
+    *   **Description**: Limit price (for limit orders).
+    *   **Possible Values**: A numerical value.
+
+*   **`orderType`** (Required)
+    *   **Description**: Type of order.
+    *   **Possible Values**: `"market"`, `"limit"`.
+
+## `command.setVar`
+
+Sets a variable in the test environment.
+
+### Parameters:
+
+*   **`v`** (Required)
+    *   **Description**: An object containing key-value pairs that define the variables to be set.
+    *   **Possible Values**: A JSON object (e.g., `{"pid": "$var.result.0._id"}`).
