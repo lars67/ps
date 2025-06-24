@@ -120,24 +120,24 @@ This command provides a row-based output with detailed metrics for each day or t
 ### Output Metrics:
 
 *   **`Date`**: The date of the data point.
-*   **`Type`**: Categorization of the entry (e.g., "Money", "Trade", "Holding").
-*   **`Symbol`**: The financial instrument symbol.
-*   **`Volume`**: The quantity or number of units of the financial instrument.
-*   **`Original price`**: The price per unit at which the original transaction occurred (e.g., cost basis).
-*   **`MarketPrice`**: The current market price per unit of the financial instrument.
-*   **`Original FX`**: The foreign exchange rate at the time of the original transaction, relative to the portfolio's base currency.
-*   **`MarketFX`**: The current foreign exchange rate, relative to the portfolio's base currency.
-*   **`Fee`**: The transaction fee associated with the entry.
-*   **`Invested`**: The total amount invested in the original transaction currency.
-*   **`InvestedBase`**: The total amount invested, converted to the portfolio's base currency.
-*   **`MarketValue`**: The current market value of the position in the original transaction currency.
-*   **`BaseMarketValue`**: The current market value of the position, converted to the portfolio's base currency.
-*   **`Realized`**: The profit or loss realized from closed positions or transactions.
+*   **`Type`**: Categorization of the entry (e.g., "Money", "Trade", "Position Snapshot", "Portfolio Summary", "Holding").
+*   **`Symbol`**: The financial instrument symbol for "Position Snapshot" rows, or "Aggregated" for "Portfolio Summary" rows.
+*   **`Volume`**: The quantity or number of units of the financial instrument for "Position Snapshot" rows, or total volume for "Portfolio Summary" rows.
+*   **`Original price`**: The price per unit at which the original transaction occurred (e.g., cost basis) for "Position Snapshot" rows.
+*   **`MarketPrice`**: The current market price per unit of the financial instrument for "Position Snapshot" rows.
+*   **`Original FX`**: The foreign exchange rate at the time of the original transaction, relative to the portfolio's base currency, for "Position Snapshot" rows.
+*   **`MarketFX`**: The current foreign exchange rate, relative to the portfolio's base currency, for "Position Snapshot" rows.
+*   **`Fee`**: The transaction fee associated with the entry (primarily for "Trade" type entries).
+*   **`Invested`**: The total amount invested in the original transaction currency for "Position Snapshot" rows, or total invested for "Portfolio Summary" rows.
+*   **`InvestedBase`**: The total amount invested, converted to the portfolio's base currency, for "Position Snapshot" rows or total invested for "Portfolio Summary" rows.
+*   **`MarketValue`**: The current market value of the position in the original transaction currency for "Position Snapshot" rows, or total market value for "Portfolio Summary" rows.
+*   **`BaseMarketValue`**: The current market value of the position, converted to the portfolio's base currency, for "Position Snapshot" rows or total market value for "Portfolio Summary" rows.
+*   **`Realized`**: The profit or loss realized from closed positions or transactions (primarily for "Trade" type entries and accumulated in "Portfolio Summary" rows).
 *   **`Result`**: The overall profit or loss for the entry (combining realized and unrealized components if applicable).
 *   **`resultBase`**: The overall profit or loss, converted to the portfolio's base currency.
-*   **`Unrealized Result`**: The unrealized profit or loss.
-*   **`Cash`**: The cash balance in the original transaction currency.
-*   **`CashBase`**: The cash balance, converted to the portfolio's base currency.
+*   **`Unrealized Result`**: The unrealized profit or loss (for "Position Snapshot" rows and accumulated in "Portfolio Summary" rows).
+*   **`Cash`**: The cash balance in the original transaction currency (primarily for "Money" type entries and accumulated in "Portfolio Summary" rows).
+*   **`CashBase`**: The cash balance, converted to the portfolio's base currency (primarily for "Money" type entries and accumulated in "Portfolio Summary" rows).
 *   **`Acc. Result`**: The accumulated (cumulative) profit or loss.
 *   **`AccMarketVvalue`**: The accumulated (cumulative) market value.
 *   **`AccMarketValueBase`**: The accumulated (cumulative) market value, converted to the portfolio's base currency.

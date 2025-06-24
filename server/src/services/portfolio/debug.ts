@@ -65,7 +65,8 @@ export async function debug(
       return { error: "Portfolio ID is required" };
     }
 
-    const toNumLocal = (n: number | null | undefined) => toNum({ n: n ?? 0, precision: 2 }); // Default precision to 2 decimal places
+    const toNumLocal = (n: number | null | undefined) => toNum({ n: n ?? 0, precision: 2 }); // Helper for consistent formatting
+    const toNumFullPrecision = (n: number | null | undefined) => toNum({ n: n ?? 0, precision: 8 }); // Helper for internal calculations to maintain precision
 
     const { _id: realId, instance: portfolioInstance, error: portfolioInstanceError } = await getPortfolioInstanceByIDorName(portfolioId, userData);
     if (portfolioInstanceError || !portfolioInstance) {
@@ -157,7 +158,7 @@ export async function debug(
     let currentHoldings: HoldingsMap = {}; // Tracks symbol -> {volume, currency, current total invested value (cost basis)}
     const reportRows: ReportRowType[] = []; // Array to store the final report data
 
-    // Accumulated metrics
+    // Accumulated metrics - defined here to be accessible throughout the day loop
     let accResult = 0;
     let accMarketValue = 0;
     let accMarketValueBase = 0;
@@ -195,16 +196,19 @@ export async function debug(
                 // For sells, adjust investedValue proportionally or based on average cost
                 if (dir === 1) { // Buy
                     currentHoldings[symbol].volume += trade.volume;
-                    currentHoldings[symbol].investedValue += tradeValueBase + (trade.fee * rate);
+                    currentHoldings[symbol].investedValue = toNumFullPrecision(currentHoldings[symbol].investedValue + tradeValueBase + (trade.fee * rate));
                     console.log(`[portfolios.debug] Buy Holding: ${trade.symbol} Vol:${currentHoldings[symbol].volume} Invested:${currentHoldings[symbol].investedValue}`);
                 } else { // Sell
                   // Simple average cost reduction for sells:
                   if (currentHoldings[symbol].volume > 0) {
-                     const avgCostPerShare = currentHoldings[symbol].investedValue / currentHoldings[symbol].volume;
-                     currentHoldings[symbol].investedValue -= avgCostPerShare * trade.volume;
+                     const avgCostPerShare = toNumFullPrecision(currentHoldings[symbol].investedValue / currentHoldings[symbol].volume);
+                     currentHoldings[symbol].investedValue = toNumFullPrecision(currentHoldings[symbol].investedValue - avgCostPerShare * trade.volume);
                      currentHoldings[symbol].volume -= trade.volume;
-                  } else {
-                    currentHoldings[symbol].volume -= trade.volume; // Should not go negative here in ideal flow
+                  } else if (currentHoldings[symbol].volume <= 0) {
+                      // Selling when no volume held. For long-only tracking, this means no cost basis for PL.
+                      // Volume can go negative to represent a short, but investedValue should not increase.
+                      currentHoldings[symbol].volume -= trade.volume;
+                      // No change to investedValue as there was no long position to realize profit/loss against.
                   }
                 }
                 break;
@@ -256,50 +260,57 @@ export async function debug(
       // Loop through each day from start to end date
       while (loopMoment.isSameOrBefore(endDateMoment)) {
         const currentDayString = loopMoment.format(formatYMD);
+        
+        // Skip weekend days
+        const dayOfWeek = loopMoment.isoWeekday(); // Monday is 1, Sunday is 7
+        if (dayOfWeek === 6 || dayOfWeek === 7) { // Saturday or Sunday
+            loopMoment.add(1, 'day');
+            continue;
+        }
+
         const todaysTrades = tradesByDate[currentDayString] || [];
 
-        // Process trades for the current day
+        // --- Process trades and update holdings for the current day ---
+        // This loop applies the financial impact of today's trades to cash and holdings
         for (const trade of todaysTrades) {
             const tradeRate = getRate(trade.currency, portfolioInstance.currency, trade.tradeTime);
             if (tradeRate == null) {
-                console.warn(`Skipping trade due to missing rate: ${trade.symbol || 'CashOp'} on ${trade.tradeTime}`);
+                console.warn(`Skipping trade due as rate is null or undefined for: ${trade.symbol || 'CashOp'} on ${trade.tradeTime}`);
                 continue;
             }
 
-            const tradePrice = trade.symbol ? (getDateSymbolPrice(trade.tradeTime, trade.symbol) ?? trade.price) : trade.price; // Use market price if available, else trade price
-            const tradeValue = tradePrice * trade.volume;
-            const tradeValueBase = tradeValue * tradeRate;
-            let realizedPL = 0; // Realized Profit/Loss for this trade
-
+            // For financial impact, always use the trade's actual price and rate
+            const tradeValue = trade.price * trade.volume;
+            const tradeValueBase = tradeValue * trade.rate; // Use the trade's recorded rate
+            let realizedPL = 0; // Realized Profit/Loss for this trade affecting accResult
+            
+            // Apply financial impact of today's trades to cash and holdings
             switch (trade.tradeType) {
                 case TradeTypes.Trade: {
                     const dir = trade.side === "B" ? 1 : -1;
-                    // Use trade.fee here as well
                     const cashChange = -dir * tradeValueBase - (trade.fee * tradeRate);
                     currentCash += cashChange;
-                    console.log(`[portfolios.debug] Daily Trade: ${trade.tradeTime} ${trade.symbol} ${trade.side} Vol:${trade.volume} Price:${trade.price} Fee:${trade.fee}. cashChange=${cashChange}. currentCash now=${currentCash}`);
 
                     const { symbol } = trade;
                     if (!currentHoldings[symbol]) {
                         currentHoldings[symbol] = { volume: 0, currency: trade.currency, investedValue: 0 };
                     }
                     
-                    // Keep track of average invested value for realized P/L calculation
                     if (dir === 1) { // Buy
                         currentHoldings[symbol].volume += trade.volume;
                         currentHoldings[symbol].investedValue += tradeValueBase + (trade.fee * tradeRate);
-                        console.log(`[portfolios.debug] Daily Buy Holding: ${trade.symbol} Vol:${currentHoldings[symbol].volume} Invested:${currentHoldings[symbol].investedValue}`);
                     } else { // Sell
                         if (currentHoldings[symbol].volume > 0) {
-                            const avgCostPerShare = currentHoldings[symbol].investedValue / currentHoldings[symbol].volume;
-                            realizedPL = (tradeValueBase - (avgCostPerShare * trade.volume));
-                            currentHoldings[symbol].investedValue -= avgCostPerShare * trade.volume;
+                            const avgCostPerShare = toNumFullPrecision(currentHoldings[symbol].investedValue / currentHoldings[symbol].volume);
+                            realizedPL = toNumFullPrecision((trade.price * trade.volume * trade.rate) - (avgCostPerShare * trade.volume) - trade.fee * tradeRate); // Subtract fee
+                            currentHoldings[symbol].investedValue = toNumFullPrecision(currentHoldings[symbol].investedValue - avgCostPerShare * trade.volume);
                             currentHoldings[symbol].volume -= trade.volume;
-                        } else {
-                            // If selling without prior holdings, consider the entire sale as realization or an error
-                            realizedPL = tradeValueBase; // Or handle as an error/short sell
-                            currentHoldings[symbol].volume -= trade.volume; // Allow negative for short
-                            currentHoldings[symbol].investedValue += tradeValueBase; // Reflect cash from short
+                        } else { // currentHoldings[symbol].volume <= 0
+                            // If volume is 0 or negative before a sell, realized PL against existing cost basis is 0.
+                            // This might indicate short selling or data issues not handled by cost basis tracking.
+                            realizedPL = toNumFullPrecision(-trade.fee * tradeRate); // Only fee impacts if no position
+                            currentHoldings[symbol].volume -= trade.volume; // Volume can go negative
+                            // investedValue should not change as there's no long position to reduce.
                         }
                     }
                     accResult += realizedPL;
@@ -308,17 +319,14 @@ export async function debug(
                 case TradeTypes.Cash:
                 case TradeTypes.Dividends:
                 case TradeTypes.Investment: {
-                    // For dividends, adjust tradeValueBase by multiplying trade.price with volume from holdings
                     const amountForCashMove = (trade.tradeType === TradeTypes.Cash)
                     ? trade.price
                     : (trade.tradeType === TradeTypes.Dividends && trade.symbol && currentHoldings[trade.symbol]?.volume)
                       ? trade.price * currentHoldings[trade.symbol].volume
                       : trade.price * trade.volume;
-
                     const cashMove = (amountForCashMove * tradeRate) + (trade.fee * tradeRate);
                     currentCash += cashMove;
-                    console.log(`[portfolios.debug] Daily Cash/Div/Inv: ${trade.tradeTime} ${trade.tradeType} ${trade.price} Fee:${trade.fee}. cashMove=${cashMove}. currentCash now=${currentCash}`);
-                    if (trade.shares && trade.tradeType === TradeTypes.Investment) { // Only add shares for actual investment types
+                    if (trade.shares && trade.tradeType === TradeTypes.Investment) {
                         currentShares += trade.shares;
                     }
                     break;
@@ -332,80 +340,260 @@ export async function debug(
             }
         });
 
-        // Calculate end-of-day portfolio value and metrics
+        // Calculate end-of-day portfolio value and metrics BEFORE pushing report rows
         let totalMarketValue = 0;
         let totalMarketValueBase = 0;
         let totalInvested = 0;
         let totalInvestedBase = 0;
         let unrealizedPL = 0;
 
-        for (const symbol in currentHoldings) {
+        for (const symbol in currentHoldings) { // Calculate market values and invested totals from current holdings
           const holding = currentHoldings[symbol];
           const price = getDateSymbolPrice(currentDayString, symbol);
           const rate = getRate(holding.currency, portfolioInstance.currency, currentDayString);
 
           if (price != null && rate != null) {
-              const holdingValue = price * holding.volume; // in original currency
-              const holdingValueBase = holdingValue * rate; // in base currency
+              const holdingValue = price * holding.volume;
+              const holdingValueBase = holdingValue * rate;
 
               totalMarketValue += holdingValue;
               totalMarketValueBase += holdingValueBase;
-              totalInvested += holding.investedValue / rate; // Convert back to original currency for display
-              totalInvestedBase += holding.investedValue;
-
-              unrealizedPL += (holdingValueBase - holding.investedValue);
+              totalInvested = toNumFullPrecision(totalInvested + holding.investedValue / rate);
+              totalInvestedBase = toNumFullPrecision(totalInvestedBase + holding.investedValue);
+ 
+               unrealizedPL = toNumFullPrecision(unrealizedPL + (holdingValueBase - holding.investedValue));
 
           } else {
               console.warn(`Could not get price/rate for ${symbol} on ${currentDayString}. Using default or last known. Will affect calculation.`);
-              // For robustness, could use last known price or carry forward previous day's market value for this holding
           }
         }
 
+        // All NAV-related calculations must happen after currentCash, totalMarketValueBase, and totalMarketValue are finalized for the day.
+        // This ensures the accumulated totals are correct for the current day's report.
         const currentNAV = totalMarketValueBase + currentCash;
-        const currentNavBase = currentNAV; // Already in base currency
-
-        // Update accumulated market values and cash for the report
+        const currentNavBase = currentNAV;
+ 
+        // Update accumulated values for the report.
+        // These are effectively the "end-of-day" values for the current processing day.
         accMarketValue = totalMarketValue;
         accMarketValueBase = totalMarketValueBase;
-        accCash = currentCash; // Current cash is the accumulated cash at end of day
-        accCashBase = currentCash; // Assuming currentCash is already in base currency or equivalent
+        accCash = currentCash;
+        accCashBase = currentCash;
+        
+        // --- Report Rows Generation for the current day ---
 
+        // 1. Add individual Trade Rows (Buy/Sell) for the current day
+        for (const trade of todaysTrades) {
+            if (trade.tradeType === TradeTypes.Trade) {
+                const tradeRate = getRate(trade.currency, portfolioInstance.currency, trade.tradeTime);
+                if (tradeRate == null) {
+                    console.warn(`Skipping trade for reporting due to missing rate: ${trade.symbol || 'CashOp'} on ${trade.tradeTime}`);
+                    continue;
+                }
+
+                const priceOnTradeDay = trade.symbol ? (getDateSymbolPrice(trade.tradeTime, trade.symbol) ?? trade.price) : trade.price;
+                const tradeValue = priceOnTradeDay * trade.volume;
+                const tradeValueBase = tradeValue * tradeRate;
+                const dir = trade.side === "B" ? 1 : -1;
+                let realizedPLForReport = 0; // Only for sell trades
+
+                // Calculate realized P/L for reporting purposes for sell trades
+                // Note: currentHoldings reflects state *after* trade processing,
+                // so this realizedPL is based on effective cost basis just before this trade.
+                // For more precise intra-day realized PL, you'd need a different state management.
+                // Calculate realized P/L for reporting purposes for sell trades
+                // This must use the actual trade price.
+                if (trade.side === "S" && currentHoldings[trade.symbol] && currentHoldings[trade.symbol].volume > 0) {
+                    const avgCostPerShare = toNumFullPrecision(currentHoldings[trade.symbol].investedValue / currentHoldings[trade.symbol].volume);
+                    // Realized P/L = (Trade Proceeds - Cost Basis of Shares Sold) - Transaction Fee
+                    realizedPLForReport = toNumFullPrecision((trade.price * trade.volume * trade.rate) - (avgCostPerShare * trade.volume) - trade.fee * tradeRate);
+                } else if (trade.side === "S" && currentHoldings[trade.symbol]?.volume <= 0) {
+                   // If attempting to sell from a zero/negative position, only the fee is realized loss.
+                   realizedPLForReport = toNumFullPrecision(-trade.fee * tradeRate);
+                }
+
+                reportRows.push({
+                    Date: currentDayString,
+                    Type: `Trade (${trade.side === "B" ? "Buy" : "Sell"})`,
+                    Symbol: trade.symbol || "",
+                    Volume: toNumLocal(trade.side === "S" ? -trade.volume : trade.volume), // Negative volume for sells
+                    "Original price": toNumLocal(trade.price), // Original trade price, not market close
+                    MarketPrice: toNumLocal(priceOnTradeDay), // Market price on trade day
+                    "Original FX": toNumLocal(trade.rate), // Original trade FX, not market close
+                    MarketFX: toNumLocal(tradeRate), // Market FX on trade day
+                    Fee: toNumLocal(trade.fee),
+                    Invested: toNumLocal(trade.side === "B" ? tradeValue / tradeRate : 0), // Invested for buys (original currency)
+                    InvestedBase: toNumLocal(trade.side === "B" ? tradeValueBase : 0), // Invested for buys in base currency
+                    MarketValue: toNumLocal(0), // Not applicable for a trade row value
+                    BaseMarketValue: toNumLocal(0),
+                    Realized: toNumLocal(realizedPLForReport), // Realized P/L for this specific trade
+                    Result: toNumLocal(realizedPLForReport),
+                    resultBase: toNumLocal(realizedPLForReport),
+                    "Unrealized Result": toNumLocal(0), // Not applicable for a trade row
+                    Cash: toNumLocal(-dir * tradeValueBase - (trade.fee * tradeRate)), // Cash impact of this trade (net of fees)
+                    CashBase: toNumLocal(-dir * tradeValueBase - (trade.fee * tradeRate)),
+                    // Accumulated values reflect end-of-day values *after* all trades for the day are processed
+                    "Acc. Result": toNumLocal(accResult),
+                    AccMarketVvalue: toNumLocal(accMarketValue),
+                    AccMarketValueBase: toNumLocal(accMarketValueBase),
+                    AccCash: toNumLocal(accCash),
+                    AccCashBase: toNumLocal(accCashBase),
+                    NAV: toNumLocal(currentNAV),
+                    NavBase: toNumLocal(currentNavBase),
+                });
+            }
+        }
+
+        // 2. Add individual Cash, Dividends, Investment transactions for the current day
+        for (const trade of todaysTrades) {
+            let type: string | null = null;
+            let amountInBase = 0;
+            switch(trade.tradeType) {
+                case TradeTypes.Cash:
+                    type = "Cash Deposit/Withdrawal";
+                    const fxRateForCash = getRate(trade.currency, portfolioInstance.currency, trade.tradeTime);
+                     if (fxRateForCash == null) {
+                         console.warn(`Skipping Cash trade for reporting due to missing rate: ${trade.symbol || 'CashOp'} on ${trade.tradeTime}`);
+                         continue;
+                      }
+                    amountInBase = trade.price * fxRateForCash + trade.fee * fxRateForCash;
+                    break;
+                case TradeTypes.Dividends:
+                    type = "Dividend";
+                    const fxRateForDiv = getRate(trade.currency, portfolioInstance.currency, trade.tradeTime);
+                    if (fxRateForDiv == null) {
+                        console.warn(`Skipping Dividend trade for reporting due to missing rate: ${trade.symbol || 'CashOp'} on ${trade.tradeTime}`);
+                        continue;
+                    }
+                    const dividendAmount = (trade.symbol && currentHoldings[trade.symbol]?.volume)
+                        ? trade.price * currentHoldings[trade.symbol].volume
+                        : trade.price * trade.volume;
+                    amountInBase = dividendAmount * fxRateForDiv + trade.fee * fxRateForDiv;
+                    break;
+                case TradeTypes.Investment:
+                    type = "Investment";
+                    const fxRateForInv = getRate(trade.currency, portfolioInstance.currency, trade.tradeTime);
+                    if (fxRateForInv == null) {
+                        console.warn(`Skipping Investment trade for reporting due to missing rate: ${trade.symbol || 'CashOp'} on ${trade.tradeTime}`);
+                        continue;
+                    }
+                    const investmentAmount = trade.price * trade.volume;
+                    amountInBase = investmentAmount * fxRateForInv + trade.fee * fxRateForInv;
+                    break;
+            }
+
+            if (type && amountInBase !== 0) { // Only push if it's one of the types we want to display
+                reportRows.push({
+                    Date: currentDayString,
+                    Type: type,
+                    Symbol: trade.symbol || "", // Can be empty for pure cash transactions
+                    Volume: toNumLocal(trade.volume),
+                    "Original price": toNumLocal(trade.price),
+                    MarketPrice: toNumLocal(trade.price), // For cash/div/investment, market price is trade price
+                    "Original FX": toNumLocal(trade.rate),
+                    MarketFX: toNumLocal(getRate(trade.currency, portfolioInstance.currency, trade.tradeTime)),
+                    Fee: toNumLocal(trade.fee),
+                    Invested: toNumLocal(0),
+                    InvestedBase: toNumLocal(0),
+                    MarketValue: toNumLocal(0),
+                    BaseMarketValue: toNumLocal(0),
+                    Realized: toNumLocal(0),
+                    Result: toNumLocal(0),
+                    resultBase: toNumLocal(0),
+                    "Unrealized Result": toNumLocal(0),
+                    Cash: toNumLocal(amountInBase), // Display the effective cash change in base currency
+                    CashBase: toNumLocal(amountInBase),
+                    // Accumulated values reflect end-of-day values *after* all trades for the day are processed
+                    "Acc. Result": toNumLocal(accResult),
+                    AccMarketVvalue: toNumLocal(accMarketValue),
+                    AccMarketValueBase: toNumLocal(accMarketValueBase),
+                    AccCash: toNumLocal(accCash),
+                    AccCashBase: toNumLocal(accCashBase),
+                    NAV: toNumLocal(currentNAV),
+                    NavBase: toNumLocal(currentNavBase),
+                });
+            }
+        }
+        
+        // 3. Add individual position rows for the current day
+        for (const symbol in currentHoldings) {
+            const holding = currentHoldings[symbol];
+            const price = getDateSymbolPrice(currentDayString, symbol);
+            const rate = getRate(holding.currency, portfolioInstance.currency, currentDayString);
+
+            if (price != null && rate != null) {
+                const holdingValue = price * holding.volume;
+                const holdingValueBase = holdingValue * rate;
+                const individualUnrealizedPL = holdingValueBase - holding.investedValue;
+
+                reportRows.push({
+                    Date: currentDayString,
+                    Type: "Position Snapshot",
+                    Symbol: symbol,
+                    Volume: toNumLocal(holding.volume),
+                    // Ensure volume is not zero before division
+                    "Original price": toNumLocal(holding.volume > 0 ? toNumFullPrecision(holding.investedValue / holding.volume) : 0),
+                    MarketPrice: toNumLocal(price),
+                    "Original FX": toNumLocal(1), // Assuming 1 for simplicity, needs proper handling for original trade FX
+                    MarketFX: toNumLocal(rate),
+                    Fee: toNumLocal(0),
+                    Invested: toNumLocal(holding.investedValue / rate),
+                    InvestedBase: toNumLocal(holding.investedValue),
+                    MarketValue: toNumLocal(holdingValue),
+                    BaseMarketValue: toNumLocal(holdingValueBase),
+                    Realized: toNumLocal(0),
+                    Result: toNumLocal(individualUnrealizedPL),
+                    resultBase: toNumLocal(individualUnrealizedPL),
+                    "Unrealized Result": toNumLocal(individualUnrealizedPL),
+                    Cash: toNumLocal(0),
+                    CashBase: toNumLocal(0),
+                    // Accumulated values reflect end-of-day values *after* all trades for the day are processed
+                    "Acc. Result": toNumLocal(accResult),
+                    AccMarketVvalue: toNumLocal(accMarketValue),
+                    AccMarketValueBase: toNumLocal(accMarketValueBase),
+                    AccCash: toNumLocal(accCash),
+                    AccCashBase: toNumLocal(accCashBase),
+                    NAV: toNumLocal(currentNAV),
+                    NavBase: toNumLocal(currentNavBase),
+                });
+            }
+        }
+
+        // 4. Add aggregated portfolio summary row for the current day
         reportRows.push({
-          Date: currentDayString,
-          Type: "Holding Processed", // Or "Daily Snapshot"
-          Symbol: Object.keys(currentHoldings).length > 0 ? Object.keys(currentHoldings).join(',') : "", // List symbols held
-          Volume: toNumLocal(Object.values(currentHoldings).reduce((sum, h) => sum + h.volume, 0)), // Total shares
-          "Original price": toNumLocal(Object.values(currentHoldings).reduce((sum, h) => sum + h.investedValue, 0) / (Object.values(currentHoldings).reduce((sum, h) => sum + h.volume, 0) || 1)), // Avg original price
-          MarketPrice: toNumLocal(totalMarketValue / (Object.values(currentHoldings).reduce((sum, h) => sum + h.volume, 0) || 1)), // Avg market price
-          "Original FX": toNumLocal(1), // Average FX might be complex - need to consider average or specific trade FX
-          MarketFX: toNumLocal(1), // Average FX might be complex - need to consider average or specific trade FX
-          Fee: toNumLocal(0), // Fees are linked to trades, not daily snapshot
-          Invested: toNumLocal(totalInvested),
-          InvestedBase: toNumLocal(totalInvestedBase),
-          MarketValue: toNumLocal(totalMarketValue),
-          BaseMarketValue: toNumLocal(totalMarketValueBase),
-          Realized: toNumLocal(accResult), // From trades
-          Result: toNumLocal(accResult + unrealizedPL), // Total Result = Realized + Unrealized
-          resultBase: toNumLocal(accResult + unrealizedPL), // Already in base currency
-          "Unrealized Result": toNumLocal(unrealizedPL),
-          Cash: toNumLocal(currentCash),
-          CashBase: toNumLocal(currentCash), // Assuming base currency
-          "Acc. Result": toNumLocal(accResult + unrealizedPL),
-          AccMarketVvalue: toNumLocal(accMarketValue),
-          AccMarketValueBase: toNumLocal(accMarketValueBase),
-          AccCash: toNumLocal(currentCash), // Assuming accCash is currentCash for daily snapshots
-          AccCashBase: toNumLocal(currentCash), // Assuming accCashBase is currentCash for daily snapshots
-          NAV: toNumLocal(currentNAV),
-          NavBase: toNumLocal(currentNavBase),
+            Date: currentDayString,
+            Type: "Portfolio Summary",
+            Symbol: "Aggregated",
+            Volume: toNumLocal(Object.values(currentHoldings).reduce((sum, h) => toNumFullPrecision(sum + h.volume), 0)),
+            // Ensure divisor is not zero for Original price and MarketPrice
+            "Original price": toNumLocal(totalInvested / (Object.values(currentHoldings).reduce((sum, h) => toNumFullPrecision(sum + h.volume), 0) || 1)),
+            MarketPrice: toNumLocal(totalMarketValue / (Object.values(currentHoldings).reduce((sum, h) => sum + h.volume, 0) || 1)),
+            "Original FX": toNumLocal(1),
+            MarketFX: toNumLocal(1), // Placeholder, actual market FX for portfolio would be complex average
+            Fee: toNumLocal(0),
+            Invested: toNumLocal(totalInvested),
+            InvestedBase: toNumLocal(totalInvestedBase),
+            MarketValue: toNumLocal(totalMarketValue),
+            BaseMarketValue: toNumLocal(totalMarketValueBase),
+            Realized: toNumLocal(accResult),
+            Result: toNumLocal(accResult + unrealizedPL),
+            resultBase: toNumLocal(accResult + unrealizedPL),
+            "Unrealized Result": toNumLocal(unrealizedPL),
+            Cash: toNumLocal(currentCash),
+            CashBase: toNumLocal(currentCash),
+            "Acc. Result": toNumLocal(accResult + unrealizedPL),
+            AccMarketVvalue: toNumLocal(accMarketValue),
+            AccMarketValueBase: toNumLocal(accMarketValueBase),
+            AccCash: toNumLocal(accCash),
+            AccCashBase: toNumLocal(accCashBase),
+            NAV: toNumLocal(currentNAV),
+            NavBase: toNumLocal(currentNavBase),
         });
 
         loopMoment.add(1, 'day'); // Move to the next day
-      }
-    } else if (granularity === "trade") {
-      // Logic for trade-by-trade reporting
-      // This will involve iterating through `allTrades` directly and producing a row for each trade,
-      // and calculating accumulated values up to that trade.
-        for (const trade of allTrades) {
+       }
+    } else if (granularity === "trade") { // Original trade-by-trade functionality (less detailed reporting)
+       for (const trade of allTrades) {
             const tradeRate = getRate(trade.currency, portfolioInstance.currency, trade.tradeTime);
             if (tradeRate == null) {
                 console.warn(`Skipping trade due to missing rate: ${trade.symbol || 'CashOp'} on ${trade.tradeTime}`);
@@ -414,7 +602,7 @@ export async function debug(
 
             const tradeValue = trade.price * trade.volume;
             const tradeValueBase = tradeValue * tradeRate;
-            let realizedPL = 0; // Realized Profit/Loss for this trade
+            let realizedPL = 0;
             let type = "Trade"; // Default for most trades
 
             // Simulate the impact of this single trade on holdings and cash
@@ -437,12 +625,12 @@ export async function debug(
                         if (currentHoldings[symbol].volume > 0) {
                             const avgCostPerShare = currentHoldings[symbol].investedValue / currentHoldings[symbol].volume;
                             realizedPL = (tradeValueBase - (avgCostPerShare * trade.volume));
-                            currentHoldings[symbol].investedValue -= avgCostPerShare * trade.volume;
+                            currentHoldings[symbol].investedValue = toNumFullPrecision(currentHoldings[symbol].investedValue - avgCostPerShare * trade.volume);
                             currentHoldings[symbol].volume -= trade.volume;
-                        } else {
-                            realizedPL = tradeValueBase; 
-                            currentHoldings[symbol].volume -= trade.volume;
-                            currentHoldings[symbol].investedValue += tradeValueBase; 
+                        } else { // currentHoldings[symbol].volume <= 0
+                            realizedPL = toNumFullPrecision(-trade.fee * tradeRate); // Only fee impacts if no position
+                            currentHoldings[symbol].volume -= trade.volume; // Volume can go negative
+                            // investedValue should not change as there's no long position to reduce.
                         }
                     }
                     accResult += realizedPL;
@@ -486,9 +674,9 @@ export async function debug(
                     const holdingValueBase = holdingValue * rate;
                     totalMarketValue += holdingValue;
                     totalMarketValueBase += holdingValueBase;
-                    totalInvested += holding.investedValue / rate;
-                    totalInvestedBase += holding.investedValue;
-                    unrealizedPL += (holdingValueBase - holding.investedValue);
+                    totalInvested = toNumFullPrecision(totalInvested + holding.investedValue / rate);
+                    totalInvestedBase = toNumFullPrecision(totalInvestedBase + holding.investedValue);
+                    unrealizedPL = toNumFullPrecision(unrealizedPL + (holdingValueBase - holding.investedValue));
 
                 } else {
                     console.warn(`Could not get price/rate for ${symbol} on ${tradeDayString} for trade before next day calculation. Will affect calculation.`);
