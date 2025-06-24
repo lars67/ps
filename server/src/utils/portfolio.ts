@@ -366,7 +366,7 @@ export async function getPortfolioTrades(_id: string, from?:string, filterAdditi
     }
 
     const filter: FilterQuery<Trade> = {...portfolioFilter,...(from && { tradeTime: {$gte: from}}), ...filterAdditional};
-   console.log(filter);
+    console.log(`[getPortfolioTrades] Received portfolioId: ${_id}, Resolved realId: ${realId}, Filter: ${JSON.stringify(filter)}`);
     const trades:Trade[] = await TradeModel.find(filter)
         .sort({ tradeTime: 1 })
         .lean();

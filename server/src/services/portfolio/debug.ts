@@ -16,6 +16,8 @@ import {
 } from "../../services/app/priceCashe"; // For price and FX data
 import { isValidDateFormat, toNum } from "../../utils"; // For validation and number formatting
 import { formatYMD, errorMsgs } from "../../constants"; // For constants like date format and error messages
+import { stringify } from 'csv-stringify';
+import fs from 'fs/promises';
 
 // Define DayType - similar to history.ts
 export type ReportRowType = {
@@ -51,14 +53,14 @@ export type ReportRowType = {
 type HoldingsMap = Record<string, { volume: number; currency: string; investedValue: number }>; // Added investedValue to track cost basis
 
 export async function debug(
-  params: { args: { portfolioId: string; fee?: number; granularity?: "day" | "trade"; from?: string; till?: string } },
+  params: { args: { portfolioId: string; fee?: number; granularity?: "day" | "trade"; from?: string; till?: string; exportToCsv?: boolean; fileName?: string } },
   sendResponse: (data: any) => void,
   msgId: string,
   userModif: string,
   userData: UserData,
-): Promise<ReportRowType[] | ErrorType> {
+): Promise<ReportRowType[] | { filePath: string } | ErrorType> {
   try {
-    const { portfolioId, fee, granularity, from, till } = params.args;
+    const { portfolioId, fee, granularity, from, till, exportToCsv, fileName = `portfolio_debug_report_${moment().format('YYYYMMDD_HHmmss')}.csv` } = params.args;
     if (!portfolioId) {
       return { error: "Portfolio ID is required" };
     }
@@ -83,6 +85,7 @@ export async function debug(
       return { error: (allTradesResult as { error: string }).error };
     }
     const allTrades = (allTradesResult as Trade[]).sort((a, b) => moment.utc(a.tradeTime).diff(moment.utc(b.tradeTime)));
+    console.log(`[portfolios.debug] Fetched trades:`, allTrades.map(t => ({ symbol: t.symbol, tradeType: t.tradeType, volume: t.volume, price: t.price, fee: t.fee, tradeTime: t.tradeTime })));
 
     if (allTrades.length === 0 && !from) {
       return []; // If no trades and no 'from' date, return empty array now as per ReportRowType[]
@@ -128,11 +131,9 @@ export async function debug(
     // Determine symbols and currencies needed based on *all* trades up to endDate to ensure all historical data is covered
     const { uniqueSymbols, uniqueCurrencies, withoutPrices } =
       await checkPortfolioPricesCurrencies(allTrades, portfolioInstance.currency); 
-
     if (portfolioInstance.baseInstrument && !uniqueSymbols.includes(portfolioInstance.baseInstrument)) {
         uniqueSymbols.push(portfolioInstance.baseInstrument); // Ensure base instrument prices are fetched
     }
-
     // Fetch prices for a broader range to cover all trade and holding dates
     const priceCheckStartDate = startDateMoment.clone().subtract(30, 'days').format(formatYMD); // Look back for initial prices/FX
     try {
@@ -173,7 +174,8 @@ export async function debug(
              continue;
         }
 
-        const tradeValue = trade.price * trade.volume;
+        const tradePrice = trade.symbol ? (getDateSymbolPrice(trade.tradeTime, trade.symbol) ?? trade.price) : trade.price; // Use market price if available, else trade price
+        const tradeValue = tradePrice * trade.volume;
         const tradeValueBase = tradeValue * rate;
         
         switch (trade.tradeType) {
@@ -182,6 +184,7 @@ export async function debug(
                 // Use trade.fee instead of the input 'fee' parameter for cash change calculations
                 const cashChange = -dir * tradeValueBase - (trade.fee * rate); // Impact on cash in base currency
                 currentCash += cashChange;
+                console.log(`[portfolios.debug] Pre-start Trade: ${trade.tradeTime} ${trade.symbol} ${trade.side} Vol:${trade.volume} Price:${trade.price} Fee:${trade.fee}. cashChange=${cashChange}. currentCash now=${currentCash}`);
 
                 const { symbol } = trade;
                 if (!currentHoldings[symbol]) {
@@ -192,7 +195,8 @@ export async function debug(
                 // For sells, adjust investedValue proportionally or based on average cost
                 if (dir === 1) { // Buy
                     currentHoldings[symbol].volume += trade.volume;
-                    currentHoldings[symbol].investedValue += tradeValueBase;
+                    currentHoldings[symbol].investedValue += tradeValueBase + (trade.fee * rate);
+                    console.log(`[portfolios.debug] Buy Holding: ${trade.symbol} Vol:${currentHoldings[symbol].volume} Invested:${currentHoldings[symbol].investedValue}`);
                 } else { // Sell
                   // Simple average cost reduction for sells:
                   if (currentHoldings[symbol].volume > 0) {
@@ -209,12 +213,15 @@ export async function debug(
             case TradeTypes.Dividends:
             case TradeTypes.Investment: {
                 // For dividends, adjust tradeValueBase by multiplying trade.price with volume from holdings
-                const amountForCashMove = (trade.tradeType === TradeTypes.Dividends && trade.symbol && currentHoldings[trade.symbol]?.volume)
-                ? trade.price * currentHoldings[trade.symbol].volume
-                : trade.price * trade.volume; // Default for cash/investment type where trade.volume is typically 1
+                const amountForCashMove = (trade.tradeType === TradeTypes.Cash)
+                ? trade.price // For cash deposits, trade.price is the amount, volume is 0
+                : (trade.tradeType === TradeTypes.Dividends && trade.symbol && currentHoldings[trade.symbol]?.volume)
+                  ? trade.price * currentHoldings[trade.symbol].volume
+                  : trade.price * trade.volume; // Default for other types
 
                 const cashMove = (amountForCashMove * rate) + (trade.fee * rate);
                 currentCash += cashMove;
+                console.log(`[portfolios.debug] Pre-start Cash/Div/Inv: ${trade.tradeTime} ${trade.tradeType} ${trade.price} Fee:${trade.fee}. cashMove=${cashMove}. currentCash now=${currentCash}`);
                 if (trade.shares && trade.tradeType === TradeTypes.Investment) { // Only add shares for actual investment types
                     currentShares += trade.shares;
                 }
@@ -233,6 +240,7 @@ export async function debug(
     // Update accumulated cash after initial trades
     accCash = currentCash;
     accCashBase = currentCash; // Assuming portfolio base currency for now, need actual conversion if different
+    console.log(`[portfolios.debug] Initial state after pre-start trades: currentCash=${currentCash}, currentHoldings=${JSON.stringify(currentHoldings)}`);
 
 
     // --- 6. Day-by-Day or Trade-by-Trade Iteration ---
@@ -258,7 +266,8 @@ export async function debug(
                 continue;
             }
 
-            const tradeValue = trade.price * trade.volume;
+            const tradePrice = trade.symbol ? (getDateSymbolPrice(trade.tradeTime, trade.symbol) ?? trade.price) : trade.price; // Use market price if available, else trade price
+            const tradeValue = tradePrice * trade.volume;
             const tradeValueBase = tradeValue * tradeRate;
             let realizedPL = 0; // Realized Profit/Loss for this trade
 
@@ -268,6 +277,7 @@ export async function debug(
                     // Use trade.fee here as well
                     const cashChange = -dir * tradeValueBase - (trade.fee * tradeRate);
                     currentCash += cashChange;
+                    console.log(`[portfolios.debug] Daily Trade: ${trade.tradeTime} ${trade.symbol} ${trade.side} Vol:${trade.volume} Price:${trade.price} Fee:${trade.fee}. cashChange=${cashChange}. currentCash now=${currentCash}`);
 
                     const { symbol } = trade;
                     if (!currentHoldings[symbol]) {
@@ -277,7 +287,8 @@ export async function debug(
                     // Keep track of average invested value for realized P/L calculation
                     if (dir === 1) { // Buy
                         currentHoldings[symbol].volume += trade.volume;
-                        currentHoldings[symbol].investedValue += tradeValueBase;
+                        currentHoldings[symbol].investedValue += tradeValueBase + (trade.fee * tradeRate);
+                        console.log(`[portfolios.debug] Daily Buy Holding: ${trade.symbol} Vol:${currentHoldings[symbol].volume} Invested:${currentHoldings[symbol].investedValue}`);
                     } else { // Sell
                         if (currentHoldings[symbol].volume > 0) {
                             const avgCostPerShare = currentHoldings[symbol].investedValue / currentHoldings[symbol].volume;
@@ -298,12 +309,15 @@ export async function debug(
                 case TradeTypes.Dividends:
                 case TradeTypes.Investment: {
                     // For dividends, adjust tradeValueBase by multiplying trade.price with volume from holdings
-                    const amountForCashMove = (trade.tradeType === TradeTypes.Dividends && trade.symbol && currentHoldings[trade.symbol]?.volume)
-                    ? trade.price * currentHoldings[trade.symbol].volume
-                    : trade.price * trade.volume; // Default for cash/investment type where trade.volume is typically 1
+                    const amountForCashMove = (trade.tradeType === TradeTypes.Cash)
+                    ? trade.price
+                    : (trade.tradeType === TradeTypes.Dividends && trade.symbol && currentHoldings[trade.symbol]?.volume)
+                      ? trade.price * currentHoldings[trade.symbol].volume
+                      : trade.price * trade.volume;
 
                     const cashMove = (amountForCashMove * tradeRate) + (trade.fee * tradeRate);
                     currentCash += cashMove;
+                    console.log(`[portfolios.debug] Daily Cash/Div/Inv: ${trade.tradeTime} ${trade.tradeType} ${trade.price} Fee:${trade.fee}. cashMove=${cashMove}. currentCash now=${currentCash}`);
                     if (trade.shares && trade.tradeType === TradeTypes.Investment) { // Only add shares for actual investment types
                         currentShares += trade.shares;
                     }
@@ -524,7 +538,57 @@ export async function debug(
 
 
     // --- Final Output ---
-    return reportRows;
+    if (exportToCsv) {
+        // Pre-process data: convert 'Symbol' array to string and ensure all numbers are handled
+        const processedData = reportRows.map(row => {
+            const newRow: Record<string, any> = { ...row }; // Copy row
+            if (Array.isArray(newRow.Symbol)) { // only if is an array.
+                newRow.Symbol = newRow.Symbol.join(',');
+            }
+            // Ensure numbers are formatted consistently for stringify, for cases where cast might not catch them
+            for (const key in newRow) {
+                if (typeof newRow[key] === 'number') {
+                    newRow[key] = Number(newRow[key]); // Ensure it's a number, cast will handle formatting to 2 decimal places later
+                }
+            }
+            return newRow;
+        });
+
+        // Determine all unique columns from the processed data for headers
+        const allKeys = new Set<string>();
+        processedData.forEach(row => {
+            Object.keys(row).forEach(key => allKeys.add(key));
+        });
+        const columns = Array.from(allKeys).map(key => ({
+            key,
+            header: key,
+        }));
+
+        const csvContent = await new Promise<string>((resolve, reject) => {
+            stringify(processedData, {
+                header: true,
+                columns: columns,
+                cast: {
+                    number: (value: number) => value !== undefined && value !== null ? value.toFixed(2) : '', // Format numbers to 2 decimal places
+                    date: (value: Date) => moment(value).isValid() ? moment(value).format('YYYY-MM-DD') : '', // Format valid dates
+                }
+            }, (err, result) => {
+                if (err) reject(err);
+                resolve(result || '');
+            });
+        });
+
+        const toolsDirPath = `/home/lars/projects/ps2/server/logs/`;
+        await fs.mkdir(toolsDirPath, { recursive: true });
+
+        const filePath = `${toolsDirPath}/${fileName}`;
+        await fs.writeFile(filePath, csvContent);
+
+        return { filePath };
+
+    } else {
+        return reportRows;
+    }
 
   } catch (err) {
     console.error("Critical error in portfolios.debug function:", err);
