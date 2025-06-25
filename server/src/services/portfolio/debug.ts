@@ -54,14 +54,14 @@ export type ReportRowType = {
 type HoldingsMap = Record<string, { volume: number; currency: string; investedValue: number; investedValueInTradeCurrency: number }>; // Added investedValueInTradeCurrency to track cost basis in original currency
 
 export async function debug(
-  params: { args: { portfolioId: string; fee?: number; granularity?: "day" | "trade"; from?: string; till?: string; exportToCsv?: boolean; fileName?: string } },
+  params: { args: { portfolioId: string; fee?: number; granularity?: "day" | "trade"; from?: string; till?: string; exportToCsv?: boolean; fileName?: string; includeSummaries?: boolean } },
   sendResponse: (data: any) => void, // Changed from (data: any, msgId: string, userModif: string) to (data: any) as these are not used within the function
   msgId: string, // Kept to satisfy type although not directly used in the function logic
   userModif: string, // Kept to satisfy type although not directly used in the function logic
   userData: UserData,
 ): Promise<ReportRowType[] | { filePath: string } | ErrorType> {
   try {
-    const { portfolioId, fee, granularity, from, till, exportToCsv, fileName = `portfolio_debug_report_${moment().format('YYYYMMDD_HHmmss')}.csv` } = params.args;
+    const { portfolioId, fee, granularity, from, till, exportToCsv, fileName = `portfolio_debug_report_${moment().format('YYYYMMDD_HHmmss')}.csv`, includeSummaries = true } = params.args;
     if (!portfolioId) {
       return { error: "Portfolio ID is required" };
     }
@@ -417,35 +417,37 @@ export async function debug(
         
         // --- Report Rows Generation for the current day ---
         // 1. Portfolio Summary Row (at the start of the day after all calculations for today are done)
-        reportRows.push({
-            Date: currentDayString,
-            Type: "Portfolio Summary",
-            Symbol: "", // Blank for summary
-            Volume: toNumLocal(Object.values(currentHoldings).reduce((sum, h) => toNumFullPrecision(sum + h.volume), 0)),
-            // Use weighted average Cost Basis / Market Price for aggregated summary
-            "Original price": toNumLocal(Object.values(currentHoldings).reduce((sum, h) => sum + h.investedValueInTradeCurrency, 0) / (Object.values(currentHoldings).reduce((sum, h) => sum + h.volume, 0) || 1)),
-            MarketPrice: toNumLocal(totalMarketValue / (Object.values(currentHoldings).reduce((sum, h) => sum + h.volume, 0) || 1)),
-            "Original FX": toNumLocal(1), // Not meaningful for aggregated row
-            MarketFX: toNumLocal(1), // Not meaningful for aggregated row
-            Fee: toNumLocal(0), // Not meaningful for aggregated row
-            Invested: toNumLocal(totalInvested),
-            InvestedBase: toNumLocal(totalInvestedBase),
-            MarketValue: toNumLocal(totalMarketValue),
-            BaseMarketValue: toNumLocal(totalMarketValueBase),
-            Realized: toNumLocal(accRealizedPL), // Accumulated Realized P/L
-            Result: toNumLocal(accResult + unrealizedPL), // Net Result = Realized P/L + Unrealized P/L + other income/expenses in base currency
-            resultBase: toNumLocal(accResult + unrealizedPL),
-            "Unrealized Result": toNumLocal(unrealizedPL),
-            Cash: toNumLocal(currentCash),
-            CashBase: toNumLocal(currentCash),
-            "Acc. Result": toNumLocal(accResult + unrealizedPL), // Consistent with Result for Portfolio Summary
-            AccMarketVvalue: toNumLocal(accMarketValue),
-            AccMarketValueBase: toNumLocal(accMarketValueBase),
-            AccCash: toNumLocal(accCash),
-            AccCashBase: toNumLocal(accCashBase),
-            NAV: toNumLocal(currentNAV),
-            NavBase: toNumLocal(currentNavBase),
-        });
+        if (includeSummaries) {
+            reportRows.push({
+                Date: currentDayString,
+                Type: "Portfolio Summary",
+                Symbol: "", // Blank for summary
+                Volume: toNumLocal(Object.values(currentHoldings).reduce((sum, h) => toNumFullPrecision(sum + h.volume), 0)),
+                // Use weighted average Cost Basis / Market Price for aggregated summary
+                "Original price": toNumLocal(Object.values(currentHoldings).reduce((sum, h) => sum + h.investedValueInTradeCurrency, 0) / (Object.values(currentHoldings).reduce((sum, h) => sum + h.volume, 0) || 1)),
+                MarketPrice: toNumLocal(totalMarketValue / (Object.values(currentHoldings).reduce((sum, h) => sum + h.volume, 0) || 1)),
+                "Original FX": toNumLocal(1), // Not meaningful for aggregated row
+                MarketFX: toNumLocal(1), // Not meaningful for aggregated row
+                Fee: toNumLocal(0), // Not meaningful for aggregated row
+                Invested: toNumLocal(totalInvested),
+                InvestedBase: toNumLocal(totalInvestedBase),
+                MarketValue: toNumLocal(totalMarketValue),
+                BaseMarketValue: toNumLocal(totalMarketValueBase),
+                Realized: toNumLocal(accRealizedPL), // Accumulated Realized P/L
+                Result: toNumLocal(accResult + unrealizedPL), // Net Result = Realized P/L + Unrealized P/L + other income/expenses in base currency
+                resultBase: toNumLocal(accResult + unrealizedPL),
+                "Unrealized Result": toNumLocal(unrealizedPL),
+                Cash: toNumLocal(currentCash),
+                CashBase: toNumLocal(currentCash),
+                "Acc. Result": toNumLocal(accResult + unrealizedPL), // Consistent with Result for Portfolio Summary
+                AccMarketVvalue: toNumLocal(accMarketValue),
+                AccMarketValueBase: toNumLocal(accMarketValueBase),
+                AccCash: toNumLocal(accCash),
+                AccCashBase: toNumLocal(accCashBase),
+                NAV: toNumLocal(currentNAV),
+                NavBase: toNumLocal(currentNavBase),
+            });
+        }
 
         // 2. Add individual Position Snapshot rows for the current day (after all trades are processed)
         for (const symbol in currentHoldings) {
@@ -517,13 +519,11 @@ export async function debug(
                 if (trade.side === TradeSide.Buy) {
                     // For buys, the 'result' is just the cost or 0 as no PL is realized
                     realizedPLCurrentTrade = 0; 
-                    tradeResultForAcc = -totalCostBaseCurrency; // Cost is negative impact to overall result
+                    tradeResultForAcc = -totalCostBaseCurrency; // Cost of buy affects Result
                 } else { // Sell
-                    // Need to recalculate realized PL for this specific trade
-                    // This uses values *prior* to selling, which are captured by accRealizedPL.
-                    // The overall impact to accResult is already included by 'realizedPLForAccResult'
-                    // from the current day's trade processing loop.
-                    // So for display, just use the value from accResult for this specific trade.
+                    // Realized PL for this specific trade needs to be based on the impact to accRealizedPL.
+                    // This is for display for THIS trade only.
+                    // The overall accRealizedPL and accResult already include this trade's financial impact.
                     realizedPLCurrentTrade = toNumFullPrecision(accRealizedPL); // The last addition to accRealizedPL
                     tradeResultForAcc = toNumFullPrecision(accResult); // The last addition to accResult
                 }
@@ -531,7 +531,7 @@ export async function debug(
             } else { // For Cash, Dividends, Investment, Correction
                  realizedPLCurrentTrade = 0; // No realized PL for these
                  tradeResultForAcc = toNumFullPrecision((trade.price * trade.rate) + ((trade.fee || 0) * trade.rate)); // Cash change
-                 if (trade.side === TradeSide.WITHDRAW) tradeResultForAcc *= -1; // Withdrawals are negative (for cash type trades)
+                 if (trade.side === TradeSide.WITHDRAW) tradeResultForAcc *= -1; // If it's a withdrawal, it's negative
                  tradeRealizedPLForAcc = 0; // No realized PL
             }
 
@@ -578,21 +578,23 @@ export async function debug(
         }
         
         // 4. Add Daily Close Entry if day granularity
-        reportRows.push({
-            Date: currentDayString,
-            Type: "Daily Close",
-            Symbol: "", // Blank for summary
-            Volume: toNumLocal(0),
-            Cash: toNumLocal(currentCash),
-            CashBase: toNumLocal(currentCash),
-            "Acc. Result": toNumLocal(accResult + unrealizedPL),
-            AccMarketVvalue: toNumLocal(accMarketValue),
-            AccMarketValueBase: toNumLocal(accMarketValueBase),
-            AccCash: toNumLocal(accCash),
-            AccCashBase: toNumLocal(accCashBase),
-            NAV: toNumLocal(currentNAV),
-            NavBase: toNumLocal(currentNavBase),
-        });
+        if (includeSummaries) {
+            reportRows.push({
+                Date: currentDayString,
+                Type: "Daily Close",
+                Symbol: "", // Blank for summary
+                Volume: toNumLocal(0),
+                Cash: toNumLocal(currentCash),
+                CashBase: toNumLocal(currentCash),
+                "Acc. Result": toNumLocal(accResult + unrealizedPL),
+                AccMarketVvalue: toNumLocal(accMarketValue),
+                AccMarketValueBase: toNumLocal(accMarketValueBase),
+                AccCash: toNumLocal(accCash),
+                AccCashBase: toNumLocal(accCashBase),
+                NAV: toNumLocal(currentNAV),
+                NavBase: toNumLocal(currentNavBase),
+            });
+        }
 
         loopMoment.add(1, 'day'); // Move to the next day
        }
@@ -699,7 +701,7 @@ export async function debug(
                     if (isNaN(currentHoldings[symbol].investedValueInTradeCurrency)) currentHoldings[symbol].investedValueInTradeCurrency = 0;
                 }
             });
-
+ 
             // Calculate current end-of-trade portfolio value and metrics (snapshot after each trade/transaction)
             let totalMarketValue = 0;
             let totalMarketValueBase = 0;
@@ -712,7 +714,7 @@ export async function debug(
                 const holding = currentHoldings[symbol];
                 const marketPrice = getDateSymbolPrice(currentDayString, symbol);
                 const marketFX = getRate(holding.currency, portfolioInstance.currency, currentDayString);
-
+ 
                 if (marketPrice != null && marketFX != null) {
                     const holdingValue = marketPrice * holding.volume;
                     const holdingValueBase = holdingValue * marketFX;
@@ -721,18 +723,18 @@ export async function debug(
                     totalInvested += holding.investedValueInTradeCurrency;
                     totalInvestedBase += holding.investedValue;
                     unrealizedPL = toNumFullPrecision(unrealizedPL + (holdingValueBase - holding.investedValue));
-
+ 
                 } else {
                     console.warn(`Could not get price/rate for ${symbol} on ${currentDayString} for trade calculation. Will affect calculation.`);
                 }
             }
-
+ 
             const currentNAV = currentCash + totalMarketValueBase;
             const currentNavBase = currentNAV;
-
+ 
             let accCash = currentCash;
             let accCashBase = currentCash;
-
+ 
             // Determine Invested for display in trade row
             let displayInvestedTradegranularity: number|undefined = undefined;
             let displayInvestedBaseTradegranularity: number|undefined = undefined;
@@ -742,7 +744,7 @@ export async function debug(
                 displayInvestedTradegranularity = toNumLocal(totalCostOriginalCurrency);
                 displayInvestedBaseTradegranularity = toNumLocal(totalCostBaseCurrency);
             }
-
+ 
             reportRows.push({
                 Date: currentDayString,
                 Type: typeDisplay,

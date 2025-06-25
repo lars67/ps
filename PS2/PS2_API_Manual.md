@@ -322,6 +322,44 @@ Calculates and returns the performance metrics for a specified portfolio over a 
 
 **Output:** Returns an object with performance metrics including returns, volatility, and comparison to the baseInstrument.
 
+### Debug Portfolio
+
+Generates a detailed, row-by-row debug report for a specified portfolio, including historical trades, cash movements, and daily position snapshots.
+
+**Command:**
+
+```json
+{
+  "command": "portfolios.debug",
+  "portfolioId": "portfolio_id",
+  "from": "YYYY-MM-DD",
+  "till": "YYYY-MM-DD",
+  "granularity": "day",
+  "includeSummaries": true,
+  "exportToCsv": false,
+  "fileName": "debug_report.csv"
+}
+```
+
+**Parameters:**
+
+| Parameter        | Description                                            | Required |
+| :--------------- | :----------------------------------------------------- | :------- |
+| portfolioId      | ID of the portfolio to debug                           | Yes      |
+| from             | Start date for the report (YYYY-MM-DD)                 | No       |
+| till             | End date for the report (YYYY-MM-DD)                   | No       |
+| granularity      | Reporting interval: "day" or "trade" (defaults to "day") | No       |
+| includeSummaries | Boolean to include "Portfolio Summary" and "Daily Close" rows (defaults to `true`) | No       |
+| exportToCsv      | Set to `true` to export the report to a CSV file      | No       |
+| fileName         | Optional filename for the CSV export                   | No       |
+
+**Output:** Returns an array of report rows (JSON) or a file path to the generated CSV.
+ Sample output rows include:
+ - `Portfolio Summary`: Aggregated daily portfolio metrics.
+ - `Position Snapshot`: End-of-day details for each security held.
+ - `Trade (Buy/Sell)`: Detailed information for each trade.
+ - `Cash Deposit/Withdrawal`, `Dividends`, `Investment`, `Correction`: Details for non-trade cash/equity movements.
+
 ## Prices
 
 The Prices module in PS2Dox handles asset pricing data.
