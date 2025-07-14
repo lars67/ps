@@ -252,7 +252,7 @@ export function getDatesSymbols(
   let date = from.split("T").shift() as string;
   const dateLast = till?.split("T").shift() || moment().format(formatYMD);
   const prices = [];
-  while (date < dateLast) {
+  while (moment(date).isSameOrBefore(moment(dateLast))) { // Changed condition to include the last date
     const datePrice: Record<string, number> = {};
     symbols.forEach((symbol) => {
       if (dateHistory[date] && dateHistory[date][symbol]) {

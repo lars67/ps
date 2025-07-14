@@ -41,33 +41,70 @@ export const historical = async (
     if (symbols.length<1) {
         return {error: 'No symbols'}
     }
-    if (par?.from ) {
-        if (!isValidDateFormat(par.from)) {
-            return { error: "Wrong 'from'" };
-        }
-        if (par.till && !isValidDateFormat(par.till)) {
-            return { error: "Wrong 'till'" };
+
+    // Determine effective 'from' and 'till' dates
+    let effectiveFrom = par.from;
+    let effectiveTill = par.till;
+
+    if (!effectiveFrom && par.date) {
+        effectiveFrom = par.date;
+        effectiveTill = par.date;
+    }
+
+    if (!effectiveFrom) {
+        return { error: "Need set 'date' or 'from','till'" };
+    }
+
+    if (!isValidDateFormat(effectiveFrom)) {
+        return { error: "Wrong 'from'" };
+    }
+    if (effectiveTill && !isValidDateFormat(effectiveTill)) {
+        return { error: "Wrong 'till'" };
+    }
+
+    const dateForShift = effectiveFrom; // Use effectiveFrom for dateShift calculation
+    const dateShift = moment(dateForShift, formatYMD).add(-7, 'day').format(formatYMD);
+
+    await checkPrices(symbols, dateShift); // Pre-fetch data for a broader range
+
+    // Always use getDatesSymbols, now that effectiveFrom and effectiveTill are guaranteed
+    const result = getDatesSymbols(symbols, effectiveFrom, effectiveTill);
+
+    // Format the result for single-date queries if only one date was requested
+    if (par.date && !par.from && !par.till) {
+        // Find the entry for the specific date
+        const singleDateResult = result.find(item => item.date === par.date);
+        if (singleDateResult) {
+            // Return only the symbol prices for that date, formatted
+            const formattedPrices: Record<string, number | null> = {};
+            for (const symbol of symbols) {
+                if (singleDateResult[symbol] !== undefined) {
+                    formattedPrices[symbol] = Number(Number(singleDateResult[symbol]).toFixed(precision));
+                } else {
+                    formattedPrices[symbol] = null; // Return null for missing prices on that date
+                }
+            }
+            return formattedPrices;
+        } else {
+            // If no data found for the specific date
+            const formattedPrices: Record<string, null> = {};
+            for (const symbol of symbols) {
+                formattedPrices[symbol] = null;
+            }
+            return formattedPrices;
         }
     } else {
-        if (!par.date) {
-            return { error: "Need set 'date' or 'from','till'" };
-        }
-        if (!isValidDateFormat(par.date)) {
-            return { error: "Wrong 'date'" };
-        }
-
+        // For range queries, return the full result from getDatesSymbols
+        return result.map(item => {
+            const formattedItem: Record<string, string | number | null> = { date: item.date };
+            for (const key in item) {
+                if (key !== 'date') {
+                    formattedItem[key] = Number(Number(item[key]).toFixed(precision));
+                }
+            }
+            return formattedItem;
+        });
     }
-    const date = par?.from ? par?.from  : par.date;
-    //console.log('date', date)
-    const dateShift = moment(date, formatYMD).add(-7, 'day').format(formatYMD)
-   // console.log('date,dateShift', date,dateShift);
-    await checkPrices(symbols, dateShift);
-    if (par?.from) {
-        return getDatesSymbols(symbols, par.from, par?.till)
-    }
-     return symbols.reduce((o, symbol)=>
-          ({...o, [symbol]:Number(getDateSymbolPrice(date as string, symbol)?.toFixed(precision))}), {})
-
 };
 
 let sseServiceNumber=0;
