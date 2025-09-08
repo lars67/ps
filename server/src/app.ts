@@ -56,12 +56,12 @@ const startServer = async () => {
   
   try {
     console.log("Creating HTTPS servers for production mode");
-    const certPath = path.join(process.cwd(), "../CertFinPension");
+    const certPath = path.join(process.cwd(), "../Certificate");
     console.log("Using certificates from:", certPath);
     
-    const key = fs.readFileSync(path.join(certPath, "finpension.dk.key"));
-    const cert = fs.readFileSync(path.join(certPath, "finpension_dk.crt"));
-    const ca = fs.readFileSync(path.join(certPath, "My_CA_Bundle.ca-bundle"));
+    const key = fs.readFileSync(path.join(certPath, "STAR.softcapital.com.key"));
+    const cert = fs.readFileSync(path.join(certPath, "STAR.softcapital.com.crt"));
+    const ca = fs.readFileSync(path.join(certPath, "STAR.softcapital.com.bundle.pem"));
     
     var options = {
       key: key,
