@@ -317,3 +317,8 @@ export default {
     calculate_percentile,
     calculate_average_below_threshold
 };
+function comp(returns: DataPoint[]): number {
+  return returns.reduce((acc, val) => acc * (1 + val[1]), 1) - 1;
+}
+
+    comp,

@@ -163,11 +163,11 @@ function statistics(
   result.best_day = utils.findMax(r);
   result.worst_day = utils.findMin(r);
 
-  result.total_return = data[data.length - 1][1] / data[0][1] - 1;
+  result.total_return = (utils.comp(r) + 1);
   result.ytd = result.total_return;
   result.cagr = utils.calc_cagr(dp);
   result.incep = result.total_return; // Use total return for incep, especially for < 1 year
-
+  
   const drawdown = utils.to_drawdown_series(dp);
   result.max_drawdown = utils.findMin(drawdown);
   const drawdown_details = utils.drawdown_details(drawdown);
