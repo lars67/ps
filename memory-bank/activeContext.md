@@ -7,15 +7,23 @@ This file tracks the project's current status, including recent changes, current
 
 ## Current Focus
 
-*   
+*   Testing and refining the `portfolios.debug` command for comprehensive portfolio error detection and reporting.
+*   Ensuring proper integration of the debug command in the WebSocket command system.
+*   Monitoring WebSocket connection stability and addressing any SSE-related issues.
 
 ## Recent Changes
 
-*   
+*   Implemented backend logic for `portfolios.debug` command in `server/src/services/portfolio/debug.ts`.
+*   Added command dispatch and response handling in WebSocket controller.
+*   Updated command documentation and UI integration.
+*   Fixed issues with command execution, such as `_id` access and calculation logic.
 
 ## Open Questions/Issues
 
-*
+*   How to handle long-running portfolio calculations that might cause WebSocket timeouts?
+*   Need to verify the accuracy of portfolio calculations against external NAV reports.
+*   Investigate and resolve potential SSE connection instability issues mentioned in debugging notes.
+*   Consider adding more granular access controls for sensitive portfolio data.
 2025-06-23 12:32:12 - Consolidated Memory Bank with `projectbrief.md` and `techContext.md` information; added `portfolios.debug` command.
 2025-06-23 14:15:52 - Redesigned `portfolios.debug` command's output to match NAV report.
 2025-06-23 15:04:16 - `portfolios.debug` command documented and designed, but backend implementation is pending.

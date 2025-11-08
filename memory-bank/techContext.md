@@ -129,6 +129,7 @@ REACT_APP_URL_DATA=https://top.softcapital.com/ps2console # Base URL for static 
 - **Types:** `All`, `User` (user-created), `Custom` (system-defined), `Collection` (CRUD for DB), `Tests`.
 - **Structure (`Command` type):** Includes `_id`, `label`, `value` (JSON string), `description`, `ownerId`, `commandType`, `extended` (UI hints?), `access`.
 - **Access Levels:** `public` (all), `member` (authenticated), `admin` (admin only). Default access seems restricted if not specified.
+- **Execution Flow:** Commands parsed as JSON, dispatched via `command.split(".")` to handlers (e.g., `portfolios.debug` -> `handlers.portfolios.debug`). Responses fragmented for large data, reassembled on client.
 
 ## WebSocket Communication
 

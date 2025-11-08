@@ -292,6 +292,10 @@ function calculate_average_below_threshold(data: DataPoint[], threshold: number)
 }
 
 
+function comp(returns: DataPoint[]): number {
+  return returns.reduce((acc, val) => acc * (1 + val[1]), 1) - 1;
+}
+
 export default {
     resample,
     to_returns,
@@ -315,10 +319,6 @@ export default {
     // New functions
     calculate_rolling_std,
     calculate_percentile,
-    calculate_average_below_threshold
+    calculate_average_below_threshold,
+    comp
 };
-function comp(returns: DataPoint[]): number {
-  return returns.reduce((acc, val) => acc * (1 + val[1]), 1) - 1;
-}
-
-    comp,
