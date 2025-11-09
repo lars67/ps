@@ -86,13 +86,17 @@ const SignUpPage = () => {
 
   useEffect(()=> {
      safeFetch<CountryA2Type[]>("countries", {method:'GET'})
-         .then ((countries)=> {
-    setCountries(countries.data as CountryA2Type[]);
-     })
+         .then ((response)=> {
+           if (response.success && response.data) {
+             setCountries(response.data);
+           } else {
+             console.error('Error fetching countries:', response.error);
+           }
+         })
          .catch(error => {
            console.error('Error fetching countries:', error);
          });
-    }, [setCountries])
+    }, [])
   const onFinishFailed = (errorInfo: any) => {
     console.log('Failed:', errorInfo);
   };
@@ -276,7 +280,7 @@ const SignUpPage = () => {
                   ]}
               >
                 <Select placeholder="Select your country">
-                  {countries.map((country) => (
+                  {countries && countries.map((country) => (
                       <Select.Option key={country.a2} value={country.name}>
                         <ReactCountryFlag countryCode={country.a2} svg /> {country.name}
                       </Select.Option>

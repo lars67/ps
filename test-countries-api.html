@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Countries API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .result {
+            background: #f5f5f5;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover { background: #0056b3; }
+        .loading { opacity: 0.6; }
+    </style>
+</head>
+<body>
+    <h1>Test Countries API Endpoint</h1>
+    <p>This test will fetch countries from: <strong>https://finex.dk/ps2/countries</strong></p>
+    
+    <button onclick="testAPI()">Test Countries API</button>
+    
+    <div id="result"></div>
+
+    <script>
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            const button = document.querySelector('button');
+            
+            // Show loading state
+            button.classList.add('loading');
+            button.disabled = true;
+            resultDiv.innerHTML = '<div class="result">Loading...</div>';
+            
+            try {
+                const response = await fetch('https://finex.dk/ps2/countries', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                
+                const statusText = response.ok ? 'Success' : 'Error';
+                let resultHTML = `<div class="result ${response.ok ? 'success' : 'error'}">`;
+                resultHTML += `<strong>Status:</strong> ${response.status} ${statusText}\n`;
+                resultHTML += `<strong>URL:</strong> ${response.url}\n\n`;
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultHTML += `<strong>Response Data:</strong>\n`;
+                    resultHTML += JSON.stringify(data, null, 2);
+                    resultHTML += `\n\n<strong>Total Countries:</strong> ${Array.isArray(data) ? data.length : 'N/A'}`;
+                } else {
+                    const errorText = await response.text();
+                    resultHTML += `<strong>Error Details:</strong>\n${errorText}`;
+                }
+                
+                resultHTML += '</div>';
+                resultDiv.innerHTML = resultHTML;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result error">
+                    <strong>Network Error:</strong>\n${error.message}
+                </div>`;
+            } finally {
+                button.classList.remove('loading');
+                button.disabled = false;
+            }
+        }
+        
+        // Auto-run test on page load
+        window.onload = function() {
+            testAPI();
+        };
+    </script>
+</body>
+</html>

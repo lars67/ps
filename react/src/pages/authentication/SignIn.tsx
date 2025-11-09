@@ -95,7 +95,7 @@ const SignInPage = () => {
         >
           <Logo color="yellow" />
           <Title level={2} className="text-white">
-            Porfolio System
+            Portfolio System
           </Title>
           <Text className="text-white" style={{ fontSize: 18 }}>
             PS Console and Administrator

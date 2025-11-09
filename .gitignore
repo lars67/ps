@@ -5,13 +5,18 @@
 /server/dist/
 /server/logs/
 
-# Node.js
-/node_modules
+# Node.js - match node_modules and build directories anywhere
+node_modules/
+build/
+dist/
 /react/react/
 /react/server/
 /npm-debug.log*
 /yarn-error.log
 .DS_Store
+
+# Sample/test projects
+sample-react-app/
 
 /server/public/help_prod/
 /server/src/tools/

@@ -636,7 +636,7 @@ export async function positions(
         (sum, symbol) => sum + Number(portfolioPositions[symbol].realized),
         0,
     );*/
-    //weights add to porfolioPositions
+    //weights add to portfolioPositions
     Object.keys(portfolioPositions).forEach((symbol) => {
       let change = changes.find((c) => c.symbol === symbol);
       if (!change) {
