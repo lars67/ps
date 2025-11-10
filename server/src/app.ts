@@ -11,6 +11,7 @@ import jwt, { JwtPayload, VerifyErrors } from "jsonwebtoken";
 import process from "process";
 import {getDatePrices, getSymbolPrices} from "./services/app/priceCashe";
 import * as path from "path";
+import { dividendCronJob } from "./jobs/dividendCronJob";
 
 const cors = require("cors");
 const https = require("https");
@@ -110,7 +111,22 @@ const startServer = async () => {
   await initCountries();
   // Initialize WebSocket for primary servers
   await initWS(serverLogin, serverApp, serverGuest);
-  
+
+  // Initialize dividend cron job
+  const cronSchedule = process.env.DIVIDEND_CRON_SCHEDULE || '0 9 * * *'; // Default: daily at 9 AM
+  const cronEnabled = process.env.DIVIDEND_CRON_ENABLED !== 'false'; // Default: enabled
+
+  if (cronEnabled) {
+    try {
+      dividendCronJob.start(cronSchedule);
+      console.log(`Dividend cron job scheduled: ${cronSchedule}`);
+    } catch (error) {
+      console.error('Failed to start dividend cron job:', error);
+    }
+  } else {
+    console.log('Dividend cron job disabled via environment variable');
+  }
+
   console.log("DATA_PROXY", process.env.DATA_PROXY);
   
   // Start primary servers (HTTPS or HTTP)
@@ -192,6 +208,19 @@ const startServer = async () => {
     // console.log("HTTP servers are available on ports 13331, 13332, 13333, and 13334");
   }
   // Start secondary servers (HTTP if primary is HTTPS, or vice versa)
+
+  // Add graceful shutdown handling for cron job
+  process.on('SIGINT', () => {
+    console.log('Received SIGINT, stopping dividend cron job...');
+    dividendCronJob.stop();
+    process.exit(0);
+  });
+
+  process.on('SIGTERM', () => {
+    console.log('Received SIGTERM, stopping dividend cron job...');
+    dividendCronJob.stop();
+    process.exit(0);
+  });
 
   //initWatchers();
 };

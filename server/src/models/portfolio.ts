@@ -10,7 +10,9 @@ const PortfolioSchema = new Schema<Portfolio>({
   portfolioType: {type: String}, //summation, portfolio
   portfolioIds:{type: [String]},
   accountId:{type: String},
-  access:{type: String}
+  access:{type: String},
+  bookDividends: { type: Boolean, default: true }, // Enable/disable automatic dividend booking
+  lastDividendCheck: { type: Date, required: false } // Track last dividend check timestamp
 });
 
 export const PortfolioModel: Model<Portfolio> =
