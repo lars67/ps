@@ -12,6 +12,7 @@ import process from "process";
 import {getDatePrices, getSymbolPrices} from "./services/app/priceCashe";
 import * as path from "path";
 import { dividendCronJob } from "./jobs/dividendCronJob";
+import { portfolioHistoryCronJob } from "./jobs/portfolioHistoryCronJob";
 
 const cors = require("cors");
 const https = require("https");
@@ -127,6 +128,20 @@ const startServer = async () => {
     console.log('Dividend cron job disabled via environment variable');
   }
 
+  // Initialize portfolio history cron job
+  const portfolioHistoryCronEnabled = process.env.PORTFOLIO_HISTORY_CRON_ENABLED !== 'false'; // Default: enabled
+
+  if (portfolioHistoryCronEnabled) {
+    try {
+      portfolioHistoryCronJob.start();
+      console.log('Portfolio history cron job started (04:00 CET, Mon-Sat)');
+    } catch (error) {
+      console.error('Failed to start portfolio history cron job:', error);
+    }
+  } else {
+    console.log('Portfolio history cron job disabled via environment variable');
+  }
+
   console.log("DATA_PROXY", process.env.DATA_PROXY);
   
   // Start primary servers (HTTPS or HTTP)
@@ -209,16 +224,18 @@ const startServer = async () => {
   }
   // Start secondary servers (HTTP if primary is HTTPS, or vice versa)
 
-  // Add graceful shutdown handling for cron job
+  // Add graceful shutdown handling for cron jobs
   process.on('SIGINT', () => {
-    console.log('Received SIGINT, stopping dividend cron job...');
+    console.log('Received SIGINT, stopping cron jobs...');
     dividendCronJob.stop();
+    portfolioHistoryCronJob.stop();
     process.exit(0);
   });
 
   process.on('SIGTERM', () => {
-    console.log('Received SIGTERM, stopping dividend cron job...');
+    console.log('Received SIGTERM, stopping cron jobs...');
     dividendCronJob.stop();
+    portfolioHistoryCronJob.stop();
     process.exit(0);
   });
 

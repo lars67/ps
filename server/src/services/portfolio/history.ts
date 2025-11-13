@@ -15,6 +15,8 @@ import {
 import { getPortfolioInstanceByIDorName } from "../../services/portfolio/helper";
 import { isValidDateFormat, toNum } from "../../utils";
 import { formatYMD, errorMsgs } from "../../constants";
+import { PortfolioHistoryCache } from "./historyCache";
+import { PortfolioHistoryService } from "./historyService";
 
 // Define DayType locally as it might differ slightly or be removed from original history.ts eventually
 export type DayType = {
@@ -38,6 +40,9 @@ type HistoryParams = {
   detail?: string; // 0|1
   sample?: string; // day|week|month - Resampling not implemented in this version yet
   precision?: number;
+  forceRefresh?: boolean;    // NEW: Force recalculation
+  maxAge?: number;          // NEW: Max acceptable data age (minutes)
+  streamUpdates?: boolean;  // NEW: Enable real-time updates
 };
 
 // Helper type for daily holdings state
@@ -45,7 +50,7 @@ type HoldingsMap = Record<string, { volume: number; currency: string }>;
 
 // Renamed function back to 'history'
 export async function history(
-  { _id, from, till, detail = "0", sample, precision = 2 }: HistoryParams,
+  { _id, from, till, detail = "0", sample, precision = 2, forceRefresh = false, maxAge = 1440 }: HistoryParams,
   sendResponse: (data: any) => void,
   msgId: string,
   userModif: string,
@@ -55,6 +60,37 @@ export async function history(
     // --- 1. Input Validation & Portfolio Fetching ---
     if (!_id) {
       return { error: "Portfolio _id is required" };
+    }
+
+    // --- 1.5. Check Cache First (unless force refresh) ---
+    if (!forceRefresh) {
+      try {
+        const cacheResult = await PortfolioHistoryCache.getHistory(_id, from, till, maxAge);
+
+        // If we have cached data, return it immediately
+        if (cacheResult.cached && cacheResult.days.length > 0) {
+          console.log(`Serving cached history for portfolio ${_id} (${cacheResult.days.length} days, ${cacheResult.cacheAge}min old)`);
+
+          const withDetail = Number(detail) !== 0;
+          return {
+            days: cacheResult.days,
+            cached: true,
+            cacheAge: cacheResult.cacheAge,
+            ...(cacheResult.metadata && { metadata: cacheResult.metadata }),
+            ...(withDetail && { details: [] }) // Cached data doesn't include details
+          };
+        }
+
+        // If cache returned empty (no data exists), fall through to calculation
+        if (cacheResult.cached === false) {
+          console.log(`No cached history found for portfolio ${_id}, calculating from scratch`);
+        }
+      } catch (cacheError) {
+        console.warn(`Cache check failed for portfolio ${_id}, falling back to calculation:`, cacheError);
+        // Continue to calculation if cache fails
+      }
+    } else {
+      console.log(`Force refresh requested for portfolio ${_id}`);
     }
     const toNumLocal = (n: number | null | undefined) => toNum({ n: n ?? 0, precision });
     const withDetail = Number(detail) !== 0;
@@ -399,7 +435,37 @@ export async function history(
       loopMoment.add(1, 'day');
     }
 
-    // --- 8. Resampling and Final Output ---
+    // --- 8. Store Results in Cache ---
+    try {
+      // Convert DayType[] to PortfolioHistoryDay[] for storage
+      const historyDays = days.map(day => ({
+        portfolioId: realId,
+        date: day.date,
+        invested: day.invested,
+        investedWithoutTrades: day.investedWithoutTrades,
+        cash: day.cash,
+        nav: day.nav,
+        index: day.index,
+        perfomance: day.perfomance,
+        shares: day.shares,
+        navShare: day.navShare,
+        perfShare: day.perfShare,
+        lastUpdated: new Date(),
+        isCalculated: true
+      }));
+
+      // Save to cache asynchronously (don't await to not slow down response)
+      PortfolioHistoryService.saveHistoryDays(historyDays).catch(err => {
+        console.error(`Failed to save calculated history for portfolio ${realId}:`, err);
+      });
+
+      console.log(`Calculated and cached ${historyDays.length} days of history for portfolio ${realId}`);
+    } catch (cacheError) {
+      console.error(`Error preparing history data for cache for portfolio ${realId}:`, cacheError);
+      // Continue with response even if caching fails
+    }
+
+    // --- 9. Resampling and Final Output ---
     // TODO: Implement resampling logic if required based on 'sample' parameter
 
     return {

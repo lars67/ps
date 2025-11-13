@@ -309,10 +309,19 @@ export async function detailList(
 
 export const description: CommandDescription = {
   history: {
-    label: "Portfolio History",
-    value: `${JSON.stringify({ command: "portfolios.history", _id: "?", from: "", till: "", sample: "", detail: 0, precision: 2 })}
-   
-    `,
+    label: "Portfolio History (Optimized with Caching)",
+    value: `${JSON.stringify({
+      command: "portfolios.history",
+      _id: "?",
+      from: "",
+      till: "",
+      sample: "",
+      detail: 0,
+      precision: 2,
+      forceRefresh: false,
+      maxAge: 1440,
+      streamUpdates: false
+    })}`,
     access: "public",
   },
   // Removed description for historyV2
