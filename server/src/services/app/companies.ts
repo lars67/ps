@@ -29,6 +29,7 @@ export const getCompanyField = async (
 
 let symbolsCountry: Record<string, string> = {};
 let symbolsCurrencies: Record<string, string> = {};
+let symbolsExchange: Record<string, string> = {};
 export const getSymbolsCountries = async (
   symbolsAr: string[],
 ): Promise<Record<string, string>> => {
@@ -162,4 +163,19 @@ export const getGICSAr = async (
     }),
     {},
   );
+};
+
+// Check if a symbol is quoted in GBX (London Stock Exchange stocks with GBP currency)
+export const isGBXQuoted = async (symbol: string): Promise<boolean> => {
+  const currency = await getSymbolCurrency(symbol);
+  if (currency !== 'GBP') {
+    return false;
+  }
+
+  // Get country/region info
+  const countries = await getSymbolsCountries([symbol]);
+  const region = countries[symbol];
+
+  // LSE stocks are typically from GB/UK region
+  return region === 'GB' || region === 'UK' || region === 'United Kingdom';
 };

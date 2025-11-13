@@ -39,6 +39,7 @@ import {
   mapKeyToName,
 } from "../../services/portfolio/helper";
 import logger from "../../utils/logger";
+import { isGBXQuoted } from "../../services/app/companies";
 const subscribers: Record<string, SubscribeMsgs> = {}; //userModif-> SubscribeMsgs
 
 type QuoteData2 = {
@@ -522,12 +523,13 @@ export async function positions(
         const mPrice = Number(
           p?.marketPrice || portfolioPositions[symbol].marketPrice,
         );
-        const cPrice = Number(
-          p?.marketClose || portfolioPositions[symbol].marketClose,
+        let cPrice = Number(
+          p?.bprice || portfolioPositions[symbol].bprice,
         );
-        change.todayResult = (cPrice - mPrice) * volume * rates[cur];
+        if (cur === 'GBX') cPrice /= 100;
+        change.todayResult = (mPrice - cPrice) * volume * rates[cur];
         change.todayResultPercent =
-          Math.round((10000 * (cPrice - mPrice)) / mPrice) / 100;
+          Math.round((10000 * (mPrice - cPrice)) / cPrice) / 100;
       } else {
         if (newRates[cur]) {
           portfolioPositions[symbol].marketRate = rates[cur];
@@ -569,12 +571,13 @@ export async function positions(
           const mPrice = Number(
             p?.marketPrice || portfolioPositions[symbol].marketPrice,
           );
-          const cPrice = Number(
-            p?.marketClose || portfolioPositions[symbol].marketClose,
+          let cPrice = Number(
+            p?.bprice || portfolioPositions[symbol].bprice,
           );
-          change.todayResult = (cPrice - mPrice) * volume * rates[cur];
+          if (cur === 'GBX') cPrice /= 100;
+          change.todayResult = (mPrice - cPrice) * volume * rates[cur];
           change.todayResultPercent =
-            Math.round((10000 * (cPrice - mPrice)) / mPrice) / 100;
+            Math.round((10000 * (mPrice - cPrice)) / cPrice) / 100;
 
           portfolioPositions[symbol].marketValue = change.marketValue;
           portfolioPositions[symbol].todayResult = change.todayResult;
@@ -966,7 +969,9 @@ async function getPositions(
         ]);
         const { sector, industry } = await getGICS(symbol);
         const dir = trade.side === "B" ? 1 : -1; //calculate invested
-        const priceN = toNum({ n: trade.price });
+        const isGBX = trade.currency === 'GBX';
+        const priceAdj = isGBX ? trade.price / 100 : trade.price;
+        const priceN = toNum({ n: priceAdj });
         const fs = trade.fee;
         const f = fs * trade.rate;
         if (!fees[symbol]) fees[symbol] = { fee: 0, feeSym: 0 };
@@ -994,12 +999,12 @@ async function getPositions(
           //?   rate: trade.rate,
           currency: trade.currency,
           //?  fee: trade.fee,
-          invested: newVolume * trade.price * trade.rate, //invwstedSymbol
+          invested: newVolume * priceAdj * trade.rate, //invwstedSymbol
           tradeTime: trade.tradeTime,
           sector,
           industry,
         };
-        const vs = /*-*/ trade.price * trade.volume * dir;
+        const vs = /*-*/ priceAdj * trade.volume * dir;
         const v = vs * trade.rate;
         symbolFullInvested[symbol] = symbolFullInvested[symbol]
           ? symbolFullInvested[symbol] + v
@@ -1016,7 +1021,7 @@ async function getPositions(
         summationFields(industryInvested, industry, v, vs, f, fs);
         summationFields(portfoliosInvested, trade.portfolioId, v, vs, f, fs);
 
-        const vi = toNum({ n: trade.price * trade.rate * trade.volume });
+        const vi = toNum({ n: priceAdj * trade.rate * trade.volume });
         if (!symbolRealized[symbol]) {
           symbolRealized[symbol] = { totalCost: 0, realized: 0 };
         }
@@ -1026,7 +1031,7 @@ async function getPositions(
           symbolRealized[symbol].totalCost += vi;
         } else {
           avgPrice = o.volume ? symbolRealized[symbol].totalCost / o.volume : 0;
-          realizedPnL = (trade.price * trade.rate - avgPrice) * trade.volume;
+          realizedPnL = (priceAdj * trade.rate - avgPrice) * trade.volume;
           symbolRealized[symbol].realized += realizedPnL;
           symbolRealized[symbol].totalCost -= avgPrice * trade.volume;
         }
@@ -1034,20 +1039,21 @@ async function getPositions(
         break;
       case "20": //Dividends = "20",
           console.log('DIIIIIIIIIIIIIIIIIIIIIIv',oldPortfolio,trade.symbol);
+        const dividendPriceAdj = trade.currency === 'GBX' ? trade.price / 100 : trade.price;
         const dividendPerShareVol = (oldPortfolio[trade.symbol] as Trade)?.volume || 1;
         if (!dividends[trade.symbol]) {
           dividends[trade.symbol] =
-            trade.price *  dividendPerShareVol;
+            dividendPriceAdj *  dividendPerShareVol;
         } else {
           dividends[trade.symbol] +=
-            trade.price *  dividendPerShareVol;
+            dividendPriceAdj *  dividendPerShareVol;
         }
         if (!cashes[trade.currency]) {
           cashes[trade.currency] =
-            trade.price * dividendPerShareVol;// * trade.rate;
+            dividendPriceAdj * dividendPerShareVol;// * trade.rate;
         } else {
           cashes[trade.currency] +=
-            trade.price * dividendPerShareVol ;//trade.rate *
+            dividendPriceAdj * dividendPerShareVol ;//trade.rate *
         }
         console.log(
           "dividends:",
@@ -1202,7 +1208,14 @@ function prepareQuoteData2(
         qt.subRegion = subRegion;
       }
 
-      qt.marketPrice = marketPrice;
+      // Apply GBX scaling for LSE stocks (all GBP-denominated stocks from LSE are quoted in pence)
+      let finalMarketPrice = marketPrice;
+      if (marketPrice && currency === 'GBP') {
+        // All UK stocks with GBP currency are quoted in GBX (pence), divide by 100 to get GBP
+        finalMarketPrice = marketPrice / 100;
+      }
+
+      qt.marketPrice = finalMarketPrice;
       //console.log('qt',symbol,  qt)
       return Object.keys(qt).length > 0 ? { symbol, ...qt } : undefined;
     }

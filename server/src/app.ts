@@ -113,7 +113,7 @@ const startServer = async () => {
   await initWS(serverLogin, serverApp, serverGuest);
 
   // Initialize dividend cron job
-  const cronSchedule = process.env.DIVIDEND_CRON_SCHEDULE || '0 9 * * *'; // Default: daily at 9 AM
+  const cronSchedule = process.env.DIVIDEND_CRON_SCHEDULE || '0 4 * * *'; // Default: daily at 4 AM
   const cronEnabled = process.env.DIVIDEND_CRON_ENABLED !== 'false'; // Default: enabled
 
   if (cronEnabled) {

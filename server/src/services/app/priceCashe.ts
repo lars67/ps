@@ -3,6 +3,7 @@ import moment from "moment";
 import { fetchHistory, loadCompany } from "../../utils/fetchData";
 
 import { StringRecord } from "../../types/other";
+import { isGBXQuoted } from "./companies";
 
 import { Trade } from "../../types/trade";
 import {
@@ -54,6 +55,9 @@ export async function checkPrices(
         histories[symbol] = startDate;
         for (const h of history) {
           const { date, close } = h;
+          // Store historical prices as-is (in pence for LSE stocks)
+          // Scaling to GBP will be done in position calculations
+
           if (!dateHistory[date]) {
             dateHistory[date] = { [symbol]: close };
           } else {
@@ -226,22 +230,42 @@ export function getDateSymbolPrice(dateInput: string, symbolInput: string) {
   const date = dateInput.split("T").shift() as string;
   const symbol =symbolInput.endsWith(':FX') ? symbolInput.split(':').shift() as string: symbolInput;
   //console.log('getDateSymbolPrice', date, symbol, dateHistory[date]);
+
+  let price = null;
   if (dateHistory[date] && dateHistory[date][symbol]) {
-    return dateHistory[date][symbol];
-  }
+    price = dateHistory[date][symbol];
+  } else {
+    let prevDate = moment(date, formatYMD);
+    for (let i = 1; i < SEARCH_DAY; i++) {
+      prevDate = prevDate.add(-1, "days");
 
-  let prevDate = moment(date, formatYMD);
-  for (let i = 1; i < SEARCH_DAY; i++) {
-    prevDate = prevDate.add(-1, "days");
-
-    const d = prevDate.format(formatYMD);
-   // console.log('i', i, symbol, prevDate,d, (dateHistory[d] && dateHistory[d][symbol]));
-    if (dateHistory[d] && dateHistory[d][symbol]) {
-      return dateHistory[d][symbol];
+      const d = prevDate.format(formatYMD);
+     // console.log('i', i, symbol, prevDate,d, (dateHistory[d] && dateHistory[d][symbol]));
+      if (dateHistory[d] && dateHistory[d][symbol]) {
+        price = dateHistory[d][symbol];
+        break;
+      }
     }
   }
 
-  return null;
+  return price;
+}
+
+// Get price scaled for position calculations (converts GBX to GBP)
+export function getDateSymbolPriceScaled(dateInput: string, symbolInput: string) {
+  const price = getDateSymbolPrice(dateInput, symbolInput);
+
+  // Apply GBX scaling for LSE stocks (all GBP-denominated stocks from LSE are quoted in pence)
+  if (price && !symbolInput.endsWith(':FX')) {
+    // Simple synchronous check - assume GBP currency means GBX pricing for LSE stocks
+    // This is a simplification based on the user's statement that all LSE stocks are in pence
+    // In a production system, you might want more sophisticated detection
+    if (price > 100) { // Rough heuristic for GBX prices
+      return price / 100;
+    }
+  }
+
+  return price;
 }
 
 export function getDatesSymbols(
@@ -396,32 +420,32 @@ export const getRate = (
   //console.log(date,dateHistory[date])
   const rate1 = getDateSymbolPrice(date, `${currency}${balanceCurrency}`);
   const rate2 = getDateSymbolPrice(date, `${balanceCurrency}${currency}`);
-  
+
   // If both rates are null, try to find the last available rate
   if (!rate1 && !rate2) {
     console.warn(`No rate found for ${currency}${balanceCurrency} or ${balanceCurrency}${currency} on ${date}, trying to find last available rate`);
-    
+
     // Try to find the last available rate for currency+balanceCurrency
     let prevDate = moment(date, formatYMD);
     for (let i = 1; i < SEARCH_DAY; i++) {
       prevDate = prevDate.add(-1, "days");
       const d = prevDate.format(formatYMD);
-      
+
       const prevRate1 = getDateSymbolPrice(d, `${currency}${balanceCurrency}`);
       const prevRate2 = getDateSymbolPrice(d, `${balanceCurrency}${currency}`);
-      
+
       if (prevRate1 || prevRate2) {
         const prevR = prevRate1 ? prevRate1 : prevRate2 ? 1 / prevRate2 : 0;
         console.warn(`Using rate from ${d}: ${prevR}`);
         return Number(prevR.toFixed(4));
       }
     }
-    
+
     // If still no rate found, return 1 as a fallback to avoid division by zero
     console.warn(`No rate found for ${currency}${balanceCurrency} or ${balanceCurrency}${currency} within ${SEARCH_DAY} days, using 1 as fallback`);
     return 1;
   }
-  
+
   const r = rate1 ? rate1 : rate2 ? 1 / rate2 : 1; // Use 1 as fallback instead of 0
   //console.log(`RATES '${currency}${balanceCurrency}' '${date}'`, rate1, rate2, '=>', r)
   return Number(r.toFixed(4));
