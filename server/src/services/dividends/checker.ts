@@ -76,7 +76,7 @@ export async function checkPortfolioDividends(portfolioId: string): Promise<{
     for (const symbol of activeSymbols) {
       try {
         console.log(`🔍 DEBUG: Checking dividends for ${symbol} (volume: ${positions[symbol]})`);
-        const symbolDividends = await checkSymbolDividends(symbol, positions[symbol], lastCheck);
+        const symbolDividends = await checkSymbolDividends(symbol, positions[symbol], lastCheck, trades);
         console.log(`🔍 DEBUG: Found ${symbolDividends.length} dividends for ${symbol}`);
         allDividends.push(...symbolDividends);
       } catch (error) {
@@ -111,7 +111,8 @@ export async function checkPortfolioDividends(portfolioId: string): Promise<{
 async function checkSymbolDividends(
   symbol: string,
   volume: number,
-  lastCheck: Date
+  lastCheck: Date,
+  allTrades: any[]
 ): Promise<DividendToBook[]> {
   console.log(`🔍 DEBUG: Calling getDividends('${symbol}')...`);
   const rawData = await getDividends(symbol);
@@ -133,24 +134,39 @@ async function checkSymbolDividends(
   const dividends = parseDividendData(rawData);
   console.log(`🔍 DEBUG: Parsed ${dividends.length} dividends from raw data for ${symbol}`);
 
-  // Filter for dividends after last check
-  const newDividends = dividends.filter(dividend => {
+  // Filter for dividends after last check AND where user owned shares at payment date
+  const eligibleDividends: DividendToBook[] = [];
+
+  for (const dividend of dividends) {
     const paymentDate = moment(dividend.paymentDate);
-    const isAfter = paymentDate.isAfter(lastCheck);
-    console.log(`🔍 DEBUG: Dividend ${dividend.symbol} ${dividend.paymentDate} isAfter(${lastCheck.toISOString()}): ${isAfter}`);
-    return isAfter;
-  });
+    const isAfterLastCheck = paymentDate.isAfter(lastCheck);
 
-  console.log(`🔍 DEBUG: After filtering, ${newDividends.length} new dividends for ${symbol}`);
+    console.log(`🔍 DEBUG: Checking dividend ${dividend.symbol} ${dividend.paymentDate} isAfter(${lastCheck.toISOString()}): ${isAfterLastCheck}`);
 
-  // Convert to DividendToBook format
-  return newDividends.map(dividend => ({
-    symbol,
-    amount: dividend.amount,
-    currency: dividend.currency,
-    paymentDate: dividend.paymentDate,
-    volume
-  }));
+    if (!isAfterLastCheck) {
+      continue; // Skip dividends that were already checked
+    }
+
+    // Calculate position at the dividend payment date
+    const positionAtPayment = calculatePositionAtDate(allTrades, symbol, dividend.paymentDate);
+
+    if (positionAtPayment > 0) {
+      console.log(`🔍 DEBUG: ✅ User owned ${positionAtPayment} shares of ${symbol} on ${dividend.paymentDate} - ELIGIBLE for dividend`);
+      eligibleDividends.push({
+        symbol,
+        amount: dividend.amount,
+        currency: dividend.currency,
+        paymentDate: dividend.paymentDate,
+        volume: positionAtPayment // Use the position at payment date, not current position
+      });
+    } else {
+      console.log(`🔍 DEBUG: ❌ User owned 0 shares of ${symbol} on ${dividend.paymentDate} - SKIPPING dividend`);
+    }
+  }
+
+  console.log(`🔍 DEBUG: After filtering, ${eligibleDividends.length} eligible dividends for ${symbol}`);
+
+  return eligibleDividends;
 }
 
 /**
@@ -250,4 +266,41 @@ function calculateCurrentPositions(trades: any[]): Record<string, number> {
   });
 
   return positions;
+}
+
+/**
+ * Calculate position volume for a specific symbol at a specific date
+ * This recreates the portfolio position as it existed on the target date
+ */
+export function calculatePositionAtDate(trades: any[], symbol: string, targetDate: string): number {
+  let position = 0;
+
+  // Sort trades by date to ensure we process them chronologically
+  const sortedTrades = trades
+    .filter(trade => trade.symbol === symbol && trade.tradeType === '1' && !trade.symbol.endsWith(':FX'))
+    .sort((a, b) => new Date(a.tradeTime).getTime() - new Date(b.tradeTime).getTime());
+
+  console.log(`🔍 DEBUG: Calculating position for ${symbol} as of ${targetDate}. Found ${sortedTrades.length} relevant trades.`);
+
+  for (const trade of sortedTrades) {
+    const tradeDate = moment(trade.tradeTime);
+
+    // Only include trades that happened BEFORE the target date (strict ownership check)
+    // This prevents booking dividends if user sold on the same day as payment
+    if (tradeDate.isBefore(targetDate)) {
+      const volume = parseFloat(trade.volume) || 0;
+      const side = trade.side === 'B' ? 1 : -1; // Buy = +1, Sell = -1
+
+      position += (side * volume);
+      console.log(`🔍 DEBUG: Trade on ${trade.tradeTime}: ${trade.side} ${volume} shares, position now: ${position}`);
+    } else {
+      console.log(`🔍 DEBUG: Skipping trade on ${trade.tradeTime} (after target date ${targetDate})`);
+    }
+  }
+
+  // Return only positive positions (user must have owned shares at dividend payment date)
+  const finalPosition = Math.max(0, position);
+  console.log(`🔍 DEBUG: Final position for ${symbol} as of ${targetDate}: ${finalPosition}`);
+
+  return finalPosition;
 }

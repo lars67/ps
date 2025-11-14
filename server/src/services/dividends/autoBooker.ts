@@ -65,7 +65,7 @@ export async function autobookDividends(
           continue;
         }
 
-        // Calculate total dividend amount (per share × volume)
+        // Calculate total dividend amount (per share × volume at payment date)
         const totalAmount = dividend.amount * dividend.volume;
 
         // Prepare dividend booking parameters
@@ -81,7 +81,7 @@ export async function autobookDividends(
           rate: 1, // Will be auto-calculated based on currency
           tradeTime: paymentDate,
           tradeType: 'dividends', // Required by PutCash type
-          description: `Auto-booked dividend: ${dividend.symbol} (${dividend.amount} × ${dividend.volume} shares)`,
+          description: `Auto-booked dividend: ${dividend.symbol} (${dividend.amount} × ${dividend.volume} shares owned on ${dividend.paymentDate})`,
           fee: 0,
           userId: userId || portfolio.userId
         };

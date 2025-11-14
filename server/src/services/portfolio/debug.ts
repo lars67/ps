@@ -85,11 +85,11 @@ export async function debug(
     if ((allTradesResult as { error: string }).error) {
       return { error: (allTradesResult as { error: string }).error };
     }
-    const allTrades = (allTradesResult as Trade[]).sort((a, b) => moment.utc(a.tradeTime).diff(moment.utc(b.tradeTime)));
+    const allTrades = (allTradesResult as Trade[]).filter(t => t && t.tradeTime).sort((a, b) => moment.utc(a.tradeTime).diff(moment.utc(b.tradeTime)));
     console.log(`[portfolios.debug] Fetched trades:`, allTrades.map(t => ({ symbol: t.symbol, tradeType: t.tradeType, volume: t.volume, price: t.price, fee: t.fee, tradeTime: t.tradeTime, tradeRate: t.rate })));
 
-    if (allTrades.length === 0 && !from) {
-      return []; // If no trades and no 'from' date, return empty array now as per ReportRowType[]
+    if (allTrades.length === 0) {
+      return []; // If no trades to process, return empty array
     }
 
     // --- 2. Determine Date Range ---

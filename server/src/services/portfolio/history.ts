@@ -282,11 +282,7 @@ export async function history(
         if (todaysTrades.length > 0) {
             dayTradesProcessed = true;
             for (const trade of todaysTrades) {
-                const tradeRate = getRate(trade.currency, portfolio.currency, trade.tradeTime); // Use trade time for rate
-                 if (tradeRate == null) {
-                    console.warn(`Skipping trade due to missing rate: ${trade.symbol || 'CashOp'} on ${trade.tradeTime}`);
-                    continue;
-                 }
+                const tradeRate = trade.rate; // Use recorded trade rate instead of fetching historic rate
                 let currentTradeDetail: any = null; // For detail=1
 
                 switch (trade.tradeType) {
