@@ -120,6 +120,7 @@ type Params = {
   changes?: Partial<QuoteData[]>;
   eventName?: string;
   closed?: string;
+  includeAttribution?: boolean;
 };
 
 export type RealizedData = {
@@ -138,6 +139,7 @@ export async function positions(
     closed = "no",
     changes,
     eventName: SSEEventName,
+    includeAttribution = false,
   }: Params,
   sendResponse: (data?: object) => void,
   msgId: string,
@@ -603,9 +605,12 @@ export async function positions(
       });
       console.log("positions.dividends=", positions.dividends);
       Object.keys(positions.dividends).forEach((key) => {
+        const symbol = key;
+        const cur = portfolioPositions[symbol]?.currency || portfolio.currency;
+        const rate = rates[cur] || 1;
         const c: CommonPortfolioPosition = {
           symbol: `DIVIDENDS_${key}`,
-          total: toNum({ n: positions.dividends[key]  }),
+          total: toNum({ n: positions.dividends[key] * rate }),
         };
         changes.push(c);
       });
@@ -614,7 +619,7 @@ export async function positions(
     return changes;
   };
 
-  const calcChanges = (data: object) => {
+  const calcChanges = (data: object, includeAttribution: boolean = false) => {
     let changes = processQuoteData(data as QuoteData[]);
     console.log("calcChanges ==>", changes);
     if (changes.length === 0) {
@@ -751,6 +756,44 @@ export async function positions(
       totalType: "total",
     } as PortfolioPositionFull);
 
+    if (includeAttribution) {
+      const trading = result;
+      const passive = Object.keys(positions.dividends).reduce((sum, key) => {
+        const symbol = key;
+        const cur = portfolioPositions[symbol]?.currency || portfolio.currency;
+        const rate = rates[cur] || 1;
+        return sum + positions.dividends[key] * rate;
+      }, 0);
+      const currencyChanges = Object.keys(portfolioPositions).reduce((sum, symbol) => {
+        const pos = portfolioPositions[symbol];
+        const marketValue = pos?.marketValue || 0;
+        const investedFull = pos?.investedFull || 0;
+        const result = pos?.result || 0;
+        return sum + (marketValue - investedFull - result);
+      }, 0);
+      const totalReturn = trading + passive;
+
+      changes.push({
+        symbol: "ATTRIBUTION",
+        baseCurrency: portfolio.currency,
+        totalReturn: toNum({ n: totalReturn }),
+        breakdown: {
+          trading: {
+            amount: toNum({ n: trading }),
+            percent: totalReturn !== 0 ? Math.round((trading / totalReturn) * 10000) / 100 : 0,
+          },
+          passive: {
+            amount: toNum({ n: passive }),
+            percent: totalReturn !== 0 ? Math.round((passive / totalReturn) * 10000) / 100 : 0,
+          },
+          currency: {
+            amount: toNum({ n: currencyChanges }),
+            percent: totalReturn !== 0 ? Math.round((currencyChanges / totalReturn) * 10000) / 100 : 0,
+          },
+        },
+      } as any);
+    }
+
     return changes;
   };
 
@@ -766,7 +809,7 @@ export async function positions(
       if (actualChanges.length === 0) {
         return;
       }
-      const changes = calcChanges(actualChanges);
+      const changes = calcChanges(actualChanges, includeAttribution);
       console.log(
         moment().format("HH:mm:ss SSS"),
         "subscriber SSE-> ",

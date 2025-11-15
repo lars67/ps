@@ -334,7 +334,8 @@ export const description: CommandDescription = {
       requestType: "0",
       marketPrice: "4",
       basePrice: "4",
-      closed: "all", //all|only|no
+      closed: "no", //all|only|no
+      includeAttribution: false,
     })}`,
     access: "public",
   },

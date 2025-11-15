@@ -378,12 +378,26 @@ async function getPortfolioPositions() {
         await ps2Handler.connectWebSocket('ps2', ps2Handler.token);
         console.log('Connected to PS2 endpoint');
 
-        // Fetch portfolio positions
+        // Fetch portfolio positions without attribution
         console.log(`Fetching positions for portfolio: ${portfolioId}`);
         const positions = await ps2Handler.fetchPositions(portfolioId);
 
         console.log('Portfolio positions result:');
         console.log(JSON.stringify(positions, null, 2));
+
+        // Fetch portfolio positions with attribution
+        console.log(`\nFetching positions with attribution for portfolio: ${portfolioId}`);
+        const messageWithAttribution = {
+            command: 'portfolios.positions',
+            _id: portfolioId,
+            includeAttribution: true,
+            token: ps2Handler.token,
+            msgId: ps2Handler.generateMsgId('positions_attribution')
+        };
+
+        const positionsWithAttribution = await ps2Handler.sendMessage(messageWithAttribution);
+        console.log('Portfolio positions with attribution result:');
+        console.log(JSON.stringify(positionsWithAttribution, null, 2));
 
         // Close connection
         ps2Handler.closeConnection();

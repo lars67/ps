@@ -297,30 +297,60 @@ Deletes a portfolio from the system.
 
 **Output:** Returns a success message or the removed portfolio object.
 
-### Get Portfolio Performance
+### Get Portfolio Positions
 
-Calculates and returns the performance metrics for a specified portfolio over a given date range.
+Retrieves current portfolio positions with real-time market data and optional attribution analysis.
 
 **Command:**
 
 ```json
 {
-  "command": "portfolios.getPerformance",
+  "command": "portfolios.positions",
   "_id": "portfolio_id",
-  "startDate": "2023-01-01",
-  "endDate": "2023-12-31"
+  "requestType": "0",
+  "marketPrice": "4",
+  "basePrice": "4",
+  "closed": "no",
+  "includeAttribution": false
 }
 ```
 
 **Parameters:**
 
-| Parameter | Description                                      | Required |
-| :-------- | :----------------------------------------------- | :------- |
-| \_id     | ID of the portfolio                              | Yes      |
-| startDate | Start date for performance calculation (YYYY-MM-DD) | Yes      |
-| endDate   | End date for performance calculation (YYYY-MM-DD)   | Yes      |
+| Parameter        | Description                                                                 | Required | Default |
+| :--------------- | :-------------------------------------------------------------------------- | :------- | :------ |
+| \_id             | ID of the portfolio                                                         | Yes      | -       |
+| requestType      | Request type: "0" for snapshot, "1" for subscribe                          | No       | "0"     |
+| marketPrice      | Market price type (0-8, see below)                                         | No       | "4"     |
+| basePrice        | Base price type (0-8, see below)                                           | No       | "4"     |
+| closed           | Filter: "no" (open only), "only" (closed only), "all" (both)               | No       | "no"    |
+| includeAttribution | Include portfolio attribution breakdown (trading/passive/currency income) | No       | false   |
 
-**Output:** Returns an object with performance metrics including returns, volatility, and comparison to the baseInstrument.
+**Price Types:**
+- 0: IEX Bid Price
+- 1: IEX Ask Price
+- 2: Latest Price
+- 3: Open Price
+- 4: Close Price
+- 5: High Price
+- 6: Low Price
+- 7: Mid Price (avg bid/ask)
+- 8: Latest or Mid Price
+
+**Attribution Calculation Example:**
+
+Given portfolio positions:
+- IBM (USD): investedFull: 5760 DKK, result: 90.35 DKK, dividends: 5.04 USD × 6.4169 = 32.33 DKK
+- DELL (USD): investedFull: 2028.75 DKK, result: -291.90 DKK, dividends: 0
+
+**Total Return:** -201.55 + 32.33 = -169.22 DKK
+
+**Attribution Breakdown:**
+- Trading income: -201.55 DKK (118.9%)
+- Passive income: 32.33 DKK (-19.1%)
+- Currency income: 0.53 DKK (-0.3%)
+
+**Output:** Returns an array of position objects with market data. If `includeAttribution=true`, includes an `ATTRIBUTION` object with breakdown percentages.
 
 ### Debug Portfolio
 
