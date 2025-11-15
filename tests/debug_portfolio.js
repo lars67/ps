@@ -93,12 +93,12 @@ class PS2LoginHandler {
 
         // Determine URL based on endpoint and environment
         const isDev = process.env.NODE_ENV === 'development';
-        let baseUrl = isDev ? 'ws://localhost:3000' : 'wss://finex.dk';
+        let baseUrl = '';
 
         if (endpoint === 'ps2l') {
-            baseUrl += '/ps2l/';
+            baseUrl = process.env.REACT_APP_LOGIN_WS + '/ps2l/';
         } else if (endpoint === 'ps2') {
-            baseUrl += suffix ? `/ps2/?${suffix}` : '/ps2/';
+            baseUrl = suffix ? process.env.REACT_APP_WS + `/ps2/?${suffix}` : process.env.REACT_APP_WS + '/ps2/';
         }
 
         return new Promise((resolve, reject) => {
