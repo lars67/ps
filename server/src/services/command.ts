@@ -224,7 +224,7 @@ export const getGuestAccessAlowedCommands = () => {
         const { description } = require(`./${modelName?.toLowerCase()}`);
         if (description) {
           Object.keys(description).map((c) => {
-            description[c].access && guestAllowedCommands.push(`${col}.${c}`);
+            description[c].access === 'public' && guestAllowedCommands.push(`${col}.${c}`);
           });
         }
       }
