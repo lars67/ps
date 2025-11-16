@@ -54,14 +54,15 @@ export type ReportRowType = {
 type HoldingsMap = Record<string, { volume: number; currency: string; investedValue: number; investedValueInTradeCurrency: number }>; // Added investedValueInTradeCurrency to track cost basis in original currency
 
 export async function debug(
-  params: { args: { portfolioId: string; fee?: number; granularity?: "day" | "trade"; from?: string; till?: string; exportToCsv?: boolean; fileName?: string; includeSummaries?: boolean } },
-  sendResponse: (data: any) => void, // Changed from (data: any, msgId: string, userModif: string) to (data: any) as these are not used within the function
-  msgId: string, // Kept to satisfy type although not directly used in the function logic
-  userModif: string, // Kept to satisfy type although not directly used in the function logic
+  params: { [key: string]: any },
+  sendResponse: (data: any) => void,
+  msgId: string,
+  userModif: string,
   userData: UserData,
 ): Promise<ReportRowType[] | { filePath: string } | ErrorType> {
   try {
-    const { portfolioId, fee, granularity, from, till, exportToCsv, fileName = `portfolio_debug_report_${moment().format('YYYYMMDD_HHmmss')}.csv`, includeSummaries = true } = params.args;
+    const effectiveParams = params.args || params;
+    const { portfolioId, fee, granularity, from, till, exportToCsv, fileName = `portfolio_debug_report_${moment().format('YYYYMMDD_HHmmss')}.csv`, includeSummaries = true } = effectiveParams;
     if (!portfolioId) {
       return { error: "Portfolio ID is required" };
     }
