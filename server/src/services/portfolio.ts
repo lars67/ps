@@ -423,5 +423,13 @@ export const description: CommandDescription = {
       granularity: "day", // or "trade"
     }),
     access: "member", // Assuming this will be a member-access command
+  },
+  list: {
+    label: "List Portfolios",
+    value: JSON.stringify({
+      command: "portfolios.list",
+      filter: {},
+    }),
+    access: "public",
   }
 };
