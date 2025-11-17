@@ -91,6 +91,14 @@ export async function history(
       }
     } else {
       console.log(`Force refresh requested for portfolio ${_id}`);
+      // Clear existing cached history data when force refresh is requested
+      try {
+        await PortfolioHistoryService.deleteHistory(_id);
+        console.log(`Cleared existing history cache for portfolio ${_id} during force refresh`);
+      } catch (deleteError) {
+        console.warn(`Failed to clear existing history cache for portfolio ${_id}:`, deleteError);
+        // Continue with calculation even if clear fails
+      }
     }
     const toNumLocal = (n: number | null | undefined) => toNum({ n: n ?? 0, precision });
     const withDetail = Number(detail) !== 0;
