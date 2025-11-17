@@ -81,7 +81,7 @@ export async function autobookDividends(
           rate: 1, // Will be auto-calculated based on currency
           tradeTime: paymentDate,
           tradeType: 'dividends', // Required by PutCash type
-          description: `Auto-booked dividend: ${dividend.symbol} (${dividend.amount} × ${dividend.volume} shares owned on ${dividend.paymentDate})`,
+          description: `[${dividend.symbol}] Dividend`,
           fee: 0,
           userId: userId || portfolio.userId
         };

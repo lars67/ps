@@ -43,6 +43,9 @@ async function processPortfolioDividends(portfolioId) {
 
     console.log('\n🏃 Checking for new dividends...');
 
+    // For newly created portfolios, temporarily reset lastDividendCheck to process all historical dividends
+    await PortfolioModel.findByIdAndUpdate(portfolioId, { lastDividendCheck: new Date('2020-01-01') });
+
     // Run the normal dividend check process (same as the daily cron job)
     const checkResult = await checkPortfolioDividends(portfolioId);
 
