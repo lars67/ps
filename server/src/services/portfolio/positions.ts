@@ -791,7 +791,7 @@ export async function positions(
         const result = pos?.result || 0;
         return sum + (marketValue - investedFull - result);
       }, 0);
-      const totalReturn = trading + passive;
+      const totalReturn = trading + passive + currencyChanges;
 
       changes.push({
         symbol: "ATTRIBUTION",
