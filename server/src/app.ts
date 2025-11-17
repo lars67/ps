@@ -298,6 +298,28 @@ app.get("/countries", async (req, res) => {
   res.json(getAllCountries());
 });
 
+app.post("/run-dividend-job", async (req, res) => {
+  console.log("Manual dividend job triggered via API");
+
+  try {
+    const stats = await dividendCronJob.runNow();
+    console.log("Manual dividend job completed:", stats);
+
+    res.json({
+      success: true,
+      message: "Dividend job completed manually",
+      stats: stats
+    });
+  } catch (error) {
+    console.error("Manual dividend job failed:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    res.status(500).json({
+      success: false,
+      error: errorMessage
+    });
+  }
+});
+
 
 app.post("/clear-cookie", (req, res) => {
   res.clearCookie("ps2token", {
