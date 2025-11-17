@@ -46,6 +46,15 @@ export class PortfolioHistoryCache {
       if (isDataFresh) {
         // Data is fresh, return it immediately
         historyData = await PortfolioHistoryService.getHistory(portfolioId, from, till);
+
+        // Validate that cached data is not all zeros (indicates calculation error)
+        const hasValidData = this.validateCachedData(historyData);
+        if (!hasValidData) {
+          console.warn(`Cached data for portfolio ${portfolioId} appears to be all zeros, forcing recalculation`);
+          // Force recalculation by falling through to background logic
+          return await this.forceRecalculate(portfolioId, from, till);
+        }
+
         return {
           days: historyData,
           cached: true,
@@ -53,8 +62,15 @@ export class PortfolioHistoryCache {
           metadata
         };
       } else {
-        // Data is stale, but return what we have and trigger background refresh
+        // Data is stale, return what we have and trigger background refresh
         historyData = await PortfolioHistoryService.getHistory(portfolioId, from, till);
+
+        // Validate that stale cached data is not all zeros
+        const hasValidData = this.validateCachedData(historyData);
+        if (!hasValidData) {
+          console.warn(`Stale cached data for portfolio ${portfolioId} appears to be all zeros, forcing fresh calculation`);
+          return await this.forceRecalculate(portfolioId, from, till);
+        }
 
         // Trigger background refresh (don't await)
         this.triggerBackgroundRefresh(portfolioId).catch(err => {
@@ -384,6 +400,74 @@ export class PortfolioHistoryCache {
     } catch (error) {
       console.error('Error getting cache statistics:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Validate that cached data is not all zeros (indicates calculation error)
+   */
+  private static validateCachedData(historyData: PortfolioHistoryDay[]): boolean {
+    if (!historyData || historyData.length === 0) {
+      return true; // Empty data is valid (no trades case)
+    }
+
+    // Check if all days have zero values for key metrics
+    const allZeroDays = historyData.filter(day =>
+      day.invested === 0 &&
+      day.cash === 0 &&
+      day.nav === 0
+    );
+
+    // If more than 90% of days are zero, consider it invalid
+    const zeroThreshold = Math.floor(historyData.length * 0.9);
+    return allZeroDays.length <= zeroThreshold;
+  }
+
+  /**
+   * Force immediate recalculation when cached data appears invalid
+   */
+  private static async forceRecalculate(
+    portfolioId: string,
+    from?: string,
+    till?: string
+  ): Promise<{
+    days: PortfolioHistoryDay[];
+    cached: boolean;
+    cacheAge?: number;
+    metadata?: PortfolioHistoryMetadata;
+  }> {
+    try {
+      console.log(`Forcing immediate recalculation for portfolio ${portfolioId}`);
+
+      // Call the main history function directly (bypassing cache)
+      const { history } = await import('./history');
+
+      // Use default user context for forced recalculation
+      const userData = { userId: '', role: 'admin', login: 'admin' };
+
+      const result = await history(
+        { _id: portfolioId, from, till, forceRefresh: true },
+        async (response: any) => response,
+        'forced-recalc',
+        '',
+        userData
+      ) as { days?: PortfolioHistoryDay[], metadata?: PortfolioHistoryMetadata };
+
+      return {
+        days: result.days || [],
+        cached: false, // Indicate this is freshly calculated
+        cacheAge: 0,
+        metadata: result.metadata
+      };
+
+    } catch (error) {
+      console.error(`Failed to force recalculation for portfolio ${portfolioId}:`, error);
+
+      // Return empty result on failure - client can handle gracefully
+      return {
+        days: [],
+        cached: false
+      };
     }
   }
 
