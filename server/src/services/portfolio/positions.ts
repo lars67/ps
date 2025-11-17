@@ -1108,26 +1108,20 @@ async function getPositions(
       case "20": //Dividends = "20",
           console.log('DIIIIIIIIIIIIIIIIIIIIIIv',oldPortfolio,trade.symbol);
         const dividendPriceAdj = trade.currency === 'GBX' ? trade.price / 100 : trade.price;
-        const dividendPerShareVol = (oldPortfolio[trade.symbol] as Trade)?.volume || 1;
         if (!dividends[trade.symbol]) {
-          dividends[trade.symbol] =
-            dividendPriceAdj *  dividendPerShareVol;
+          dividends[trade.symbol] = dividendPriceAdj;
         } else {
-          dividends[trade.symbol] +=
-            dividendPriceAdj *  dividendPerShareVol;
+          dividends[trade.symbol] += dividendPriceAdj;
         }
         if (!cashes[trade.currency]) {
-          cashes[trade.currency] =
-            dividendPriceAdj * dividendPerShareVol;// * trade.rate;
+          cashes[trade.currency] = dividendPriceAdj;// * trade.rate;
         } else {
-          cashes[trade.currency] +=
-            dividendPriceAdj * dividendPerShareVol ;//trade.rate *
+          cashes[trade.currency] += dividendPriceAdj;//trade.rate *
         }
         console.log(
           "dividends:",
           trade.price,
           trade.rate,
-          dividendPerShareVol,
           dividends,
         );
         break;
