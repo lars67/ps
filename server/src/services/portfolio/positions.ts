@@ -121,6 +121,7 @@ type Params = {
   eventName?: string;
   closed?: string;
   includeAttribution?: boolean;
+  totalsMode?: string;
 };
 
 export type RealizedData = {
@@ -140,6 +141,7 @@ export async function positions(
     changes,
     eventName: SSEEventName,
     includeAttribution = false,
+    totalsMode = "all",
   }: Params,
   sendResponse: (data?: object) => void,
   msgId: string,
@@ -619,7 +621,7 @@ export async function positions(
     return changes;
   };
 
-  const calcChanges = (data: object, includeAttribution: boolean = false) => {
+  const calcChanges = (data: object, includeAttribution: boolean = false, totalsMode: string = "all", isInitialSnapshot: boolean = false) => {
     let changes = processQuoteData(data as QuoteData[]);
     console.log("calcChanges ==>", changes);
     if (changes.length === 0) {
@@ -640,23 +642,24 @@ export async function positions(
       0,
     );
 
-    /*const realized = Object.keys(portfolioPositions).reduce(
-        (sum, symbol) => sum + Number(portfolioPositions[symbol].realized),
-        0,
-    );*/
-    //weights add to portfolioPositions
-    Object.keys(portfolioPositions).forEach((symbol) => {
-      let change = changes.find((c) => c.symbol === symbol);
-      if (!change) {
-        change = { symbol } as PortfolioPositionFull;
-        changes.push(change);
-      }
-      (change as PortfolioPositionFull).weight =
-        Math.round(
-          (10000 * Number(portfolioPositions[symbol].marketValue)) /
-            marketValue,
-        ) / 100;
-    });
+    // Always include weights for initial snapshot, respect totalsMode for updates
+    if (totalsMode === "none" && !isInitialSnapshot) {
+      // Skip weights calculation completely for maximum performance on updates
+    } else {
+      //weights add to portfolioPositions
+      Object.keys(portfolioPositions).forEach((symbol) => {
+        let change = changes.find((c) => c.symbol === symbol);
+        if (!change) {
+          change = { symbol } as PortfolioPositionFull;
+          changes.push(change);
+        }
+        (change as PortfolioPositionFull).weight =
+          Math.round(
+            (10000 * Number(portfolioPositions[symbol].marketValue)) /
+              marketValue,
+          ) / 100;
+      });
+    }
     //console.log('changes', changes)
     switch (closed) {
       case "no":
@@ -675,86 +678,103 @@ export async function positions(
         break;
     }
 
-    summationTotal(
-      changes as PortfolioPositionFull[],
-      currencyInvested,
-      "currencyTotal",
-    );
-    //region -> subregion
-    let changesReg: PortfolioPositionFull[] = [];
-    summationTotal(changesReg, regionInvested, "regionTotal");
-    let changesSubReg: PortfolioPositionFull[] = [];
-    summationTotal(changesSubReg, subRegionInvested, "subregionTotal");
-    let changesCountry: PortfolioPositionFull[] = [];
-    summationTotal(changesCountry, countryInvested, "countryTotal");
+    // Initial snapshot always includes all totals for page rendering
+    // Subsequent updates respect totalsMode for performance
+    if (isInitialSnapshot || totalsMode === "all") {
+      summationTotal(
+        changes as PortfolioPositionFull[],
+        currencyInvested,
+        "currencyTotal",
+      );
+      //region -> subregion
+      let changesReg: PortfolioPositionFull[] = [];
+      summationTotal(changesReg, regionInvested, "regionTotal");
+      let changesSubReg: PortfolioPositionFull[] = [];
+      summationTotal(changesSubReg, subRegionInvested, "subregionTotal");
+      let changesCountry: PortfolioPositionFull[] = [];
+      summationTotal(changesCountry, countryInvested, "countryTotal");
 
-    changesReg.forEach((reg) => {
-      const regionName = reg.name.split("_").pop() as string;
-      const subRegs = getSubRegions(regionName).map((n) => `TOTAL_${n}`);
-      //console.log("subRegs", subRegs);
-      changesSubReg
-        .filter((s) => subRegs.includes(s.name))
-        .forEach((subReg) => {
-          const subregionName = subReg.name.split("_").pop() as string;
+      changesReg.forEach((reg) => {
+        const regionName = reg.name.split("_").pop() as string;
+        const subRegs = getSubRegions(regionName).map((n) => `TOTAL_${n}`);
+        //console.log("subRegs", subRegs);
+        changesSubReg
+          .filter((s) => subRegs.includes(s.name))
+          .forEach((subReg) => {
+            const subregionName = subReg.name.split("_").pop() as string;
 
-          const countries = getCountries(subregionName).map(
-            (n) => `TOTAL_${n}`,
-          );
-          changes.push(
-            ...changesCountry.filter((c) => countries.includes(c.name)),
-          );
-          changes.push(subReg);
+            const countries = getCountries(subregionName).map(
+              (n) => `TOTAL_${n}`,
+            );
+            changes.push(
+              ...changesCountry.filter((c) => countries.includes(c.name)),
+            );
+            changes.push(subReg);
+          });
+        //changes.push(...changesSubReg.filter((s) => subRegs.includes(s.name)));
+        changes.push(reg);
+      });
+      //let changesCountry: PortfolioPositionFull[] = [];
+      // summationTotal(changes, countryInvested, "countryTotal");
+      //sector->industry
+      const sectorIndustryMap = {} as Record<string, Set<string>>;
+      Object.values(portfolioPositions)
+        .filter((p) => !(p as PortfolioPositionFull).totalType)
+        .forEach(({ sector, industry }) => {
+          if (sector && industry) {
+            if (!sectorIndustryMap[sector]) sectorIndustryMap[sector] = new Set();
+            sectorIndustryMap[sector].add(industry);
+          }
         });
-      //changes.push(...changesSubReg.filter((s) => subRegs.includes(s.name)));
-      changes.push(reg);
-    });
-    //let changesCountry: PortfolioPositionFull[] = [];
-    // summationTotal(changes, countryInvested, "countryTotal");
-    //sector->industry
-    const sectorIndustryMap = {} as Record<string, Set<string>>;
-    Object.values(portfolioPositions)
-      .filter((p) => !(p as PortfolioPositionFull).totalType)
-      .forEach(({ sector, industry }) => {
-        if (sector && industry) {
-          if (!sectorIndustryMap[sector]) sectorIndustryMap[sector] = new Set();
-          sectorIndustryMap[sector].add(industry);
-        }
+
+      //console.log("sectorIndustryMap", sectorIndustryMap);
+      let changesSec: PortfolioPositionFull[] = [];
+      summationTotal(changesSec, sectorInvested, "sectorTotal");
+      let changesInd: PortfolioPositionFull[] = [];
+      summationTotal(changesInd, industryInvested, "industryTotal");
+      changesSec.forEach((reg) => {
+        const aname = reg.name.split("_").pop() || "";
+        //console.log("aname=", aname, sectorIndustryMap[aname]);
+        const indRegs = sectorIndustryMap[aname]
+          ? Array.from(sectorIndustryMap[aname]).map((n) => `TOTAL_${n}`)
+          : [];
+        //console.log("indRegs", indRegs);
+        changes.push(...changesInd.filter((s) => indRegs.includes(s.name)));
+        changes.push(reg);
       });
 
-    //console.log("sectorIndustryMap", sectorIndustryMap);
-    let changesSec: PortfolioPositionFull[] = [];
-    summationTotal(changesSec, sectorInvested, "sectorTotal");
-    let changesInd: PortfolioPositionFull[] = [];
-    summationTotal(changesInd, industryInvested, "industryTotal");
-    changesSec.forEach((reg) => {
-      const aname = reg.name.split("_").pop() || "";
-      //console.log("aname=", aname, sectorIndustryMap[aname]);
-      const indRegs = sectorIndustryMap[aname]
-        ? Array.from(sectorIndustryMap[aname]).map((n) => `TOTAL_${n}`)
-        : [];
-      //console.log("indRegs", indRegs);
-      changes.push(...changesInd.filter((s) => indRegs.includes(s.name)));
-      changes.push(reg);
-    });
+      summationTotal(
+        changes as PortfolioPositionFull[],
+        portfoliosInvested,
+        "portfoliosTotal",
+      );
 
-    summationTotal(
-      changes as PortfolioPositionFull[],
-      portfoliosInvested,
-      "portfoliosTotal",
-    );
+      changes.push({
+        symbol: "TOTAL",
+        name: "TOTAL",
+        investedFull: toNum({ n: investedPortfolio }),
+        investedFullSymbol: toNum({ n: investedPortfolio }),
 
-    changes.push({
-      symbol: "TOTAL",
-      name: "TOTAL",
-      investedFull: toNum({ n: investedPortfolio }),
-      investedFullSymbol: toNum({ n: investedPortfolio }),
+        marketValue: toNum({ n: marketValue }),
+        result: toNum({ n: result }),
+        todayResult: toNum({ n: todayResult }),
+        realized: toNum({ n: totalRealized }),
+        totalType: "total",
+      } as PortfolioPositionFull);
+    } else if (totalsMode === "minimal") {
+      changes.push({
+        symbol: "TOTAL",
+        name: "TOTAL",
+        investedFull: toNum({ n: investedPortfolio }),
+        investedFullSymbol: toNum({ n: investedPortfolio }),
 
-      marketValue: toNum({ n: marketValue }),
-      result: toNum({ n: result }),
-      todayResult: toNum({ n: todayResult }),
-      realized: toNum({ n: totalRealized }),
-      totalType: "total",
-    } as PortfolioPositionFull);
+        marketValue: toNum({ n: marketValue }),
+        result: toNum({ n: result }),
+        todayResult: toNum({ n: todayResult }),
+        realized: toNum({ n: totalRealized }),
+        totalType: "total",
+      } as PortfolioPositionFull);
+    }
 
     if (includeAttribution) {
       const trading = result;
@@ -797,6 +817,8 @@ export async function positions(
     return changes;
   };
 
+  let isSubscriptionInitial = true;
+
   subscribers[userModif][msgId] = {
     sseService,
     handler: (data: object) => {
@@ -809,7 +831,7 @@ export async function positions(
       if (actualChanges.length === 0) {
         return;
       }
-      const changes = calcChanges(actualChanges, includeAttribution);
+      const changes = calcChanges(actualChanges, includeAttribution, totalsMode, isSubscriptionInitial);
       console.log(
         moment().format("HH:mm:ss SSS"),
         "subscriber SSE-> ",
@@ -820,6 +842,9 @@ export async function positions(
         changes?.length,
       );
       changes && sendResponse(changes);
+
+      // After first update, set to false so totalsMode is respected for performance
+      isSubscriptionInitial = false;
 
       if (socket.readyState === WebSocket.CLOSED) {
         if (!(socket as UserWebSocket).waitNum) {

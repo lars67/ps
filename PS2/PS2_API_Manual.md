@@ -311,6 +311,7 @@ Retrieves current portfolio positions with real-time market data and optional at
   "marketPrice": "4",
   "basePrice": "4",
   "closed": "no",
+  "totalsMode": "all",
   "includeAttribution": false
 }
 ```
@@ -324,6 +325,7 @@ Retrieves current portfolio positions with real-time market data and optional at
 | marketPrice      | Market price type (0-8, see below)                                         | No       | "4"     |
 | basePrice        | Base price type (0-8, see below)                                           | No       | "4"     |
 | closed           | Filter: "no" (open only), "only" (closed only), "all" (both)               | No       | "no"    |
+| totalsMode       | Totals inclusion mode: "all" (include all totals), "minimal" (main total only), "none" (no totals) | No       | "all"   |
 | includeAttribution | Include portfolio attribution breakdown (trading/passive/currency income) | No       | false   |
 
 **Price Types:**
