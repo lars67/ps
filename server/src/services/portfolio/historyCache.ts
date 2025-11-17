@@ -404,23 +404,59 @@ export class PortfolioHistoryCache {
   }
 
   /**
-   * Validate that cached data is not all zeros (indicates calculation error)
+   * Validate that cached data is not corrupted (checks for calculation errors)
    */
   private static validateCachedData(historyData: PortfolioHistoryDay[]): boolean {
     if (!historyData || historyData.length === 0) {
       return true; // Empty data is valid (no trades case)
     }
 
-    // Check if all days have zero values for key metrics
-    const allZeroDays = historyData.filter(day =>
-      day.invested === 0 &&
-      day.cash === 0 &&
-      day.nav === 0
+    // Check for data corruption indicators:
+    // 1. All records have identical values (indicates calculation loop error)
+    const firstDay = historyData[0];
+    const identicalRecords = historyData.filter(day =>
+      day.invested === firstDay.invested &&
+      day.cash === firstDay.cash &&
+      day.nav === firstDay.nav &&
+      day.index === firstDay.index &&
+      day.shares === firstDay.shares
     );
 
-    // If more than 90% of days are zero, consider it invalid
-    const zeroThreshold = Math.floor(historyData.length * 0.9);
-    return allZeroDays.length <= zeroThreshold;
+    // If more than 95% of records are identical, likely corrupted
+    if (identicalRecords.length > historyData.length * 0.95 && historyData.length > 5) {
+      console.warn(`Cached data appears corrupted: ${identicalRecords.length}/${historyData.length} identical records`);
+      return false;
+    }
+
+    // 2. Check for negative NAV values (should never happen in valid calculations)
+    const negativeNavRecords = historyData.filter(day => day.nav < 0);
+    if (negativeNavRecords.length > 0) {
+      console.warn(`Cached data contains ${negativeNavRecords.length} records with negative NAV values`);
+      return false;
+    }
+
+    // 3. Check for NaN or Infinity values
+    const invalidRecords = historyData.filter(day =>
+      !isFinite(day.invested) || !isFinite(day.cash) || !isFinite(day.nav) ||
+      !isFinite(day.index) || !isFinite(day.shares)
+    );
+    if (invalidRecords.length > 0) {
+      console.warn(`Cached data contains ${invalidRecords.length} records with invalid numeric values`);
+      return false;
+    }
+
+    // 4. Basic sanity check - NAV should roughly equal invested + cash
+    const navMismatchedRecords = historyData.filter(day => {
+      const expectedNav = day.invested + day.cash;
+      // Allow for small rounding errors (±1)
+      return Math.abs(day.nav - expectedNav) > 1;
+    });
+    if (navMismatchedRecords.length > historyData.length * 0.1) {
+      console.warn(`Cached data has NAV/invested+cash mismatch in ${navMismatchedRecords.length}/${historyData.length} records`);
+      return false;
+    }
+
+    return true;
   }
 
   /**
@@ -439,25 +475,25 @@ export class PortfolioHistoryCache {
     try {
       console.log(`Forcing immediate recalculation for portfolio ${portfolioId}`);
 
-      // Call the main history function directly (bypassing cache)
-      const { history } = await import('./history');
+      // Use the updateHistory method which handles recalculation properly
+      const updateResult = await this.updateHistory(portfolioId, from, true);
 
-      // Use default user context for forced recalculation
-      const userData = { userId: '', role: 'admin', login: 'admin' };
+      if (!updateResult.success) {
+        console.error(`Update failed during force recalculation: ${updateResult.error}`);
+        return { days: [], cached: false };
+      }
 
-      const result = await history(
-        { _id: portfolioId, from, till, forceRefresh: true },
-        async (response: any) => response,
-        'forced-recalc',
-        '',
-        userData
-      ) as { days?: PortfolioHistoryDay[], metadata?: PortfolioHistoryMetadata };
+      // Now fetch the freshly calculated data
+      const historyData = await PortfolioHistoryService.getHistory(portfolioId, from, till);
+      const metadata = await PortfolioHistoryService.getMetadata(portfolioId);
+
+      console.log(`Force recalculation completed for portfolio ${portfolioId} (${historyData.length} records)`);
 
       return {
-        days: result.days || [],
+        days: historyData,
         cached: false, // Indicate this is freshly calculated
         cacheAge: 0,
-        metadata: result.metadata
+        metadata: metadata || undefined
       };
 
     } catch (error) {

@@ -89,6 +89,7 @@ export class PortfolioHistoryService {
 
   /**
    * Delete history for a portfolio within a date range
+   * If no date range specified, deletes ALL history for the portfolio
    */
   static async deleteHistory(
     portfolioId: string,
@@ -102,10 +103,15 @@ export class PortfolioHistoryService {
         query.date = {};
         if (from) query.date.$gte = from;
         if (till) query.date.$lte = till;
+      } else {
+        // If no date range specified, delete ALL records for this portfolio
+        console.log(`Deleting ALL history records for portfolio ${portfolioId}`);
       }
 
       const result = await PortfolioHistoryModel.deleteMany(query);
-      return result.deletedCount || 0;
+      const deletedCount = result.deletedCount || 0;
+      console.log(`Deleted ${deletedCount} history records for portfolio ${portfolioId}`);
+      return deletedCount;
     } catch (error) {
       console.error(`Error deleting history for ${portfolioId}:`, error);
       throw error;

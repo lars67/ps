@@ -1,5 +1,5 @@
 import moment from "moment";
-import { Trade, TradeTypes } from "../../types/trade";
+import { Trade, TradeTypes, TradeSide } from "../../types/trade";
 import { Portfolio } from "../../types/portfolio";
 import { UserData } from "../../services/websocket";
 import { getPortfolioTrades } from "../../utils/portfolio";
@@ -93,8 +93,8 @@ export async function history(
       console.log(`Force refresh requested for portfolio ${_id}`);
       // Clear existing cached history data when force refresh is requested
       try {
-        await PortfolioHistoryService.deleteHistory(_id);
-        console.log(`Cleared existing history cache for portfolio ${_id} during force refresh`);
+        const deletedCount = await PortfolioHistoryService.deleteHistory(_id);
+        console.log(`Cleared existing history cache for portfolio ${_id} during force refresh (${deletedCount} records deleted)`);
       } catch (deleteError) {
         console.warn(`Failed to clear existing history cache for portfolio ${_id}:`, deleteError);
         // Continue with calculation even if clear fails
@@ -223,14 +223,28 @@ export async function history(
                 cash += cashChange;
                 break;
             case TradeTypes.Cash:
+                // Cash operations directly affect cash balance
+                // For PUT operations (deposits), price is the amount deposited
+                // For WITHDRAW operations, price is the amount withdrawn (negative)
+                if (trade.side === "P" || trade.side === TradeSide.PUT) {
+                    // Deposit - add to cash
+                    cash += trade.price * rate + (trade.fee || 0) * rate;
+                } else if (trade.side === "W" || trade.side === TradeSide.WITHDRAW) {
+                    // Withdrawal - subtract from cash
+                    cash -= trade.price * rate + (trade.fee || 0) * rate;
+                }
+                break;
             case TradeTypes.Dividends:
+                // Dividends: price field contains total dividend amount received
+                const dividendAmount = trade.price * rate + (trade.fee || 0) * rate;
+                cash += dividendAmount;
+                break;
             case TradeTypes.Investment:
-                const cashPut = (trade.price * rate * (trade.tradeType === TradeTypes.Dividends ? (currentHoldings[trade.symbol]?.volume || 1) : 1)) + (trade.fee * rate); // Check fee logic
-                cash += cashPut;
+                // Investment operations can affect cash and/or shares
+                const investmentAmount = trade.price * rate + (trade.fee || 0) * rate;
+                cash += investmentAmount; // Assuming positive investment adds cash
                 if (trade.shares) {
                     shares += trade.shares;
-                } else if (trade.tradeType === TradeTypes.Investment) {
-                    shares += 1; // Default share increase?
                 }
                 break;
         }
@@ -321,25 +335,61 @@ export async function history(
                         }
                         break;
                     case TradeTypes.Cash:
+                        // Cash operations directly affect cash balance
+                        if (trade.side === "P" || trade.side === TradeSide.PUT) {
+                            // Deposit - add to cash
+                            cash += trade.price * tradeRate + (trade.fee || 0) * tradeRate;
+                        } else if (trade.side === "W" || trade.side === TradeSide.WITHDRAW) {
+                            // Withdrawal - subtract from cash
+                            cash -= trade.price * tradeRate + (trade.fee || 0) * tradeRate;
+                        }
+
+                        if (withDetail) {
+                            currentTradeDetail = {
+                                operation: trade.side === "P" || trade.side === TradeSide.PUT ? "DEPOSIT" : "WITHDRAWAL",
+                                tradeTime: trade.tradeTime,
+                                currency: trade.currency,
+                                amount: trade.price,
+                                rate: tradeRate,
+                                cash: toNumLocal(cash),
+                            };
+                        }
+                        break;
                     case TradeTypes.Dividends:
+                        // Dividends: price field typically contains total dividend amount received
+                        // (not per-share rate, despite the description showing per-share calculation)
+                        const dividendAmount = trade.price * tradeRate + (trade.fee || 0) * tradeRate;
+                        cash += dividendAmount;
+
+                        if (withDetail) {
+                            currentTradeDetail = {
+                                operation: "DIVIDEND",
+                                tradeTime: trade.tradeTime,
+                                currency: trade.currency,
+                                symbol: trade.symbol,
+                                amount: trade.price,
+                                rate: tradeRate,
+                                cash: toNumLocal(cash),
+                            };
+                        }
+                        break;
                     case TradeTypes.Investment:
-                        const dividendMultiplier = (trade.tradeType === TradeTypes.Dividends ? (currentHoldings[trade.symbol]?.volume || 1) : 1);
-                        const cashPut = (trade.price * tradeRate * dividendMultiplier) + (trade.fee * tradeRate); // Check fee logic
-                        cash += cashPut;
+                        // Investment operations can affect cash and/or shares
+                        const investmentAmount = trade.price * tradeRate + (trade.fee || 0) * tradeRate;
+                        cash += investmentAmount;
                         let sharesAdded = 0;
                         if (trade.shares) {
                             sharesAdded = trade.shares;
-                        } else if (trade.tradeType === TradeTypes.Investment) {
-                            sharesAdded = 1;
                         }
                         shares += sharesAdded;
 
                         if (withDetail) {
-                             currentTradeDetail = {
-                                operation: "PUT",
+                            currentTradeDetail = {
+                                operation: "INVESTMENT",
                                 tradeTime: trade.tradeTime,
                                 currency: trade.currency,
                                 shares: sharesAdded,
+                                amount: trade.price,
                                 rate: tradeRate,
                                 cash: toNumLocal(cash),
                             };
