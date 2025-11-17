@@ -68,20 +68,37 @@ export async function autobookDividends(
         // Calculate total dividend amount (per share × volume at payment date)
         const totalAmount = dividend.amount * dividend.volume;
 
-        // Prepare dividend booking parameters
         // Format paymentDate as ISO string without timezone for tradeTime
         // The system expects: YYYY-MM-DDTHH:mm:ss.sss (no Z)
         const paymentDate = moment(dividend.paymentDate).format('YYYY-MM-DDTHH:mm:ss.SSS');
+
+        // Determine currency - use same currency as the original trade, not API data
+        let tradeCurrency = dividend.currency; // fallback
+        try {
+          const { TradeModel } = await import('../../models/trade');
+          const lastTrade = await TradeModel.findOne({
+            portfolioId,
+            symbol: dividend.symbol,
+            side: 'B', // Buy trades
+          }).sort({ tradeTime: -1 }); // Most recent buy
+
+          if (lastTrade?.currency) {
+            tradeCurrency = lastTrade.currency;
+            logger.log(`Using trading currency ${tradeCurrency} for ${dividend.symbol} dividend`);
+          }
+        } catch (error) {
+          logger.warn(`Could not determine trading currency for ${dividend.symbol}: ${(error as Error).message}`);
+        }
 
         const dividendParams = {
           portfolioId,
           symbol: dividend.symbol,
           amount: totalAmount.toString(),
-          currency: dividend.currency,
-          rate: 1, // Will be auto-calculated based on currency
+          currency: tradeCurrency,
+          rate: tradeCurrency === portfolio.currency ? 1 : 0, // 1 for same currency, 0 to trigger auto-calculation
           tradeTime: paymentDate,
           tradeType: 'dividends', // Required by PutCash type
-          description: `[${dividend.symbol}] Dividend`,
+          description: `${dividend.volume} ${dividend.symbol} x ${dividend.amount}`,
           fee: 0,
           userId: userId || portfolio.userId
         };
