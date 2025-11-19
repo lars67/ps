@@ -1,4 +1,5 @@
 import {
+  AutoComplete,
   Button,
   Checkbox,
   Col,
@@ -7,7 +8,8 @@ import {
   Form,
   Input,
   message,
-  Row, Select,
+  Row,
+  Select,
   theme,
   Typography,
 } from 'antd';
@@ -20,14 +22,65 @@ import { Logo } from '../../components';
 import { useMediaQuery } from 'react-responsive';
 import {PATH_AUTH, PATH_CONSOLE} from '../../constants';
 import { useNavigate } from 'react-router-dom';
-import {useEffect, useState} from 'react';
+import {useState} from 'react';
 import {authLoginThunk, authSignUpThunk, UserState} from "../../store";
 import {useAppDispatch} from "../../store/useAppDispatch";
 import {PATH_LOGIN} from "../../constants/routes";
 import { Link as Link2 } from 'react-router-dom'
 import ReactCountryFlag from 'react-country-flag';
-import {safeFetch} from "../../utils/safeFetch";
+
 const { Title, Text, Link } = Typography;
+
+const countryOptions = [
+  { value: 'Afghanistan', label: <><ReactCountryFlag countryCode='AF' svg /> Afghanistan</> },
+  { value: 'Albania', label: <><ReactCountryFlag countryCode='AL' svg /> Albania</> },
+  { value: 'Algeria', label: <><ReactCountryFlag countryCode='DZ' svg /> Algeria</> },
+  { value: 'Argentina', label: <><ReactCountryFlag countryCode='AR' svg /> Argentina</> },
+  { value: 'Australia', label: <><ReactCountryFlag countryCode='AU' svg /> Australia</> },
+  { value: 'Austria', label: <><ReactCountryFlag countryCode='AT' svg /> Austria</> },
+  { value: 'Bangladesh', label: <><ReactCountryFlag countryCode='BD' svg /> Bangladesh</> },
+  { value: 'Belgium', label: <><ReactCountryFlag countryCode='BE' svg /> Belgium</> },
+  { value: 'Brazil', label: <><ReactCountryFlag countryCode='BR' svg /> Brazil</> },
+  { value: 'Canada', label: <><ReactCountryFlag countryCode='CA' svg /> Canada</> },
+  { value: 'China', label: <><ReactCountryFlag countryCode='CN' svg /> China</> },
+  { value: 'Denmark', label: <><ReactCountryFlag countryCode='DK' svg /> Denmark</> },
+  { value: 'Egypt', label: <><ReactCountryFlag countryCode='EG' svg /> Egypt</> },
+  { value: 'Finland', label: <><ReactCountryFlag countryCode='FI' svg /> Finland</> },
+  { value: 'France', label: <><ReactCountryFlag countryCode='FR' svg /> France</> },
+  { value: 'Germany', label: <><ReactCountryFlag countryCode='DE' svg /> Germany</> },
+  { value: 'Greece', label: <><ReactCountryFlag countryCode='GR' svg /> Greece</> },
+  { value: 'India', label: <><ReactCountryFlag countryCode='IN' svg /> India</> },
+  { value: 'Indonesia', label: <><ReactCountryFlag countryCode='ID' svg /> Indonesia</> },
+  { value: 'Ireland', label: <><ReactCountryFlag countryCode='IE' svg /> Ireland</> },
+  { value: 'Italy', label: <><ReactCountryFlag countryCode='IT' svg /> Italy</> },
+  { value: 'Japan', label: <><ReactCountryFlag countryCode='JP' svg /> Japan</> },
+  { value: 'Jordan', label: <><ReactCountryFlag countryCode='JO' svg /> Jordan</> },
+  { value: 'Kenya', label: <><ReactCountryFlag countryCode='KE' svg /> Kenya</> },
+  { value: 'Luxembourg', label: <><ReactCountryFlag countryCode='LU' svg /> Luxembourg</> },
+  { value: 'Mexico', label: <><ReactCountryFlag countryCode='MX' svg /> Mexico</> },
+  { value: 'Morocco', label: <><ReactCountryFlag countryCode='MA' svg /> Morocco</> },
+  { value: 'Netherlands', label: <><ReactCountryFlag countryCode='NL' svg /> Netherlands</> },
+  { value: 'New Zealand', label: <><ReactCountryFlag countryCode='NZ' svg /> New Zealand</> },
+  { value: 'Norway', label: <><ReactCountryFlag countryCode='NO' svg /> Norway</> },
+  { value: 'Pakistan', label: <><ReactCountryFlag countryCode='PK' svg /> Pakistan</> },
+  { value: 'Philippines', label: <><ReactCountryFlag countryCode='PH' svg /> Philippines</> },
+  { value: 'Poland', label: <><ReactCountryFlag countryCode='PL' svg /> Poland</> },
+  { value: 'Portugal', label: <><ReactCountryFlag countryCode='PT' svg /> Portugal</> },
+  { value: 'Russia', label: <><ReactCountryFlag countryCode='RU' svg /> Russia</> },
+  { value: 'Saudi Arabia', label: <><ReactCountryFlag countryCode='SA' svg /> Saudi Arabia</> },
+  { value: 'South Africa', label: <><ReactCountryFlag countryCode='ZA' svg /> South Africa</> },
+  { value: 'South Korea', label: <><ReactCountryFlag countryCode='KR' svg /> South Korea</> },
+  { value: 'Spain', label: <><ReactCountryFlag countryCode='ES' svg /> Spain</> },
+  { value: 'Sweden', label: <><ReactCountryFlag countryCode='SE' svg /> Sweden</> },
+  { value: 'Switzerland', label: <><ReactCountryFlag countryCode='CH' svg /> Switzerland</> },
+  { value: 'Thailand', label: <><ReactCountryFlag countryCode='TH' svg /> Thailand</> },
+  { value: 'Turkey', label: <><ReactCountryFlag countryCode='TR' svg /> Turkey</> },
+  { value: 'Ukraine', label: <><ReactCountryFlag countryCode='UA' svg /> Ukraine</> },
+  { value: 'United Arab Emirates', label: <><ReactCountryFlag countryCode='AE' svg /> United Arab Emirates</> },
+  { value: 'United Kingdom', label: <><ReactCountryFlag countryCode='GB' svg /> United Kingdom</> },
+  { value: 'United States', label: <><ReactCountryFlag countryCode='US' svg /> United States</> },
+  { value: 'Vietnam', label: <><ReactCountryFlag countryCode='VN' svg /> Vietnam</> },
+];
 
 type FieldType = {
   login?: string;
@@ -37,10 +90,6 @@ type FieldType = {
   terms?: boolean;
 };
 
-interface CountryA2Type  {
-  name: string;
-  a2: string;
-}
 const SignUpPage = () => {
   const {
     token: { colorPrimary },
@@ -49,7 +98,6 @@ const SignUpPage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
-  const [countries, setCountries] = useState<CountryA2Type[] | []>([])
   const dispatch = useAppDispatch();
   const onFinish = async (values: any) => {
     console.log('Success:', values);
@@ -84,19 +132,6 @@ const SignUpPage = () => {
 
   };
 
-  useEffect(()=> {
-     safeFetch<CountryA2Type[]>("countries", {method:'GET'})
-         .then ((response)=> {
-           if (response.success && response.data) {
-             setCountries(response.data);
-           } else {
-             console.error('Error fetching countries:', response.error);
-           }
-         })
-         .catch(error => {
-           console.error('Error fetching countries:', error);
-         });
-    }, [])
   const onFinishFailed = (errorInfo: any) => {
     console.log('Failed:', errorInfo);
   };
@@ -275,17 +310,17 @@ const SignUpPage = () => {
                   rules={[
                     {
                       required: true,
-                      message: 'Please select your country!',
+                      message: 'Please input your country!',
                     },
                   ]}
               >
-                <Select placeholder="Select your country">
-                  {countries && countries.map((country) => (
-                      <Select.Option key={country.a2} value={country.name}>
-                        <ReactCountryFlag countryCode={country.a2} svg /> {country.name}
-                      </Select.Option>
-                  ))}
-                </Select>
+                <AutoComplete
+                  placeholder="Type or select your country"
+                  options={countryOptions}
+                  filterOption={(inputValue, option) =>
+                    (option?.value as string).toUpperCase().includes(inputValue.toUpperCase())
+                  }
+                />
               </Form.Item>
             </Col>
 
