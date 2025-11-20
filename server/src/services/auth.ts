@@ -53,10 +53,10 @@ export async function signup(data: User): Promise<User | ErrorType> {
     const salt = await bcrypt.genSalt(10);
     const epassword =  await bcrypt.hash(password, salt);
     const signupData = {...data, password: epassword, role:'member'};
-    console.log(`[signup] Creating user with data:`, { ...signupData, password: '[REDACTED]' });
+    console.log(`[signup] Source field present:`, !!signupData.source);
     const newDoc = new UserModel(signupData);
     const added = await newDoc.save();
-    console.log(`[signup] User saved successfully:`, added._id);
+    console.log(`[signup] Saved document source:`, added.source);
     return added;
   } catch (err) {
      console.log('[signup] Error:', err);
