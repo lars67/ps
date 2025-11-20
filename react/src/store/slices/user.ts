@@ -13,7 +13,8 @@ export interface UserState {
   lastName?: string,
   accountNumber?: string,
   telephone?: string,
-  country?: string
+  country?: string,
+  source?: string
 }
 
 const initialState: UserState = {
@@ -81,7 +82,8 @@ export const authSignUpThunk = createAsyncThunk(
             lastName: payload.lastName ,
             accountNumber: payload.accountNumber,
             telephone: payload.telephone,
-            country: payload.country
+            country: payload.country,
+            source: payload.source
           }),
         );
       };

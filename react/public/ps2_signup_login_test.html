@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PS2 Signup and Login Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="password"], input[type="email"], select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        button.disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        button:hover:not(.disabled) {
+            background-color: #45a049;
+        }
+        .log {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 10px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .status {
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>PS2 Signup and Login Test</h1>
+
+        <div class="section">
+            <h2>1. Signup Test</h2>
+            <form id="signupForm">
+                <div class="form-group">
+                    <label for="login">Login (Username):</label>
+                    <input type="text" id="login" value="testuser" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" value="testpass123" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" value="test@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="firstName">First Name:</label>
+                    <input type="text" id="firstName" value="Test" required>
+                </div>
+                <div class="form-group">
+                    <label for="lastName">Last Name:</label>
+                    <input type="text" id="lastName" value="User" required>
+                </div>
+                <div class="form-group">
+                    <label for="accountNumber">Account Number:</label>
+                    <input type="text" id="accountNumber" value="1234567890" required pattern="^\d{10}$" title="Must be 10 digits">
+                </div>
+                <div class="form-group">
+                    <label for="telephone">Telephone:</label>
+                    <input type="text" id="telephone" value="+1234567890" required>
+                </div>
+                <div class="form-group">
+                    <label for="country">Country:</label>
+                    <input type="text" id="country" value="USA" required>
+                </div>
+                <div class="form-group">
+                    <label for="source">Source:</label>
+                    <input type="text" id="source" value="test-page" required>
+                </div>
+                <button type="submit" id="signupBtn">Signup</button>
+            </form>
+        </div>
+
+        <div class="section" id="loginSection" style="display: none;">
+            <h2>2. Login Test</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="loginUser">Username:</label>
+                    <input type="text" id="loginUser" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="loginPass">Password:</label>
+                    <input type="password" id="loginPass" readonly>
+                </div>
+                <button type="submit" id="loginBtn">Login</button>
+            </form>
+        </div>
+
+        <div class="section">
+            <h2>Test Log</h2>
+            <div class="log" id="log"></div>
+        </div>
+    </div>
+
+    <script>
+        const logElement = document.getElementById('log');
+        let signupResponse = null;
+
+        // Default URLs - adjust as needed
+        const loginWSUrl = 'wss://localhost:3331/ps2l/'; // HTTPS Login WebSocket URL
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            let className = '';
+            if (type === 'success') className = 'success';
+            if (type === 'error') className = 'error';
+            if (type === 'status') className = 'status';
+
+            logElement.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        // Signup function
+        function signup(userData) {
+            return new Promise((resolve, reject) => {
+                try {
+                    const ws = new WebSocket(loginWSUrl);
+
+                    ws.onopen = () => {
+                        log('Connected to signup WebSocket', 'success');
+                        const signupMsg = {
+                            cmd: "signup",
+                            login: userData.login,
+                            password: userData.password,
+                            email: userData.email,
+                            firstName: userData.firstName,
+                            lastName: userData.lastName,
+                            accountNumber: userData.accountNumber,
+                            telephone: userData.telephone,
+                            country: userData.country,
+                            source: userData.source
+                        };
+
+                        log('Sending signup request: ' + JSON.stringify(signupMsg, null, 2), 'status');
+                        ws.send(JSON.stringify(signupMsg));
+                    };
+
+                    ws.onmessage = (event) => {
+                        try {
+                            const response = JSON.parse(event.data);
+                            log('Signup response: ' + JSON.stringify(response, null, 2));
+                            ws.close();
+
+                            if (response.error) {
+                                reject(new Error(response.error));
+                            } else {
+                                log('Signup successful!', 'success');
+                                signupResponse = response;
+                                resolve(response);
+                            }
+                        } catch (e) {
+                            log('Error parsing response: ' + e.message, 'error');
+                            reject(e);
+                        }
+                    };
+
+                    ws.onerror = (error) => {
+                        log('WebSocket error during signup: ' + error, 'error');
+                        reject(new Error('WebSocket connection error'));
+                    };
+
+                    ws.onclose = (event) => {
+                        log('Signup WebSocket connection closed: ' + event.code + ' - ' + event.reason);
+                    };
+
+                } catch (error) {
+                    log('Exception creating signup WebSocket: ' + error.message, 'error');
+                    reject(error);
+                }
+            });
+        }
+
+        // Login function
+        function login(username, password) {
+            return new Promise((resolve, reject) => {
+                try {
+                    const ws = new WebSocket(loginWSUrl);
+
+                    ws.onopen = () => {
+                        log('Connected to login WebSocket', 'success');
+
+                        const loginMsg = {
+                            cmd: "login",
+                            login: username,
+                            password: password
+                        };
+
+                        log('Sending login request: ' + JSON.stringify(loginMsg, null, 2), 'status');
+                        ws.send(JSON.stringify(loginMsg));
+                    };
+
+                    ws.onmessage = (event) => {
+                        try {
+                            const response = JSON.parse(event.data);
+                            log('Login response: ' + JSON.stringify(response, null, 2));
+                            ws.close();
+
+                            if (response.error) {
+                                reject(new Error(response.error));
+                            } else {
+                                log('Login successful!', 'success');
+                                resolve(response);
+                            }
+                        } catch (e) {
+                            log('Error parsing login response: ' + e.message, 'error');
+                            reject(e);
+                        }
+                    };
+
+                    ws.onerror = (error) => {
+                        log('WebSocket error during login: ' + error, 'error');
+                        reject(new Error('WebSocket connection error'));
+                    };
+
+                    ws.onclose = (event) => {
+                        log('Login WebSocket connection closed: ' + event.code + ' - ' + event.reason);
+                    };
+
+                } catch (error) {
+                    log('Exception creating login WebSocket: ' + error.message, 'error');
+                    reject(error);
+                }
+            });
+        }
+
+        // Handle signup form
+        document.getElementById('signupForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const signupBtn = document.getElementById('signupBtn');
+            signupBtn.disabled = true;
+            signupBtn.classList.add('disabled');
+            signupBtn.textContent = 'Processing...';
+
+            const userData = {
+                login: document.getElementById('login').value,
+                password: document.getElementById('password').value,
+                email: document.getElementById('email').value,
+                firstName: document.getElementById('firstName').value,
+                lastName: document.getElementById('lastName').value,
+                accountNumber: document.getElementById('accountNumber').value,
+                telephone: document.getElementById('telephone').value,
+                country: document.getElementById('country').value,
+                source: document.getElementById('source').value
+            };
+
+            log('--- Starting Signup Process ---');
+
+            signup(userData)
+                .then(response => {
+                    // Show login section
+                    document.getElementById('loginSection').style.display = 'block';
+                    document.getElementById('loginUser').value = userData.login;
+                    document.getElementById('loginPass').value = userData.password;
+
+                    // Update button
+                    signupBtn.disabled = false;
+                    signupBtn.classList.remove('disabled');
+                    signupBtn.textContent = 'Signup';
+                })
+                .catch(error => {
+                    log('Signup failed: ' + error.message, 'error');
+                    signupBtn.disabled = false;
+                    signupBtn.classList.remove('disabled');
+                    signupBtn.textContent = 'Signup';
+                });
+        });
+
+        // Handle login form
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const loginBtn = document.getElementById('loginBtn');
+            loginBtn.disabled = true;
+            loginBtn.classList.add('disabled');
+            loginBtn.textContent = 'Processing...';
+
+            const username = document.getElementById('loginUser').value;
+            const password = document.getElementById('loginPass').value;
+
+            log('--- Starting Login Process ---');
+
+            login(username, password)
+                .then(response => {
+                    log('TEST COMPLETE: Signup and Login both successful!', 'success');
+                    loginBtn.disabled = false;
+                    loginBtn.classList.remove('disabled');
+                    loginBtn.textContent = 'Login';
+                })
+                .catch(error => {
+                    log('Login failed: ' + error.message, 'error');
+                    loginBtn.disabled = false;
+                    loginBtn.classList.remove('disabled');
+                    loginBtn.textContent = 'Login';
+                });
+        });
+
+        // Initialize
+        log('PS2 Signup and Login Test Initialized');
+        log('Using WebSocket URL: ' + loginWSUrl);
+    </script>
+</body>
+</html>

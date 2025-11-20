@@ -55,22 +55,24 @@ Creates a new user account in the system.
   "secondName": "Doe",
   "accountNumber": "ACC123456",
   "telephone": "+1234567890",
-  "country": "USA"
+  "country": "USA",
+  "source": "web-form"
 }
 ```
 
 **Parameters:**
 
-| Parameter     | Description            | Required |
-| :------------ | :--------------------- | :------- |
-| login         | Desired username       | Yes      |
-| password      | Desired password       | Yes      |
-| email         | User's email address   | Yes      |
-| firstName     | User's first name      | Yes      |
-| secondName    | User's last name       | Yes      |
-| accountNumber | User's account number  | Yes      |
-| telephone     | User's phone number    | Yes      |
-| country       | User's country         | Yes      |
+| Parameter     | Description                        | Required |
+| :------------ | :--------------------------------- | :------- |
+| login         | Desired username                   | Yes      |
+| password      | Desired password                   | Yes      |
+| email         | User's email address               | Yes      |
+| firstName     | User's first name                  | Yes      |
+| secondName    | User's last name                   | Yes      |
+| accountNumber | User's account number              | Yes      |
+| telephone     | User's phone number                | Yes      |
+| country       | User's country                     | Yes      |
+| source        | Signup source/origin channel       | Yes      |
 
 **Successful Response:** Returns the newly created user object.
 

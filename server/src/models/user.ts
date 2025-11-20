@@ -11,7 +11,8 @@ const UserSchema = new Schema<User>({
   lastName: String,
   accountNumber: String,
   telephone: String,
-  country: String
+  country: String,
+  source: String
 });
 
 export const UserModel: Model<User> =

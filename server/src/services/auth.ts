@@ -43,6 +43,7 @@ export async function signin(
 
 export async function signup(data: User): Promise<User | ErrorType> {
   let { login, email,password=''} = data;
+  console.log(`[signup] Received data for user ${login}:`, { ...data, password: '[REDACTED]' });
   try {
     if (!password){ throw 'Password is empty'}
     const user = await UserModel.findOne({ login }).lean();
@@ -51,12 +52,14 @@ export async function signup(data: User): Promise<User | ErrorType> {
     }
     const salt = await bcrypt.genSalt(10);
     const epassword =  await bcrypt.hash(password, salt);
-    const newDoc = new UserModel({...data, password: epassword,  role:'member'});
+    const signupData = {...data, password: epassword, role:'member'};
+    console.log(`[signup] Creating user with data:`, { ...signupData, password: '[REDACTED]' });
+    const newDoc = new UserModel(signupData);
     const added = await newDoc.save();
+    console.log(`[signup] User saved successfully:`, added._id);
     return added;
   } catch (err) {
-     console.log(err);
+     console.log('[signup] Error:', err);
   }
   return {error:'User account is not created'}
 }
-

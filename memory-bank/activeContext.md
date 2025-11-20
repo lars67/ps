@@ -7,16 +7,19 @@ This file tracks the project's current status, including recent changes, current
 
 ## Current Focus
 
-*   Testing and refining the `portfolios.debug` command for comprehensive portfolio error detection and reporting.
-*   Ensuring proper integration of the debug command in the WebSocket command system.
-*   Monitoring WebSocket connection stability and addressing any SSE-related issues.
+*   Investigating and resolving WebSocket connection stability issues.
+*   Addressing potential SSE (Server-Sent Events) connection instability issues.
+*   Verifying portfolio calculation accuracy against external NAV reports.
+*   Considering more granular access controls for sensitive portfolio data.
+*   Updating PS2 documentation to reflect new signup `source` field.
 
 ## Recent Changes
 
-*   Implemented backend logic for `portfolios.debug` command in `server/src/services/portfolio/debug.ts`.
-*   Added command dispatch and response handling in WebSocket controller.
-*   Updated command documentation and UI integration.
-*   Fixed issues with command execution, such as `_id` access and calculation logic.
+*   Completed implementation of `portfolios.debug` command for comprehensive portfolio error detection and reporting.
+*   Resolved backend logic issues including calculation logic, fees, dividends, and command dispatch.
+*   Verified command execution with fixes for `_id` access and integration in WebSocket command system.
+*   Added `source` field to signup command to track user signup origins across different entry points.
+*   Updated frontend forms (React and test HTML), backend types, database schema, and WebSocket handling.
 
 ## Open Questions/Issues
 

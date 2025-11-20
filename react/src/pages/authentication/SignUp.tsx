@@ -111,7 +111,8 @@ const SignUpPage = () => {
           lastName: values.lastName ,
           accountNumber: values.accountNumber,
           telephone: values.telephone,
-          country: values.country
+          country: values.country,
+          source: values.source || "web-form"
         })
     );
     console.log("R", rez);

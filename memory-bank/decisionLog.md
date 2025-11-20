@@ -27,8 +27,40 @@ This file records architectural and implementation decisions using a list format
 
 ## Implementation Details
 
-*   Documented the command in `commands_overview.md` including `portfolioId`, `fee`, and `granularity` parameters, along with a comprehensive list of output metrics (Date, Symbol, Volume, Price, Fx, Fee, Invested, Market Price, Unrealized Result, Realized Result, Result, Market Value, Cash).
+*   The `debug` function fetches all relevant trades for the portfolio, processes them with proper profit/loss calculations, currency conversions, fee handling, and generates comprehensive reports matching NAV report format. Includes day-by-day or trade-by-trade granularity, option to export to CSV.
+
+## Decision
+
+*   Marked the `portfolios.debug` command implementation as completed.
+
+## Rationale
+
+*   The `portfolios.debug` command has been fully implemented, tested, and verified as per user confirmation. All calculation fixes, command dispatch issues, and integration problems have been resolved.
+
+## Implementation Details
+
+*   Updated memory bank files (progress.md, activeContext.md) to reflect completion.
+*   Moved portfolio.debug-related tasks to completed status.
+*   Shifted current focus to remaining outstanding issues like WebSocket stability and portfolio verification.
+
+## Decision
+
+*   Added `source` field to signup command for tracking user signup origins.
+
+## Rationale
+
+*   The signup command needed to track where users sign up from various places to enable analytics, marketing attribution, and user journey mapping. Different entry points (web form, mobile app, partner referrals, campaigns) could be distinguished.
+
+## Implementation Details
+
+*   Added `source?: string` to `User` interface in `server/src/types/user.ts`.
+*   Updated UserSchema in `server/src/models/user.ts` to include source field.
+*   Modified `authSignUpThunk` in `react/src/store/slices/user.ts` to send source field via WebSocket.
+*   Updated React signup form to include source parameter with default "web-form".
+*   Added source field to test HTML page with default "test-page".
 2025-06-23 14:15:27 - Redesigned `portfolios.debug` output metrics to match user-provided NAV report.
+2025-11-20 08:52:07 - Logged completion of `portfolios.debug` command implementation and updated memory bank accordingly.
+2025-11-20 08:58:48 - Logged decision to add source field to signup command and completed implementation across frontend, backend, database, and test files.
 ## Decision
 
 *   Redesigned the output metrics format for the `portfolios.debug` command.
@@ -54,4 +86,4 @@ This file records architectural and implementation decisions using a list format
 *   Created `server/src/services/portfolio/debug.ts` to house the `debug` function's logic.
 *   Exported the `debug` function from `server/src/services/portfolio.ts`.
 *   Added the `portfolios.debug` command's description to the `description` export in `server/src/services/portfolio.ts` to ensure it is recognized and discoverable by the system.
-*   The `debug` function currently returns mock data to demonstrate the output structure, with a placeholder for the full calculation logic (fetching trades, historical prices, etc.).
+*   Implemented comprehensive calculation logic including trade processing, profit/loss calculations with currency conversions, fee handling, unrealized P&L tracking, and NAV computation. Supports day-by-day or trade-by-trade granularity with optional CSV export.
