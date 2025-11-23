@@ -622,6 +622,8 @@ export async function positions(
   };
 
   const calcChanges = (data: object, includeAttribution: boolean = false, totalsMode: string = "all", isInitialSnapshot: boolean = false) => {
+    let neutral_trading = 0;
+    let neutral_passive = 0;
     let changes = processQuoteData(data as QuoteData[]);
     console.log("calcChanges ==>", changes);
     if (changes.length === 0) {
@@ -715,7 +717,7 @@ export async function positions(
         changes.push(reg);
       });
       //let changesCountry: PortfolioPositionFull[] = [];
-      // summationTotal(changes, countryInvested, "countryTotal");
+      // summationTotal(changes, countryInvested, "currencyTotal");
       //sector->industry
       const sectorIndustryMap = {} as Record<string, Set<string>>;
       Object.values(portfolioPositions)
@@ -776,22 +778,44 @@ export async function positions(
       } as PortfolioPositionFull);
     }
 
+    const invested_rates: Record<string, number> = {};
+    Object.keys(portfolioPositions).forEach(symbol => {
+      const pos = portfolioPositions[symbol];
+      if (pos && pos.investedFullSymbol && pos.investedFullSymbol > 0) {
+        invested_rates[symbol] = pos.investedFull! / pos.investedFullSymbol;
+      }
+    });
+
+    neutral_trading = Object.keys(portfolioPositions).reduce((sum, symbol) => {
+      const pos = portfolioPositions[symbol];
+      if (pos?.resultSymbol) {
+        const invested_rate = invested_rates[symbol];
+        if (invested_rate) {
+          sum += pos.resultSymbol * invested_rate;
+        }
+      }
+      return sum;
+    }, 0);
+
+    neutral_passive = Object.keys(positions.dividends).reduce((sum, symbol) => {
+      const invested_rate = invested_rates[symbol];
+      if (invested_rate) {
+        sum += positions.dividends[symbol] * invested_rate;
+      }
+      return sum;
+    }, 0);
+
     if (includeAttribution) {
-      const trading = result;
+      const trading = neutral_trading;
       const passive = Object.keys(positions.dividends).reduce((sum, key) => {
         const symbol = key;
         const cur = portfolioPositions[symbol]?.currency || portfolio.currency;
         const rate = rates[cur] || 1;
         return sum + positions.dividends[key] * rate;
       }, 0);
-      const currencyChanges = Object.keys(portfolioPositions).reduce((sum, symbol) => {
-        const pos = portfolioPositions[symbol];
-        const marketValue = pos?.marketValue || 0;
-        const investedFull = pos?.investedFull || 0;
-        const result = pos?.result || 0;
-        return sum + (marketValue - investedFull - result);
-      }, 0);
-      const totalReturn = trading + passive + currencyChanges;
+      const dividendsSumBase = passive;
+      const totalReturn = (marketValue || 0) + dividendsSumBase - investedPortfolio;
+      const currency = totalReturn - trading - passive;
 
       changes.push({
         symbol: "ATTRIBUTION",
@@ -807,8 +831,8 @@ export async function positions(
             percent: totalReturn !== 0 ? Math.round((passive / totalReturn) * 10000) / 100 : 0,
           },
           currency: {
-            amount: toNum({ n: currencyChanges }),
-            percent: totalReturn !== 0 ? Math.round((currencyChanges / totalReturn) * 10000) / 100 : 0,
+            amount: toNum({ n: currency}),
+            percent: totalReturn !== 0 ? Math.round((currency / totalReturn) * 10000) / 100 : 0,
           },
         },
       } as any);
