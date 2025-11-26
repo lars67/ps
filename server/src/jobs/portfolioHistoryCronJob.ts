@@ -200,27 +200,18 @@ class PortfolioHistoryCronJobManager {
 
   /**
    * Find portfolios that need history updates
+   * For daily cron jobs, ALL portfolios with history data need daily updates
+   * because market prices change every day even without trades
    */
   private async findPortfoliosNeedingUpdates(): Promise<string[]> {
     try {
-      // Get portfolios with recent activity (trades in last 7 days)
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      // Get ALL portfolios that have history data - they all need daily updates
+      // Market prices change every day, so all portfolios get new values
+      const portfoliosWithHistory = await PortfolioHistoryService.getPortfoliosNeedingUpdate(999999);
 
-      const recentPortfolios = await PortfolioModel.distinct('_id', {
-        updatedAt: { $gte: sevenDaysAgo }
-      });
+      logger.log(`Found ${portfoliosWithHistory.length} portfolios with history data (all need daily updates)`);
 
-      // Also include portfolios with stale cache (older than 24 hours)
-      const portfoliosWithStaleCache = await PortfolioHistoryService.getPortfoliosNeedingUpdate(24);
-
-      // Combine and deduplicate
-      const allPortfolioIds = [...new Set([
-        ...recentPortfolios.map((id: any) => id.toString()),
-        ...portfoliosWithStaleCache
-      ])];
-
-      return allPortfolioIds;
+      return portfoliosWithHistory;
 
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -244,21 +235,21 @@ class PortfolioHistoryCronJobManager {
     };
 
     try {
-      // Check for gaps in existing history
-      const validation = await PortfolioHistoryService.validatePortfolioData(portfolioId);
-
-      if (!validation.isValid && validation.issues.length > 0) {
-        result.gapsDetected = validation.issues.filter(issue =>
-          issue.includes('Gap detected')
-        ).length;
-      }
-
-      // Update history cache
-      const updateResult = await PortfolioHistoryCache.updateHistory(portfolioId);
+      // Use incremental updates for daily maintenance
+      const updateResult = await PortfolioHistoryCache.updateHistoryIncremental(portfolioId, 24);
 
       if (updateResult.success) {
         result.recordsUpdated = updateResult.recordsUpdated;
-        result.gapsFilled = result.gapsDetected; // Assume gaps are filled if update succeeds
+        // Check for gaps only if we actually calculated something
+        if (updateResult.recordsUpdated > 0) {
+          const validation = await PortfolioHistoryService.validatePortfolioData(portfolioId);
+          if (!validation.isValid && validation.issues.length > 0) {
+            result.gapsDetected = validation.issues.filter(issue =>
+              issue.includes('Gap detected')
+            ).length;
+            result.gapsFilled = result.gapsDetected; // Assume gaps are filled by incremental calculation
+          }
+        }
       }
 
     } catch (error) {

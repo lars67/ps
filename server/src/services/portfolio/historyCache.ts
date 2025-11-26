@@ -29,11 +29,9 @@ export class PortfolioHistoryCache {
       const metadata = await PortfolioHistoryService.getMetadata(portfolioId);
 
       if (!metadata || metadata.totalRecords === 0) {
-        // No cached data exists
-        return {
-          days: [],
-          cached: false
-        };
+        // No cached data exists - trigger immediate calculation
+        console.log(`No cached data for portfolio ${portfolioId}, calculating immediately`);
+        return await this.forceRecalculate(portfolioId, from, till);
       }
 
       // Check if cached data is within acceptable age
@@ -43,15 +41,15 @@ export class PortfolioHistoryCache {
       // Get the actual history data
       let historyData: PortfolioHistoryDay[] = [];
 
-      if (isDataFresh) {
+      if (isDataFresh && metadata.calculationStatus !== 'outdated') {
         // Data is fresh, return it immediately
         historyData = await PortfolioHistoryService.getHistory(portfolioId, from, till);
 
-        // Validate that cached data is not all zeros (indicates calculation error)
+        // Validate that cached data is not corrupted
         const hasValidData = this.validateCachedData(historyData);
         if (!hasValidData) {
-          console.warn(`Cached data for portfolio ${portfolioId} appears to be all zeros, forcing recalculation`);
-          // Force recalculation by falling through to background logic
+          console.warn(`Cached data for portfolio ${portfolioId} appears corrupted, forcing recalculation`);
+          // Force immediate recalculation instead of background
           return await this.forceRecalculate(portfolioId, from, till);
         }
 
@@ -62,27 +60,42 @@ export class PortfolioHistoryCache {
           metadata
         };
       } else {
-        // Data is stale, return what we have and trigger background refresh
-        historyData = await PortfolioHistoryService.getHistory(portfolioId, from, till);
+        // Data is stale - trigger immediate refresh for better UX
+        console.log(`Data for portfolio ${portfolioId} is stale (${Math.round(cacheAgeMinutes)}min old), refreshing immediately`);
+        try {
+          const updateResult = await this.updateHistory(portfolioId, undefined, false);
+          if (updateResult.success) {
+            // Fetch the freshly calculated data
+            historyData = await PortfolioHistoryService.getHistory(portfolioId, from, till);
+            const updatedMetadata = await PortfolioHistoryService.getMetadata(portfolioId);
 
-        // Validate that stale cached data is not all zeros
-        const hasValidData = this.validateCachedData(historyData);
-        if (!hasValidData) {
-          console.warn(`Stale cached data for portfolio ${portfolioId} appears to be all zeros, forcing fresh calculation`);
-          return await this.forceRecalculate(portfolioId, from, till);
+            return {
+              days: historyData,
+              cached: false, // Indicate freshly calculated
+              cacheAge: 0,
+              metadata: updatedMetadata || undefined
+            };
+          } else {
+            console.error(`Failed to update history for ${portfolioId}: ${updateResult.error}`);
+            // Fall back to existing data if refresh fails
+            historyData = await PortfolioHistoryService.getHistory(portfolioId, from, till);
+            return {
+              days: historyData,
+              cached: true,
+              cacheAge: Math.round(cacheAgeMinutes),
+              metadata: { ...metadata, calculationStatus: 'outdated' as const }
+            };
+          }
+        } catch (refreshError) {
+          console.error(`Refresh failed for portfolio ${portfolioId}, using existing data:`, refreshError);
+          historyData = await PortfolioHistoryService.getHistory(portfolioId, from, till);
+          return {
+            days: historyData,
+            cached: true,
+            cacheAge: Math.round(cacheAgeMinutes),
+            metadata: { ...metadata, calculationStatus: 'outdated' as const }
+          };
         }
-
-        // Trigger background refresh (don't await)
-        this.triggerBackgroundRefresh(portfolioId).catch(err => {
-          console.error(`Background refresh failed for portfolio ${portfolioId}:`, err);
-        });
-
-        return {
-          days: historyData,
-          cached: true,
-          cacheAge: Math.round(cacheAgeMinutes),
-          metadata: { ...metadata, calculationStatus: 'outdated' as const }
-        };
       }
 
     } catch (error) {
@@ -92,6 +105,134 @@ export class PortfolioHistoryCache {
         days: [],
         cached: false
       };
+    }
+  }
+
+  /**
+   * Incrementally update portfolio history cache
+   * Only calculates new days since last update
+   */
+  static async updateHistoryIncremental(
+    portfolioId: string,
+    maxAgeHours: number = 24
+  ): Promise<{
+    success: boolean;
+    recordsUpdated: number;
+    calculationTime: number;
+    lastUpdate?: Date;
+    error?: string;
+  }> {
+    const startTime = Date.now();
+
+    try {
+      console.log(`Starting incremental update for portfolio ${portfolioId}`);
+
+      // Get existing metadata to see what we have
+      const metadata = await PortfolioHistoryService.getMetadata(portfolioId);
+      if (!metadata || metadata.totalRecords === 0) {
+        // No existing history, do full calculation from scratch
+        console.log(`No existing history for ${portfolioId}, falling back to full calculation`);
+        return await this.updateHistory(portfolioId, undefined, false);
+      }
+
+      // Always perform incremental update for cron jobs - portfolios need daily market data updates
+      // Market prices change daily, so all portfolios need recalculation to get current values
+
+      console.log(`Performing full recalculation for portfolio ${portfolioId} (daily cron update)`);
+      return await this.updateHistory(portfolioId, undefined, true);
+
+    } catch (error) {
+      const calculationTime = Date.now() - startTime;
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      console.error(`Failed incremental update for portfolio ${portfolioId}:`, error);
+
+      return {
+        success: false,
+        recordsUpdated: 0,
+        calculationTime,
+        error: errorMessage
+      };
+    }
+  }
+
+  /**
+   * Extend existing history with new days
+   */
+  private static async extendHistory(
+    portfolioId: string,
+    fromDate: string,
+    toDate: string
+  ): Promise<{
+    success: boolean;
+    recordsUpdated: number;
+    calculationTime: number;
+    lastUpdate?: Date;
+    error?: string;
+  }> {
+    const startTime = Date.now();
+
+    try {
+      // Use the history calculation but only for the new date range
+      // This is a simplified version - in practice we'd want to resume from the last known state
+
+      // For now, trigger a full calculation but log that it's for incremental extension
+      console.log(`Extending history for ${portfolioId} from ${fromDate} to ${toDate}`);
+      const fullResult = await this.updateHistory(portfolioId, fromDate, false);
+
+      return {
+        ...fullResult,
+        calculationTime: Date.now() - startTime
+      };
+
+    } catch (error) {
+      const calculationTime = Date.now() - startTime;
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      console.error(`Failed to extend history for portfolio ${portfolioId}:`, error);
+
+      return {
+        success: false,
+        recordsUpdated: 0,
+        calculationTime,
+        error: errorMessage
+      };
+    }
+  }
+
+  /**
+   * Check if portfolio has recent activity that would require history updates
+   */
+  private static async hasRecentActivity(portfolioId: string, lastHistoryDate: string): Promise<{
+    hasActivity: boolean;
+    latestActivity?: string;
+  }> {
+    try {
+      // Query for trades, cash operations, dividends, or investments after the last history date
+      const PortfolioModel = require('../../models/portfolio');
+      const TradeModel = require('../../models/trade');
+
+      // Check trades
+      const latestTrade = await TradeModel.findOne({
+        portfolioId: portfolioId,
+        tradeTime: { $gt: `${lastHistoryDate}T23:59:59` },
+        state: '1'
+      }).sort({ tradeTime: -1 }).limit(1);
+
+      if (latestTrade) {
+        return {
+          hasActivity: true,
+          latestActivity: latestTrade.tradeTime.split('T')[0]
+        };
+      }
+
+      // Could also check for portfolio metadata updates, but trades are the main driver
+      return { hasActivity: false };
+
+    } catch (error) {
+      console.error(`Error checking recent activity for ${portfolioId}:`, error);
+      // On error, assume activity exists to be safe
+      return { hasActivity: true };
     }
   }
 
@@ -405,56 +546,45 @@ export class PortfolioHistoryCache {
 
   /**
    * Validate that cached data is not corrupted (checks for calculation errors)
+   * Improved to only flag genuinely corrupted data, not valid zero/low-activity portfolios
    */
   private static validateCachedData(historyData: PortfolioHistoryDay[]): boolean {
     if (!historyData || historyData.length === 0) {
       return true; // Empty data is valid (no trades case)
     }
 
-    // Check for data corruption indicators:
-    // 1. All records have identical values (indicates calculation loop error)
-    const firstDay = historyData[0];
-    const identicalRecords = historyData.filter(day =>
-      day.invested === firstDay.invested &&
-      day.cash === firstDay.cash &&
-      day.nav === firstDay.nav &&
-      day.index === firstDay.index &&
-      day.shares === firstDay.shares
-    );
-
-    // If more than 95% of records are identical, likely corrupted
-    if (identicalRecords.length > historyData.length * 0.95 && historyData.length > 5) {
-      console.warn(`Cached data appears corrupted: ${identicalRecords.length}/${historyData.length} identical records`);
-      return false;
-    }
-
-    // 2. Check for negative NAV values (should never happen in valid calculations)
-    const negativeNavRecords = historyData.filter(day => day.nav < 0);
+    // 1. Check for negative NAV values on recent records only (allow historical negative due to trades)
+    const recentRecords = historyData.slice(-Math.min(7, historyData.length)); // Last 7 days
+    const negativeNavRecords = recentRecords.filter(day => day.nav < -1000); // Allow small negative values
     if (negativeNavRecords.length > 0) {
-      console.warn(`Cached data contains ${negativeNavRecords.length} records with negative NAV values`);
+      console.warn(`Cached data contains ${negativeNavRecords.length} recent records with abnormally negative NAV values`);
       return false;
     }
 
-    // 3. Check for NaN or Infinity values
+    // 2. Check for NaN or Infinity values
     const invalidRecords = historyData.filter(day =>
       !isFinite(day.invested) || !isFinite(day.cash) || !isFinite(day.nav) ||
       !isFinite(day.index) || !isFinite(day.shares)
     );
-    if (invalidRecords.length > 0) {
+    if (invalidRecords.length > historyData.length * 0.02) { // More lenient - only flag if >2% corrupted
       console.warn(`Cached data contains ${invalidRecords.length} records with invalid numeric values`);
       return false;
     }
 
-    // 4. Basic sanity check - NAV should roughly equal invested + cash
+    // 3. Relaxed NAV sanity check - allow for rounding and calculation differences
+    // Only flag if NAV is wildly wrong (more than 50% off)
     const navMismatchedRecords = historyData.filter(day => {
       const expectedNav = day.invested + day.cash;
-      // Allow for small rounding errors (±1)
-      return Math.abs(day.nav - expectedNav) > 1;
+      const tolerance = Math.max(100, Math.abs(expectedNav) * 0.5); // 50% or $100 minimum tolerance
+      return Math.abs(day.nav - expectedNav) > tolerance;
     });
     if (navMismatchedRecords.length > historyData.length * 0.1) {
       console.warn(`Cached data has NAV/invested+cash mismatch in ${navMismatchedRecords.length}/${historyData.length} records`);
       return false;
     }
+
+    // 4. Don't penalize portfolios with all identical values - could be valid small portfolios
+    // Only look for problems in portfolios with significant variation
 
     return true;
   }

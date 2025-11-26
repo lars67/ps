@@ -90,15 +90,9 @@ export async function history(
         // Continue to calculation if cache fails
       }
     } else {
-      console.log(`Force refresh requested for portfolio ${_id}`);
-      // Clear existing cached history data when force refresh is requested
-      try {
-        const deletedCount = await PortfolioHistoryService.deleteHistory(_id);
-        console.log(`Cleared existing history cache for portfolio ${_id} during force refresh (${deletedCount} records deleted)`);
-      } catch (deleteError) {
-        console.warn(`Failed to clear existing history cache for portfolio ${_id}:`, deleteError);
-        // Continue with calculation even if clear fails
-      }
+      console.log(`Force full recalculation requested for portfolio ${_id}`);
+      // For force refresh, we skip cache entirely and do fresh calculation
+      // The cache will be updated after calculation completes
     }
     const toNumLocal = (n: number | null | undefined) => toNum({ n: n ?? 0, precision });
     const withDetail = Number(detail) !== 0;

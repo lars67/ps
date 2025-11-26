@@ -139,13 +139,26 @@ export class PortfolioHistoryService {
         .sort({ lastUpdated: -1 })
         .limit(1);
 
+      // More intelligent status determination based on recent updates
+      const lastUpdated = lastRecord?.lastUpdated || new Date();
+      const hoursSinceUpdate = (Date.now() - lastUpdated.getTime()) / (1000 * 60 * 60);
+
+      let calculationStatus: 'complete' | 'partial' | 'outdated';
+      if (hoursSinceUpdate < 24) {
+        calculationStatus = 'complete';
+      } else if (hoursSinceUpdate < 48) {
+        calculationStatus = 'partial';
+      } else {
+        calculationStatus = 'outdated';
+      }
+
       return {
         portfolioId,
         lastCalculatedDate: dateRange?.till,
         totalRecords: count,
         dateRange: dateRange ? { from: dateRange.from, till: dateRange.till } : undefined,
-        lastUpdated: lastRecord?.lastUpdated || new Date(),
-        calculationStatus: 'complete' // TODO: Implement logic to determine if outdated
+        lastUpdated,
+        calculationStatus
       };
     } catch (error) {
       console.error(`Error getting metadata for ${portfolioId}:`, error);
