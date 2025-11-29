@@ -135,7 +135,7 @@ export async function positions(
     _id,
     requestType,
     subscribeId,
-    marketPrice = "4",
+    marketPrice = "2",
     basePrice = "4",
     closed = "no",
     changes,
@@ -1323,7 +1323,7 @@ function getMarketPrice(
       return q.latestPrice;
     //case 3: return 'open'
     case "4":
-      return q.close;
+      return q.latestPrice || (q.close + (q.change || 0));
     case "5":
       return q.high;
     case "6":
