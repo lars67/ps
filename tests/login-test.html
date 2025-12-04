@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PS2 Login Test</title>
+    <!--
+    ============================================================================
+    PS2 WebSocket Authentication & Command Test Page
+    ============================================================================
+
+    DESCRIPTION:
+    This HTML page demonstrates the complete PS2 (Portfolio Management System)
+    WebSocket authentication flow and command execution. It serves as a reference
+    implementation for developers integrating with PS2 WebSocket APIs.
+
+    KEY COMPONENTS:
+    - Dual WebSocket connections (login + main)
+    - JWT token-based authentication
+    - Fragmented message handling for large responses
+    - Comprehensive logging and error handling
+
+    WEB SOCKET ENDPOINTS:
+    - Login WS: wss://localhost:3331/ps2l/ (no auth required)
+    - Main WS:  wss://localhost:3332/ps2/?[JWT_TOKEN] (requires token)
+
+    AUTHENTICATION FLOW:
+    1. Connect to login WebSocket (3331/ps2l/)
+    2. Send login command: { "command": "login", "login": "email", "password": "pass" }
+    3. Receive JWT token in response
+    4. Connect to main WebSocket (3332/ps2/?[token])
+    5. Send authenticated commands
+
+    FRAGMENTED MESSAGES:
+    Large responses are split into fragments to avoid WebSocket size limits:
+    - Each fragment: { "msgId": "id", "index": 0, "total": 3, "data": "chunk" }
+    - Collect all fragments with same msgId
+    - Concatenate data strings in index order
+    - Parse combined string as JSON
+
+    USAGE IN OTHER PAGES:
+
+    // 1. Basic WebSocket Connection
+    const loginWs = new WebSocket('wss://localhost:3331/ps2l/');
+
+    // 2. Login Command
+    const loginCmd = {
+        "command": "login",
+        "login": "user@domain.com",
+        "password": "password123"
+    };
+    loginWs.send(JSON.stringify(loginCmd));
+
+    // 3. Handle Login Response
+    loginWs.onmessage = (event) => {
+        const response = JSON.parse(event.data);
+        if (response.token) {
+            // Connect to main WebSocket with token
+            const mainWs = new WebSocket(`wss://localhost:3332/ps2/?${response.token}`);
+
+            // 4. Send Authenticated Commands
+            mainWs.onopen = () => {
+                const command = {
+                    "command": "commands.list",
+                    "msgId": "unique_id_123"
+                };
+                mainWs.send(JSON.stringify(command));
+            };
+
+            // 5. Handle Fragmented Responses
+            const fragments = {};
+            mainWs.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                const { data, msgId, total, index } = msg;
+
+                if (!fragments[msgId]) fragments[msgId] = [];
+                fragments[msgId][index] = data;
+
+                if (fragments[msgId].length === total) {
+                    const fullData = fragments[msgId].join('');
+                    const response = JSON.parse(fullData);
+                    console.log('Command response:', response);
+                    delete fragments[msgId];
+                }
+            };
+        }
+    };
+
+    CERTIFICATE HANDLING:
+    For development with self-signed certificates:
+    - Open https://localhost:3331 and https://localhost:3332
+    - Click "Advanced" → "Proceed to localhost (unsafe)"
+    - Or add certificates to browser trust store
+
+    COMMON COMMANDS:
+    - commands.list: List available commands
+    - portfolios.list: Get user portfolios
+    - trades.list: Get trades for portfolio
+    - portfolios.debug: Debug portfolio data
+
+    ERROR CODES:
+    - 4001: Authentication error (invalid token)
+    - 4002: Token missing
+    - 1005: Normal closure
+    - 1006: Abnormal closure (connection failed)
+
+    DEVELOPMENT NOTES:
+    - Always include unique msgId in commands for response matching
+    - Handle fragmented responses for large data sets
+    - Close login WebSocket after getting token
+    - Check WebSocket readyState before sending messages
+    - Use wss:// for production, ws:// for development testing
+
+    ============================================================================
+    -->
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        textarea { width: 100%; height: 100px; }
+        button { margin: 10px 0; padding: 10px; }
+        #responses { border: 1px solid #ccc; padding: 10px; max-height: 400px; overflow-y: auto; }
+        .response { margin: 10px 0; padding: 10px; border: 1px solid #ddd; }
+        .status { font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>PS2 Login Test</h1>
+    <div id="loginStatus" class="status">Login Status: Not Started</div>
+    <div id="mainStatus" class="status">Main WS Status: Disconnected</div>
+
+    <button onclick="acceptCert()">Accept SSL Certificate First</button>
+    <button onclick="startTest()">Start Login Test</button>
+    <button onclick="clearResponses()">Clear Responses</button>
+
+    <h2>Responses</h2>
+    <div id="responses"></div>
+
+    <script>
+        let loginWs;
+        let mainWs;
+        let msgId = 1;
+        let fragments = {};
+        let authToken = null;
+        const loginStatusEl = document.getElementById('loginStatus');
+        const mainStatusEl = document.getElementById('mainStatus');
+        const responsesEl = document.getElementById('responses');
+
+        function startTest() {
+            console.log('Starting login test at', new Date().toISOString());
+            loginStatusEl.textContent = 'Login Status: Connecting to login WS...';
+            connectLogin();
+        }
+
+        function connectLogin() {
+            console.log('Connecting to login WebSocket: wss://localhost:3331/ps2l/');
+            console.log('Using HTTPS WebSocket (wss://) - you may need to accept the certificate');
+            loginWs = new WebSocket('wss://localhost:3331/ps2l/');
+
+            loginWs.onopen = function(event) {
+                console.log('Login WS opened at', new Date().toISOString());
+                loginStatusEl.textContent = 'Login Status: Connected, sending login command...';
+
+                const loginCommand = {
+                    "command": "login",
+                    "login": "lars@softcapital.com",
+                    "password": "Test4545,"
+                };
+                console.log('Sending login command:', JSON.stringify(loginCommand, null, 2));
+                loginWs.send(JSON.stringify(loginCommand));
+            };
+
+            loginWs.onmessage = function(event) {
+                console.log('Login WS message received at', new Date().toISOString());
+                const message = JSON.parse(event.data);
+                console.log('Login WS raw message:', message);
+
+                if (message.token) {
+                    console.log('Login successful! Token received:', message.token);
+                    console.log('User role:', message.role);
+                    console.log('User ID:', message.userId);
+                    authToken = message.token;
+                    loginStatusEl.textContent = 'Login Status: Success, disconnecting login WS...';
+                    displayResponse('Login Response', message);
+                    loginWs.close();
+                } else if (message.error) {
+                    console.error('Login failed:', message.error);
+                    loginStatusEl.textContent = 'Login Status: Failed - ' + message.error;
+                    displayResponse('Login Error', message);
+                } else {
+                    console.log('Unexpected login response:', message);
+                    displayResponse('Login Unexpected Response', message);
+                }
+            };
+
+            loginWs.onclose = function(event) {
+                console.log('Login WS closed at', new Date().toISOString(), 'Code:', event.code, 'Reason:', event.reason);
+                loginStatusEl.textContent = 'Login Status: Disconnected, connecting to main WS...';
+                connectMain();
+            };
+
+            loginWs.onerror = function(error) {
+                console.error('Login WS error at', new Date().toISOString(), error);
+                loginStatusEl.textContent = 'Login Status: Error';
+            };
+        }
+
+        function connectMain() {
+            const wsUrl = `wss://localhost:3332/ps2/?${authToken}`;
+            console.log('Connecting to main WebSocket:', wsUrl);
+            console.log('Using HTTPS WebSocket (wss://) - you may need to accept the certificate');
+            mainWs = new WebSocket(wsUrl);
+
+            mainWs.onopen = function(event) {
+                console.log('Main WS opened at', new Date().toISOString());
+                mainStatusEl.textContent = 'Main WS Status: Connected, sending commands.list...';
+
+                const command = {
+                    "command": "commands.list",
+                    "msgId": msgId.toString()
+                };
+                console.log('Sending commands.list command:', JSON.stringify(command, null, 2));
+                mainWs.send(JSON.stringify(command));
+                msgId++;
+            };
+
+            mainWs.onmessage = function(event) {
+                console.log('Main WS message received at', new Date().toISOString());
+                const message = JSON.parse(event.data);
+                console.log('Main WS raw message:', message);
+
+                const { data, msgId, total, index } = message;
+
+                if (!fragments[msgId]) {
+                    fragments[msgId] = [];
+                    console.log('Started receiving fragmented message, msgId:', msgId, 'total fragments:', total);
+                }
+
+                fragments[msgId][index] = data;
+                console.log('Received fragment', index + 1, 'of', total, 'for msgId:', msgId);
+
+                if (fragments[msgId].length === total) {
+                    const assembledMessage = fragments[msgId].join('');
+                    delete fragments[msgId];
+                    console.log('Assembled full message for msgId:', msgId);
+                    const parsed = JSON.parse(assembledMessage);
+                    console.log('Parsed response:', parsed);
+                    displayResponse('Command Response (msgId: ' + msgId + ')', parsed);
+                    mainStatusEl.textContent = 'Main WS Status: Command executed successfully';
+                }
+            };
+
+            mainWs.onclose = function(event) {
+                console.log('Main WS closed at', new Date().toISOString(), 'Code:', event.code, 'Reason:', event.reason);
+                mainStatusEl.textContent = 'Main WS Status: Disconnected';
+            };
+
+            mainWs.onerror = function(error) {
+                console.error('Main WS error at', new Date().toISOString(), error);
+                mainStatusEl.textContent = 'Main WS Status: Error';
+            };
+        }
+
+        function displayResponse(title, data) {
+            const responseDiv = document.createElement('div');
+            responseDiv.className = 'response';
+            responseDiv.innerHTML = `
+                <strong>${title}</strong><br>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+            responsesEl.appendChild(responseDiv);
+            responsesEl.scrollTop = responsesEl.scrollHeight;
+        }
+
+        function acceptCert() {
+            console.log('Opening certificate acceptance pages...');
+            // Open HTTPS URLs to trigger certificate acceptance
+            window.open('https://localhost:3331', '_blank');
+            window.open('https://localhost:3332', '_blank');
+            alert('Certificate acceptance windows opened. Click "Advanced" → "Proceed to localhost (unsafe)" in each window, then close them and click "Start Login Test".');
+        }
+
+        function clearResponses() {
+            responsesEl.innerHTML = '';
+        }
+
+        // Log initial state
+        console.log('Page loaded at', new Date().toISOString());
+        console.log('Using HTTPS WebSockets (wss://) with your specified ports');
+        console.log('Expecting server on localhost:3331 (login) and localhost:3332 (main)');
+        console.log('Login credentials: lars@softcapital.com / Test4545,');
+    </script>
+</body>
+</html>
