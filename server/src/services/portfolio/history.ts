@@ -89,10 +89,6 @@ export async function history(
         console.warn(`Cache check failed for portfolio ${_id}, falling back to calculation:`, cacheError);
         // Continue to calculation if cache fails
       }
-    } else {
-      console.log(`Force full recalculation requested for portfolio ${_id}`);
-      // For force refresh, we skip cache entirely and do fresh calculation
-      // The cache will be updated after calculation completes
     }
     const toNumLocal = (n: number | null | undefined) => toNum({ n: n ?? 0, precision });
     const withDetail = Number(detail) !== 0;
@@ -102,6 +98,24 @@ export async function history(
       error: portfolioError,
       instance: portfolio,
     } = await getPortfolioInstanceByIDorName(_id, userData);
+
+    if (forceRefresh) {
+      console.log(`Force full recalculation requested for portfolio ${_id}`);
+      // For force refresh, we clear ALL caches first, then do fresh calculation
+      // The caches will NOT be updated after calculation completes
+      try {
+        // Clear portfolio history cache from MongoDB
+        await PortfolioHistoryService.deleteHistory(realId);
+        console.log(`Portfolio history cache cleared for portfolio ${realId} due to forceRefresh`);
+
+        // Clear in-memory price caches to force fresh price fetching
+        const { clearCaches } = require('../services/app/priceCashe');
+        clearCaches();
+      } catch (deleteError) {
+        console.warn(`Failed to clear caches for portfolio ${realId}:`, deleteError);
+        // Continue with calculation even if cache clearing fails
+      }
+    }
 
     if (portfolioError || !portfolio) {
       const errorMessage = typeof portfolioError === 'string' ? portfolioError : (portfolioError as {error: string})?.error || `Portfolio not found: ${_id}`;
@@ -164,7 +178,7 @@ export async function history(
     // Determine symbols and currencies needed based *only* on trades within the actual date range
     const tradesInDateRange = allTrades.filter(trade => moment.utc(trade.tradeTime).isBetween(startDateMoment, endDateMoment, 'day', '[]'));
     const { uniqueSymbols, uniqueCurrencies, withoutPrices } =
-      await checkPortfolioPricesCurrencies(tradesInDateRange.length > 0 ? tradesInDateRange : allTrades, portfolio.currency); // Use all trades if range is empty
+      await checkPortfolioPricesCurrencies(tradesInDateRange.length > 0 ? tradesInDateRange : allTrades, portfolio.currency, undefined, forceRefresh); // Use all trades if range is empty
 
     if (portfolio.baseInstrument && !uniqueSymbols.includes(portfolio.baseInstrument)) {
         uniqueSymbols.push(portfolio.baseInstrument);
@@ -172,9 +186,9 @@ export async function history(
 
     const priceCheckStartDate = startDateMoment.clone().subtract(10, 'days').format(formatYMD); // Look back for initial prices
     try {
-        await checkPrices(uniqueSymbols, priceCheckStartDate);
+        await checkPrices(uniqueSymbols, priceCheckStartDate, undefined, undefined, forceRefresh);
         for (const currency of uniqueCurrencies) {
-            await checkPriceCurrency(currency, portfolio.currency, priceCheckStartDate);
+            await checkPriceCurrency(currency, portfolio.currency, priceCheckStartDate, forceRefresh);
         }
         if (withoutPrices.length > 0) {
             await fillDateHistoryFromTrades(allTrades, withoutPrices, endDateString);
@@ -483,34 +497,38 @@ export async function history(
       loopMoment.add(1, 'day');
     }
 
-    // --- 8. Store Results in Cache ---
-    try {
-      // Convert DayType[] to PortfolioHistoryDay[] for storage
-      const historyDays = days.map(day => ({
-        portfolioId: realId,
-        date: day.date,
-        invested: day.invested,
-        investedWithoutTrades: day.investedWithoutTrades,
-        cash: day.cash,
-        nav: day.nav,
-        index: day.index,
-        perfomance: day.perfomance,
-        shares: day.shares,
-        navShare: day.navShare,
-        perfShare: day.perfShare,
-        lastUpdated: new Date(),
-        isCalculated: true
-      }));
+    // --- 8. Store Results in Cache (only if not force refresh) ---
+    if (!forceRefresh) {
+      try {
+        // Convert DayType[] to PortfolioHistoryDay[] for storage
+        const historyDays = days.map(day => ({
+          portfolioId: realId,
+          date: day.date,
+          invested: day.invested,
+          investedWithoutTrades: day.investedWithoutTrades,
+          cash: day.cash,
+          nav: day.nav,
+          index: day.index,
+          perfomance: day.perfomance,
+          shares: day.shares,
+          navShare: day.navShare,
+          perfShare: day.perfShare,
+          lastUpdated: new Date(),
+          isCalculated: true
+        }));
 
-      // Save to cache asynchronously (don't await to not slow down response)
-      PortfolioHistoryService.saveHistoryDays(historyDays).catch(err => {
-        console.error(`Failed to save calculated history for portfolio ${realId}:`, err);
-      });
+        // Save to cache asynchronously (don't await to not slow down response)
+        PortfolioHistoryService.saveHistoryDays(historyDays).catch(err => {
+          console.error(`Failed to save calculated history for portfolio ${realId}:`, err);
+        });
 
-      console.log(`Calculated and cached ${historyDays.length} days of history for portfolio ${realId}`);
-    } catch (cacheError) {
-      console.error(`Error preparing history data for cache for portfolio ${realId}:`, cacheError);
-      // Continue with response even if caching fails
+        console.log(`Calculated and cached ${historyDays.length} days of history for portfolio ${realId}`);
+      } catch (cacheError) {
+        console.error(`Error preparing history data for cache for portfolio ${realId}:`, cacheError);
+        // Continue with response even if caching fails
+      }
+    } else {
+      console.log(`Force refresh completed for portfolio ${realId} - cache was cleared and not updated`);
     }
 
     // --- 9. Resampling and Final Output ---

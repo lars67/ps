@@ -52,14 +52,14 @@ global.WebSocket = SecureWebSocket;
 // Test configuration using real portfolio IDs
 const TEST_CONFIG = {
   testUserIds: [
-    '68d0c7faf2fc500b2833593b', // Jesper Brogaard-Radoor
-    '68d0c7fbf2fc500b2833597e', // Rikke Poulsen
+    '693d5d949a8c61ac59b6a0aa',
   ],
   performance: {
     iterations: 2,
-    timeout: 30000
+    timeout: 120000
   }
 };
+
 
 class PortfolioHistoryPerformanceDemo {
   constructor() {
@@ -291,11 +291,12 @@ class PortfolioHistoryPerformanceDemo {
           times.push(duration);
 
           if (i === 0) {
-            if (response.days && Array.isArray(response.days)) {
-              const cached = response.cached ? 'cached' : 'calculated';
-              console.log(`     ✅ ${duration}ms, ${response.days.length} days (${cached})`);
-            } else if (response.error) {
-              console.log(`     ❌ ${duration}ms, Error: ${response.error}`);
+            const data = response.data || response;
+            if (data.days && Array.isArray(data.days)) {
+              const cached = data.cached ? 'cached' : 'calculated';
+              console.log(`     ✅ ${duration}ms, ${data.days.length} days (${cached})`);
+            } else if (data.error) {
+              console.log(`     ❌ ${duration}ms, Error: ${data.error}`);
             } else {
               console.log(`     ⚠️  ${duration}ms, Unexpected response`);
             }
@@ -307,21 +308,24 @@ class PortfolioHistoryPerformanceDemo {
         console.log(`     Average: ${avg.toFixed(1)}ms`);
       }
 
-      // Test 2: Force refresh calls (should do full recalculation)
-      console.log('\n📊 Test 2: Force refresh calls (full recalculation)');
-      console.log('-'.repeat(50));
+      // Test 2: Force refresh calls (should do full recalculation and clear cache)
+      console.log('\n📊 Test 2: Force refresh calls (full recalculation & cache clearing)');
+      console.log('-'.repeat(60));
 
       for (const portfolioId of TEST_CONFIG.testUserIds) {
         console.log(`   Testing force refresh for portfolio: ${portfolioId}`);
 
         const start = Date.now();
         const response = await this.executePortfolioHistory(portfolioId, true);
+        console.log('FORCE response preview:', JSON.stringify(response, null, 2).substring(0, 300));
+
         const duration = Date.now() - start;
 
-        if (response.days && Array.isArray(response.days)) {
-          console.log(`     ✅ ${duration}ms, ${response.days.length} days (full recalculation)`);
-        } else if (response.error) {
-          console.log(`     ❌ ${duration}ms, Error: ${response.error}`);
+        const data = response.data || response;
+        if (data.days && Array.isArray(data.days)) {
+          console.log(`     ✅ ${duration}ms, ${data.days.length} days (full recalculation, cache cleared)`);
+        } else if (data.error) {
+          console.log(`     ❌ ${duration}ms, Error: ${data.error}`);
         } else {
           console.log(`     ⚠️  ${duration}ms, Unexpected response`);
         }
@@ -329,9 +333,42 @@ class PortfolioHistoryPerformanceDemo {
         results.forceRefreshCalls.push({
           portfolioId,
           duration,
-          daysCount: response.days ? response.days.length : 0,
-          success: !response.error
+          daysCount: data.days ? data.days.length : 0,
+          success: !data.error
         });
+      }
+
+      // Test 3: Normal calls after force refresh (should recalculate since cache was cleared)
+      console.log('\n📊 Test 3: Normal calls after force refresh (cache should be cleared)');
+      console.log('-'.repeat(60));
+
+      const resultsAfterForceRefresh = [];
+      for (const portfolioId of TEST_CONFIG.testUserIds) {
+        console.log(`   Testing normal call after force refresh for portfolio: ${portfolioId}`);
+
+        const times = [];
+        for (let i = 0; i < TEST_CONFIG.performance.iterations; i++) {
+          const start = Date.now();
+          const response = await this.executePortfolioHistory(portfolioId, false);
+          const duration = Date.now() - start;
+          times.push(duration);
+
+          if (i === 0) {
+            const data = response.data || response;
+            if (data.days && Array.isArray(data.days)) {
+              const cached = data.cached ? 'cached' : 'calculated (cache was cleared!)';
+              console.log(`     ✅ ${duration}ms, ${data.days.length} days (${cached})`);
+            } else if (data.error) {
+              console.log(`     ❌ ${duration}ms, Error: ${data.error}`);
+            } else {
+              console.log(`     ⚠️  ${duration}ms, Unexpected response`);
+            }
+          }
+        }
+
+        const avg = times.reduce((a, b) => a + b, 0) / times.length;
+        resultsAfterForceRefresh.push({ portfolioId, times, average: avg });
+        console.log(`     Average: ${avg.toFixed(1)}ms (should be slower since cache was cleared)`);
       }
 
     } catch (error) {

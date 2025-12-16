@@ -23,6 +23,12 @@ const dateHistory: Record<string, Record<string, number>> = {};
 const histories: StringRecord = {};
 const SEARCH_DAY = 10;
 
+export function clearCaches() {
+  Object.keys(dateHistory).forEach(key => delete dateHistory[key]);
+  Object.keys(histories).forEach(key => delete histories[key]);
+  console.log('Price caches cleared');
+}
+
 async function delay(n: number) {
   return new Promise((res: Function) => {
     setTimeout(() => {
@@ -36,6 +42,7 @@ export async function checkPrices(
   startDate0: Date | string,
   maxConcurrentRequests = 10,
   delayBetweenBatches = 500,
+  forceRefresh = false,
 ) {
   let isSended = 0;
   const startDate =
@@ -45,8 +52,8 @@ export async function checkPrices(
   const withoutPrices = [] as string[];
   try {
     for (const symbol of portfolioSymbols) {
-      if (!histories[symbol] || histories[symbol] > startDate) {
-        console.log("fetchHistory", symbol, startDate);
+      if (forceRefresh || !histories[symbol] || histories[symbol] > startDate) {
+        console.log("fetchHistory", symbol, startDate, forceRefresh ? "(force refresh)" : "");
         const history = await fetchHistory({ symbol, from: startDate });
         console.log(symbol, history);
         if (history.length === 0) {
@@ -293,6 +300,7 @@ export async function checkPriceCurrency(
   currency: string,
   balanceCurrency: string,
   startDateInput: string,
+  forceRefresh = false,
 ) {
   const startDateInputM = moment(
     startDateInput.split("T").shift() as string,
@@ -329,11 +337,11 @@ export async function checkPriceCurrency(
     let symbol: string = "";
     let fx = `${currency}${balanceCurrency}`;
     let fx2 = `${balanceCurrency}${currency}`;
-    if (histories[fx]) {
+    if (!forceRefresh && histories[fx]) {
       if (histories[fx] <= startDate) {
         return;
       }
-    } else if (histories[fx2]) {
+    } else if (!forceRefresh && histories[fx2]) {
       if (histories[fx2] <= startDate) {
         return;
       }
@@ -352,6 +360,7 @@ export async function checkPortfolioPricesCurrencies(
   trades: Trade[],
   balanceCurrency: string,
   baseInstrument?: string,
+  forceRefresh = false,
 ) {
   const withoutPrices = [] as string[];
   const uniqueSymbols = extractUniqueFields(trades, "symbol");
@@ -367,10 +376,10 @@ export async function checkPortfolioPricesCurrencies(
     "T",
   )[0];
   //console.log("checkPortfolioPricesCurrencies startDate", startDate, endDate);
-  withoutPrices.push(...(await checkPrices(uniqueSymbols, startDate)));
+  withoutPrices.push(...(await checkPrices(uniqueSymbols, startDate, undefined, undefined, forceRefresh)));
  // console.log("checkPriceCurrency");
   for (const currency of uniqueCurrencies) {
-    const r = await checkPriceCurrency(currency, balanceCurrency, startDate);
+    const r = await checkPriceCurrency(currency, balanceCurrency, startDate, forceRefresh);
     if (r) {
       withoutPrices.push(r);
     }
