@@ -999,4 +999,13 @@
     "$date": "2025-02-05T09:20:14.668Z"
   },
   "__v": 0
+},
+{
+  "label": "Get Portfolio Attribution",
+  "value": "{\n  \"command\": \"portfolios.attribution\",\n  \"_id\": \"67a31b7c59eaf47690d41e62\"\n}",
+  "description": "Calculates the income stream breakdown (Trading, Passive, Currency)",
+  "ownerId": "6734dc9e48a25853e9f551e2",
+  "commandType": "user",
+  "access": "",
+  "__v": 0
 }]

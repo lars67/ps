@@ -303,6 +303,32 @@ Deletes a portfolio from the system.
 
 Retrieves current portfolio positions with real-time market data and optional attribution analysis.
 
+### Get Portfolio Attribution
+
+Calculates the performance breakdown of a portfolio into Trading, Passive (Dividends), and Currency components.
+
+**Command:**
+
+```json
+{
+  "command": "portfolios.attribution",
+  "_id": "portfolio_id"
+}
+```
+
+**Parameters:**
+
+| Parameter | Description         | Required |
+| :-------- | :------------------ | :------- |
+| _id       | ID of the portfolio | Yes      |
+
+**Output:** Returns an `ATTRIBUTION` object with the amount and percentage breakdown for each income stream.
+
+#### Income Streams:
+- **Trading**: Profit/Loss from asset price movements (Gross of fees).
+- **Passive**: Income from dividends.
+- **Currency**: Profit/Loss from fluctuations in exchange rates.
+
 **Command:**
 
 ```json
