@@ -10,11 +10,15 @@ This file tracks the project's current status, including recent changes, current
 *   Investigating and resolving WebSocket connection stability issues.
 *   Addressing potential SSE (Server-Sent Events) connection instability issues.
 *   Verifying portfolio calculation accuracy against external NAV reports.
+*   Corrected FX rate fetching bug where symbol-keyed prices were missed in `fetchHistory`.
+*   Hardened currency conversion by removing unsafe 1.0 parity fallbacks in `getRate`.
 *   Considering more granular access controls for sensitive portfolio data.
 *   Updating PS2 documentation to reflect new signup `source` field.
 
 ## Recent Changes
 
+*   Fixed critical bug in `fetchHistory` where FX rates keyed by symbol name (e.g., `USDDKK:FX`) were being ignored.
+*   Updated `getRate` to throw an error instead of falling back to `1.0` when exchange rates are missing.
 *   Completed implementation of `portfolios.debug` command for comprehensive portfolio error detection and reporting.
 *   Resolved backend logic issues including calculation logic, fees, dividends, and command dispatch.
 *   Verified command execution with fixes for `_id` access and integration in WebSocket command system.

@@ -321,8 +321,17 @@ export async function checkPriceCurrency(
         const { date, close } = h;
         if (dateHistory[date]) {
           dateHistory[date][fx] = close;
+          // Also store reverse rate for consistency
+          if (close > 0) {
+              const revFX = fx.slice(3) + fx.slice(0,3);
+              dateHistory[date][revFX] = 1/close;
+          }
         } else {
           dateHistory[date] = { [fx]: close };
+          if (close > 0) {
+              const revFX = fx.slice(3) + fx.slice(0,3);
+              dateHistory[date][revFX] = 1/close;
+          }
         }
      //   i <=10 && console.log(date,dateHistory[date]);
       });
@@ -337,17 +346,20 @@ export async function checkPriceCurrency(
     let symbol: string = "";
     let fx = `${currency}${balanceCurrency}`;
     let fx2 = `${balanceCurrency}${currency}`;
-    if (!forceRefresh && histories[fx]) {
-      if (histories[fx] <= startDate) {
+    // We need to ensure we have data covering the requested start date AND recent data
+    const nowStr = moment().format(formatYMD);
+    if (!forceRefresh) {
+      if (histories[fx] && histories[fx] <= startDate && histories[fx + '_end'] >= nowStr) {
         return;
       }
-    } else if (!forceRefresh && histories[fx2]) {
-      if (histories[fx2] <= startDate) {
+      if (histories[fx2] && histories[fx2] <= startDate && histories[fx2 + '_end'] >= nowStr) {
         return;
       }
     }
     const addedFX = await addFXHistory(fx, startDate);
+    if (addedFX) histories[fx + '_end'] = nowStr;
     const addedFX2 = await addFXHistory(fx2, startDate);
+    if (addedFX2) histories[fx2 + '_end'] = nowStr;
     if (currency==='CNH' || (!addedFX && !addedFX2)) {
       //console.log(`FX price absent for ${fx} ${fx2} !!!!!!!!!!`);
       badSymbol= `${fx}:FX`
@@ -450,12 +462,16 @@ export const getRate = (
       }
     }
 
-    // If still no rate found, return 1 as a fallback to avoid division by zero
-    console.warn(`No rate found for ${currency}${balanceCurrency} or ${balanceCurrency}${currency} within ${SEARCH_DAY} days, using 1 as fallback`);
-    return 1;
+    // If still no rate found, return 0 to indicate failure without crashing process
+    console.error(`CRITICAL: No rate found for ${currency}${balanceCurrency} or ${balanceCurrency}${currency} within ${SEARCH_DAY} days!`);
+    return 0;
   }
 
-  const r = rate1 ? rate1 : rate2 ? 1 / rate2 : 1; // Use 1 as fallback instead of 0
+  const r = rate1 ? rate1 : (rate2 ? 1 / rate2 : 0);
+  if (r === 0) {
+      console.error(`CRITICAL: Rate calculation failed for ${currency}/${balanceCurrency} on ${date}`);
+      return 0;
+  }
   //console.log(`RATES '${currency}${balanceCurrency}' '${date}'`, rate1, rate2, '=>', r)
   return Number(r.toFixed(4));
 };

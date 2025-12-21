@@ -9,7 +9,8 @@ export type  HistoricalDataInput =
         low?: string,
         close:string,
         ['adj close']? : string,
-        volume?: string
+        volume?: string,
+        [key: string]: any
     }
 
 
@@ -39,25 +40,24 @@ export const toQueryString = (query: StringRecord) =>
 export const fetchHistory =  async function(query:StringRecord):Promise<HistoricalData[]> {
     try {
 
-        console.log(getDataUrl('historical', toQueryString(query)));
+        // console.log(getDataUrl('historical', toQueryString(query)));
         const response = await fetch(getDataUrl('historical', toQueryString(query)) );
          const data = await response.json();
+         // console.log('DATA FROM PROXY', data);
         const symbol = query.symbol;
         let prevValue: HistoricalDataInput;
-        const targetData = data.map((item:HistoricalDataInput) => {
+        const targetData = (Array.isArray(data) ? data : []).map((item:HistoricalDataInput) => {
+            const closeValue = item.close || item['adj close'] || (symbol && item[symbol]) || (prevValue && (prevValue.close || prevValue['adj close'] || (symbol && prevValue[symbol])));
             const preparedItem = {
                 date: item.date,
-                dateUnix: moment(item.date, 'YYYY-MM-DD').valueOf(), //unix(),utoDate(),
+                dateUnix: moment(item.date, 'YYYY-MM-DD').toDate(), //unix(),utoDate(),
                 open: parseFloat(item.open || ''),
                 high: parseFloat(item.high|| ''),
                 low: parseFloat(item.low || ''),
-                close: parseFloat(
-                    item.close ||
-                    item['adj close'] ||
-                    (prevValue && ( prevValue.close || prevValue['adj close'] )) || ''),
+                close: parseFloat(closeValue || ''),
                 volume: parseFloat(item.volume || '0')
             };
-            if (item['adj close'] || item.close) {
+            if (item['adj close'] || item.close || (symbol && item[symbol])) {
                 prevValue = item;
             }
             return preparedItem;

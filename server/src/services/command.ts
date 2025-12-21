@@ -237,6 +237,7 @@ export const getMemberAccessAlowedCommands = () => {
   if (memberAllowedCommands.length === 0) {
     memberAllowedCommands.push('commands.list');
     memberAllowedCommands.push(...['portfolios.list', 'portfolios.add', 'portfolios.update', 'portfolios.remove',
+       'portfolios.positions', 'portfolios.attribution', 'portfolios.history',
        'portfolios.detailList',
        'trades.add', 'trades.update', 'trades.remove']);
     collections.forEach((col) => {

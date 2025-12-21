@@ -4,7 +4,7 @@ import { UserData } from "../../services/websocket";
 import { getPortfolioInstanceByIDorName } from "../../services/portfolio/helper";
 import { toNum } from "../../utils";
 import { getPortfolioTrades } from "../../utils/portfolio";
-import { getRate, getDateSymbolPrice } from "../../services/app/priceCashe";
+import { getRate, getDateSymbolPrice, checkPortfolioPricesCurrencies, checkPrices, checkPriceCurrency } from "../../services/app/priceCashe";
 import moment from "moment";
 
 type AttributionParams = {
@@ -38,12 +38,21 @@ export async function attribution(
 
   const trades = allTradesResult as Trade[];
   
+  // Warm the price cache to ensure latest market and FX rates are available
+  const { uniqueSymbols, uniqueCurrencies } = await checkPortfolioPricesCurrencies(trades, portfolio.currency);
+  const now = moment().format("YYYY-MM-DD");
+  await checkPrices(uniqueSymbols, now);
+  for (const cur of uniqueCurrencies) {
+    await checkPriceCurrency(cur, portfolio.currency, now);
+  }
+
   let tradingAmount = 0;
   let passiveAmount = 0;
   let currencyAmount = 0;
   
-  const holdings: Record<string, { volume: number, avgRate: number, avgPrice: number }> = {};
+  const holdings: Record<string, { volume: number, avgPrice: number, avgRate: number, totalFeesBase: number }> = {};
 
+  // 1. Ledger Processing (Realized components + established cost basis)
   for (const trade of trades) {
     const symbol = trade.symbol;
     const rate = trade.rate || 1.0;
@@ -51,64 +60,70 @@ export async function attribution(
     const volume = trade.volume;
     const feeBase = trade.fee * rate;
 
-    if (trade.tradeType === TradeTypes.Trade) { // Asset Trade
-      const isBuy = trade.side === "B";
-      if (!holdings[symbol]) holdings[symbol] = { volume: 0, avgRate: 0, avgPrice: 0 };
+    if (trade.tradeType === TradeTypes.Trade) {
+      if (!holdings[symbol]) holdings[symbol] = { volume: 0, avgPrice: 0, avgRate: 0, totalFeesBase: 0 };
       const h = holdings[symbol];
 
-      if (isBuy) {
-        h.avgRate = (h.avgRate * h.volume + rate * volume) / (h.volume + volume);
-        h.avgPrice = (h.avgPrice * h.volume + price * volume) / (h.volume + volume);
+      if (trade.side === "B") {
+        const costLocalPrev = h.volume * h.avgPrice;
+        const costBasePrev = h.volume * h.avgPrice * h.avgRate;
+        
         h.volume += volume;
-        tradingAmount -= feeBase;
+        h.avgPrice = (costLocalPrev + (price * volume)) / h.volume;
+        h.avgRate = (costBasePrev + (price * volume * rate)) / (h.volume * h.avgPrice);
+        h.totalFeesBase += feeBase;
       } else {
-        const sellVolume = Math.min(volume, h.volume);
-        tradingAmount += (price - h.avgPrice) * sellVolume * h.avgRate;
-        currencyAmount += (price * (rate - h.avgRate)) * sellVolume;
-        h.volume -= sellVolume;
-        tradingAmount -= feeBase;
+        const sellVol = Math.min(volume, h.volume);
+        // PRICE Component: Price shift at consistent historical rate
+        tradingAmount += (price - h.avgPrice) * sellVol * h.avgRate;
+        // CURRENCY Component: Rate shift on principal
+        currencyAmount += (price * (rate - h.avgRate)) * sellVol;
+        
+        h.volume -= sellVol;
+        h.totalFeesBase += feeBase;
       }
-    } else if (trade.tradeType === TradeTypes.Dividends) { // Dividend
+    } else if (trade.tradeType === TradeTypes.Dividends) {
       passiveAmount += (trade.price + (trade.fee || 0)) * rate;
     }
   }
 
-  const now = moment().format("YYYY-MM-DD");
+  // 2. Mark-to-market Processing (Unrealized components)
+  const today = moment().format("YYYY-MM-DD");
   for (const symbol in holdings) {
     const h = holdings[symbol];
     if (h.volume > 0) {
-      const currentPrice = getDateSymbolPrice(now, symbol) || h.avgPrice;
-      const t = trades.find(t=>t.symbol===symbol);
-      const currentRate = getRate(t?.currency || portfolio.currency, portfolio.currency, now) || 1.0;
+      const currentPrice = getDateSymbolPrice(today, symbol) || h.avgPrice;
+      const tradeRef = trades.find(tr => tr.symbol === symbol);
+      const currentRate = getRate(tradeRef?.currency || portfolio.currency, portfolio.currency, today) || h.avgRate;
       
       tradingAmount += (currentPrice - h.avgPrice) * h.volume * h.avgRate;
       currencyAmount += (currentPrice * (currentRate - h.avgRate)) * h.volume;
+      
+      // Trading bucket accounts for the cost of trade entry/exit
+      tradingAmount -= h.totalFeesBase;
     }
-  }
-
-  // FORCE 0% Currency Attribution for single-currency portfolios
-  const uniqueCurrencies = [...new Set(trades.filter(t=>t.tradeType === TradeTypes.Trade).map(t=>t.currency))];
-  if (uniqueCurrencies.length <= 1 && (uniqueCurrencies[0] === portfolio.currency || uniqueCurrencies.length === 0)) {
-    currencyAmount = 0;
   }
 
   const totalReturn = tradingAmount + passiveAmount + currencyAmount;
 
+  // EPSILON Clean-up: Zero out tiny floating point residuals for UI clarity
+  const finalize = (n: number) => Math.abs(n) < 0.0001 ? 0 : toNum({ n });
+
   return {
     symbol: "ATTRIBUTION",
     baseCurrency: portfolio.currency,
-    totalReturn: toNum({ n: totalReturn }),
+    totalReturn: finalize(totalReturn),
     breakdown: {
       trading: { 
-        amount: toNum({ n: tradingAmount }), 
+        amount: finalize(tradingAmount), 
         percent: totalReturn ? Math.round((tradingAmount / totalReturn) * 10000) / 100 : 0 
       },
       passive: { 
-        amount: toNum({ n: passiveAmount }), 
+        amount: finalize(passiveAmount), 
         percent: totalReturn ? Math.round((passiveAmount / totalReturn) * 10000) / 100 : 0 
       },
       currency: { 
-        amount: Math.abs(currencyAmount) < 0.01 ? 0 : toNum({ n: currencyAmount }), 
+        amount: finalize(currencyAmount), 
         percent: totalReturn ? Math.round((currencyAmount / totalReturn) * 10000) / 100 : 0 
       }
     }

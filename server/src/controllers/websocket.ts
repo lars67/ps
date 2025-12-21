@@ -8,6 +8,7 @@ import * as logs from "../services/custom/logs";
 import * as tools from "../services/custom/tools";
 
 import * as portfolios from "../services/portfolio";
+import { attribution as attributionHandler } from "../services/portfolio/attribution";
 import * as trades from "../services/trade";
 import * as tests from "../services/tests/prices";
 
@@ -19,6 +20,7 @@ import {guestAccessAllowed} from "@/controllers/guestAccessAlowed";
 
 const handlers: { [key: string]: any } = {
   portfolios,
+  "portfolios.attribution": attributionHandler,
   trades,
   sectors,
   currencies,
@@ -54,47 +56,48 @@ export default async function handler(data, sendResponse, userModif, userData, s
   }
   const parts = command.split(".");
   const com = command.toLowerCase();
-  if (com.indexOf("subscribequotes") !== -1) {
-    console.log("[Instrumentation] subscribeQuotes command received with id: " + (params.id || "N/A") + ", symbols: " + (params.symbols || "N/A"));
-  }
-
-//console.log('controller', com);
-  if (handlers[com]) {
-    sendResponse(await handlers[com].list(params));
-  } else {
-    try {
-      console.log(`[DEBUG] parts[0]: ${parts[0]} typeof handlers[parts[0]]: ${typeof handlers[parts[0]]}`);
-      if (handlers[parts[0]]) {
-         console.log(`[DEBUG] handlers[parts[0]] keys: ${Object.keys(handlers[parts[0]])}`);
-         console.log(`[DEBUG] parts[1]: ${parts[1]} typeof handlers[parts[0]][parts[1]]: ${typeof handlers[parts[0]][parts[1]]}`);
-      }
-
-      if (handlers[parts[0]] && isFunction(handlers[parts[0]][parts[1]])) {
-        if (!isAccessAllowed(com, userData.role)) {
-          return sendResponse({error: `Command "${command}" is not allowed`, msgId});
-        }
-        //console.log('handler:', handlers[parts[0]], params, handlers[parts[0]][parts[1]]);
-        const resp = await handlers[parts[0]][parts[1]](
-          params,
-          sendResponse,
-          msgId,
-          userModif,
-          userData,
-          socket
-        );
-        return sendResponse(resp);
-      } else {
-        console.error(`Handler group "${parts[0]}" not found, or command "${parts[1]}" is not a function.`);
-        return sendResponse({error: `Command "${command}" unknown`, msgId});
-      }
-    } catch (error) {
-      console.log('Command execution error:', error);
-      return sendResponse({
-        error: `Command "${command}" execution error: ${error instanceof Error ? error.message : String(error)}`,
-        msgId,
-      });
+  
+  // 1. Priority: Direct handler match (case-insensitive)
+  // Check exact string from map (e.g. "portfolios.attribution")
+  const directHandler = Object.keys(handlers).find(k => k.toLowerCase() === com);
+  
+  if (directHandler && isFunction(handlers[directHandler])) {
+    if (!isAccessAllowed(directHandler, userData.role)) {
+      return sendResponse({error: `Command "${command}" is not allowed`, msgId});
     }
+    const resp = await handlers[directHandler](
+      params,
+      sendResponse,
+      msgId,
+      userModif,
+      userData,
+      socket
+    );
+    return sendResponse(resp);
   }
-}
 
-//const  getFields = collection => ()
+  // 2. Collection-style check (calls .list() by default)
+  if (handlers[com] && isFunction(handlers[com].list)) {
+    sendResponse(await handlers[com].list(params));
+    return;
+  }
+
+  // 3. Fallback: Split-dot logic (portfolios.positions)
+  if (parts.length === 2 && handlers[parts[0]] && isFunction(handlers[parts[0]][parts[1]])) {
+    if (!isAccessAllowed(com, userData.role)) {
+      return sendResponse({error: `Command "${command}" is not allowed`, msgId});
+    }
+    const resp = await handlers[parts[0]][parts[1]](
+      params,
+      sendResponse,
+      msgId,
+      userModif,
+      userData,
+      socket
+    );
+    return sendResponse(resp);
+  }
+
+  console.error(`Command "${command}" unknown. Checked direct and split-dot handlers.`);
+  return sendResponse({error: `Command "${command}" unknown`, msgId});
+}

@@ -48,6 +48,38 @@ type HistoryParams = {
 // Helper type for daily holdings state
 type HoldingsMap = Record<string, { volume: number; currency: string }>;
 
+// Helper function to calculate daily portfolio performance
+function getPortfolioPerfomance(
+  currentDay: string,
+  portfolioCurrency: string,
+  oldPortfolio: Record<string, Partial<Trade>>
+): number {
+  let sum = 0;
+  let sumInvested = 0;
+  const beforeDay = moment(currentDay, formatYMD)
+    .add(-1, "day")
+    .format(formatYMD);
+  
+  Object.keys(oldPortfolio).forEach((symbol: string) => {
+    const pi = oldPortfolio[symbol] as Trade;
+    const price = toNum({
+      n: getDateSymbolPrice(currentDay, symbol) as number,
+    });
+    const rate = getRate(pi.currency, portfolioCurrency, currentDay);
+    const priceBefore = toNum({
+      n: getDateSymbolPrice(beforeDay, symbol) as number,
+    });
+    const rateBefore = getRate(pi.currency, portfolioCurrency, beforeDay);
+    
+    if (price && rate && priceBefore && rateBefore) {
+      sum += (price * rate - priceBefore * rateBefore) * pi.volume;
+      sumInvested += priceBefore * rateBefore * pi.volume;
+    }
+  });
+  
+  return sumInvested > 0 ? Math.round((10000 * sum) / sumInvested) / 100 : 0;
+}
+
 // Renamed function back to 'history'
 export async function history(
   { _id, from, till, detail = "0", sample, precision = 2, forceRefresh = false, maxAge = 1440 }: HistoryParams,
@@ -208,7 +240,8 @@ export async function history(
     let lastKnownInvested = 0;
     let lastKnownCash = 0;
     let lastKnownShares = 0;
-    let perfomanceAcc = 0; // Placeholder
+    let perfomanceNominal = 0; // Performance in nominal terms (scaled to initial NAV)
+    let initialNavForPerf = 0; // Initial NAV for scaling performance
     let baseIndexValue = 100000; // Default base index
 
     // --- 6. Process Initial State (Trades Before Start Date) ---
@@ -454,6 +487,21 @@ export async function history(
         dayInvestedValue = currentDayInv;
         dayNav = dayInvestedValue + cash;
 
+        // --- 7c. Calculate Daily Performance (Nominal) ---
+        if (days.length === 0) {
+          // First day - set initial values
+          perfomanceNominal = dayNav;
+          initialNavForPerf = dayNav;
+        } else if (Object.keys(currentHoldings).length > 0) {
+          try {
+            const dailyPerfPercent = getPortfolioPerfomance(currentDayString, portfolio.currency, currentHoldings);
+            // Update nominal performance: scale by daily return
+            perfomanceNominal = perfomanceNominal * (1 + dailyPerfPercent / 100);
+          } catch (perfErr) {
+            console.warn(`Could not calculate performance for ${currentDayString}:`, perfErr);
+          }
+        }
+
         // Update last known good values for potential error recovery on the *next* day
         lastKnownNav = dayNav;
         lastKnownInvested = dayInvestedValue;
@@ -470,7 +518,7 @@ export async function history(
           // Holdings remain as they were at the start of the try block
       }
 
-      // --- 7c. Store Daily Snapshot ---
+      // --- 7d. Store Daily Snapshot ---
       const finalShares = shares > 0 ? shares : 1;
       const navShare = finalShares > 0 ? dayNav / finalShares : 0;
       const firstNavShare = days[0]?.navShare ?? (navShare || 1);
@@ -487,7 +535,7 @@ export async function history(
         cash: toNumLocal(cash),
         nav: toNumLocal(dayNav),
         index: toNumLocal(currentIndexValue),
-        perfomance: 0, // Placeholder
+        perfomance: toNumLocal(perfomanceNominal), // Performance in nominal terms (starts at initial NAV)
         shares: finalShares,
         navShare: toNumLocal(navShare),
         perfShare: toNumLocal(100 * navShare / (firstNavShare !== 0 ? firstNavShare : 1))
