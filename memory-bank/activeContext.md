@@ -12,6 +12,7 @@ This file tracks the project's current status, including recent changes, current
 *   Verifying portfolio calculation accuracy against external NAV reports.
 *   Corrected FX rate fetching bug where symbol-keyed prices were missed in `fetchHistory`.
 *   Hardened currency conversion by removing unsafe 1.0 parity fallbacks in `getRate`.
+*   Reverted attribution percentage calculation changes - original logic restored.
 *   Considering more granular access controls for sensitive portfolio data.
 *   Updating PS2 documentation to reflect new signup `source` field.
 
