@@ -42,6 +42,11 @@ const isFunction = (f: any) => typeof f === "function";
 
 const isAccessAllowed  = (com:string, role:string)=> {
   if (role === 'admin') return true;
+  if (role === 'guest') {
+    // For guests, allow public commands
+    const guestAllowed = require("./guestAccessAlowed").guestAccessAllowed;
+    return guestAllowed(null, { command: com });
+  }
   const memberCoimmands=  getMemberAccessAlowedCommands();
   //console.log('isAccessAllowed', com, memberCoimmands.includes(com), memberCoimmands );
   return memberCoimmands.includes(com);

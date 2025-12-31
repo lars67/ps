@@ -14,6 +14,8 @@ import { errorMsgs, formatYMD } from "../../constants";
 import { isValidDateFormat } from "../../utils";
 import {
   DayType,
+} from "../../services/portfolio/portfolioCalculator";
+import {
   history as historyService,
 } from "../../services/portfolio/history";
 
@@ -118,6 +120,7 @@ export async function statistic(
 export const description: CommandDescription = {
   statistic: {
     label: "Statistic",
+    access: "public",
     value: JSON.stringify({
       command: "tools.statistic",
       history: "",

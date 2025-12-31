@@ -12,6 +12,7 @@ export const guestAccessAllowed = (socket: any, msg: any) => {
     "trades.list",
     "prices.getcurrent",
     "prices.gethistorical",
+    "tools.statistic",
   ];
   return allowed.includes(msg.command?.toLowerCase());
 };
