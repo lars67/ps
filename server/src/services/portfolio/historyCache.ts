@@ -1,6 +1,6 @@
 import { PortfolioHistoryService } from "./historyService";
 import { PortfolioHistoryDay, PortfolioHistoryMetadata } from "../../types/portfolioHistory";
-import { DayType } from "./history";
+import { DayType } from "./portfolioCalculator";
 
 /**
  * Portfolio History Cache Service
@@ -238,7 +238,7 @@ export class PortfolioHistoryCache {
 
   /**
    * Update portfolio history cache
-   * This method calculates and caches portfolio history data
+   * This method calculates and caches portfolio history data using the shared calculator
    */
   static async updateHistory(
     portfolioId: string,
@@ -255,47 +255,29 @@ export class PortfolioHistoryCache {
     try {
       console.log(`Updating history cache for portfolio ${portfolioId}${fromDate ? ` from ${fromDate}` : ''}`);
 
-      // Import required dependencies
-      const moment = require('moment');
-      const { PortfolioModel } = require('../../models/portfolio');
-      const { getPortfolioTrades } = require('../../utils/portfolio');
-      const {
-        checkPortfolioPricesCurrencies,
-        checkPrices,
-        fillDateHistoryFromTrades,
-        getDateSymbolPrice,
-        getRate,
-        checkPriceCurrency,
-        getDatePrices
-      } = require('../../services/app/priceCashe');
-      const { getPortfolioInstanceByIDorName } = require('./helper');
-      const { isValidDateFormat, toNum } = require('../../utils');
-      const { formatYMD } = require('../../constants');
+      // Import the shared calculator
+      const { PortfolioCalculator } = require('./portfolioCalculator');
 
-      // Get portfolio instance
-      const { instance: portfolio, error } = await getPortfolioInstanceByIDorName(portfolioId, { userId: '', role: 'admin' });
-      if (error || !portfolio) {
-        throw new Error(`Portfolio not found: ${portfolioId}`);
+      // Calculate history using the shared calculator
+      const calculationResult = await PortfolioCalculator.calculatePortfolioHistory(
+        portfolioId,
+        fromDate,
+        undefined, // till - use default (today)
+        2, // precision
+        true // forceRefresh to ensure fresh calculation
+      );
+
+      if (calculationResult.error) {
+        throw new Error(calculationResult.error);
       }
 
-      const realId = portfolio._id.toString();
+      const { days } = calculationResult;
 
-      // Fetch ALL trades for this portfolio
-      const allTradesResult = await getPortfolioTrades(realId, undefined, {
-        state: { $in: ["1"] }
-      });
-
-      if ((allTradesResult as { error: string }).error) {
-        throw new Error((allTradesResult as { error: string }).error);
-      }
-
-      const allTrades = (allTradesResult as any[]).sort((a, b) => moment(a.tradeTime).diff(moment(b.tradeTime)));
-
-      if (allTrades.length === 0) {
+      if (days.length === 0) {
         // No trades, create empty baseline record
         const baselineRecord = {
-          portfolioId: realId,
-          date: moment().format('YYYY-MM-DD'),
+          portfolioId: portfolioId,
+          date: new Date().toISOString().split('T')[0],
           invested: 0,
           investedWithoutTrades: 0,
           cash: 0,
@@ -318,145 +300,22 @@ export class PortfolioHistoryCache {
         };
       }
 
-      // Determine date range
-      const firstTradeDate = allTrades[0].tradeTime.split("T")[0];
-      const startDateMoment = moment.utc(firstTradeDate, formatYMD);
-      const endDateMoment = moment.utc();
-
-      // Fetch price data for all symbols/currencies
-      const { uniqueSymbols, uniqueCurrencies, withoutPrices } =
-        await checkPortfolioPricesCurrencies(allTrades, portfolio.currency);
-
-      if (portfolio.baseInstrument && !uniqueSymbols.includes(portfolio.baseInstrument)) {
-        uniqueSymbols.push(portfolio.baseInstrument);
-      }
-
-      const priceCheckStartDate = startDateMoment.clone().subtract(10, 'days').format(formatYMD);
-      await checkPrices(uniqueSymbols, priceCheckStartDate);
-      for (const currency of uniqueCurrencies) {
-        await checkPriceCurrency(currency, portfolio.currency, priceCheckStartDate);
-      }
-      if (withoutPrices.length > 0) {
-        await fillDateHistoryFromTrades(allTrades, withoutPrices, endDateMoment.format(formatYMD));
-      }
-
-      // Initialize state variables
-      let cash = 0;
-      let shares = 0;
-      let currentHoldings: Record<string, { volume: number; currency: string }> = {};
-      const toNumLocal = (n: number) => toNum({ n: n ?? 0, precision: 2 });
-
-      // Process all trades to build holdings state
-      for (const trade of allTrades) {
-        const rate = getRate(trade.currency, portfolio.currency, trade.tradeTime);
-        if (rate == null) continue;
-
-        switch (trade.tradeType) {
-          case 'Trade':
-            const { symbol } = trade;
-            if (!currentHoldings[symbol]) {
-              currentHoldings[symbol] = { volume: 0, currency: trade.currency };
-            }
-            const dir = trade.side === "B" ? 1 : -1;
-            const cashChange = -dir * (trade.price * rate * trade.volume) - (trade.fee * rate);
-            currentHoldings[symbol].volume += dir * trade.volume;
-            cash += cashChange;
-            break;
-          case 'Cash':
-          case 'Dividends':
-          case 'Investment':
-            const dividendMultiplier = (trade.tradeType === 'Dividends' ? (currentHoldings[trade.symbol]?.volume || 1) : 1);
-            const cashPut = (trade.price * rate * dividendMultiplier) + (trade.fee * rate);
-            cash += cashPut;
-            if (trade.shares) {
-              shares += trade.shares;
-            } else if (trade.tradeType === 'Investment') {
-              shares += 1;
-            }
-            break;
-        }
-      }
-
-      // Clean up zero holdings
-      Object.keys(currentHoldings).forEach(symbol => {
-        if (currentHoldings[symbol].volume === 0) {
-          delete currentHoldings[symbol];
-        }
-      });
-
-      // Calculate initial values
-      const dayBeforeStartStr = startDateMoment.clone().subtract(1, 'day').format(formatYMD);
-      let initialInv = 0;
-      for (const symbol in currentHoldings) {
-        const holding = currentHoldings[symbol];
-        const price = getDateSymbolPrice(dayBeforeStartStr, symbol);
-        const rate = getRate(holding.currency, portfolio.currency, dayBeforeStartStr);
-        if (price != null && rate != null) {
-          initialInv += price * rate * holding.volume;
-        }
-      }
-
-      let lastKnownNav = initialInv + cash;
-      let lastKnownInvested = initialInv;
-      let lastKnownCash = cash;
-      let lastKnownShares = shares > 0 ? shares : 1;
-      let baseIndexValue = getDateSymbolPrice(startDateMoment.format(formatYMD), portfolio.baseInstrument) || 100000;
-
-      // Generate daily history
-      const historyDays = [];
-      let loopMoment = startDateMoment.clone();
-
-      while (loopMoment.isSameOrBefore(endDateMoment)) {
-        const currentDayString = loopMoment.format(formatYMD);
-        let dayInvestedValue = 0;
-        let dayNav = 0;
-
-        // Calculate end-of-day values
-        for (const symbol in currentHoldings) {
-          const holding = currentHoldings[symbol];
-          const price = getDateSymbolPrice(currentDayString, symbol);
-          const rate = getRate(holding.currency, portfolio.currency, currentDayString);
-
-          if (price != null && rate != null) {
-            dayInvestedValue += price * rate * holding.volume;
-          }
-        }
-
-        dayNav = dayInvestedValue + cash;
-
-        // Update last known values
-        lastKnownNav = dayNav;
-        lastKnownInvested = dayInvestedValue;
-        lastKnownCash = cash;
-        lastKnownShares = shares > 0 ? shares : 1;
-
-        const finalShares = shares > 0 ? shares : 1;
-        const navShare = finalShares > 0 ? dayNav / finalShares : 0;
-        const firstNavShare: number = historyDays[0]?.navShare ?? (navShare || 1);
-
-        const currentIndexValue = getDateSymbolPrice(currentDayString, portfolio.baseInstrument) || baseIndexValue;
-        if (currentIndexValue !== baseIndexValue && historyDays.length === 0) {
-          baseIndexValue = currentIndexValue;
-        }
-
-        historyDays.push({
-          portfolioId: realId,
-          date: currentDayString,
-          invested: toNumLocal(dayInvestedValue),
-          investedWithoutTrades: toNumLocal(dayInvestedValue),
-          cash: toNumLocal(cash),
-          nav: toNumLocal(dayNav),
-          index: toNumLocal(currentIndexValue),
-          perfomance: 0,
-          shares: finalShares,
-          navShare: toNumLocal(navShare),
-          perfShare: toNumLocal(100 * navShare / (firstNavShare !== 0 ? firstNavShare : 1)),
-          lastUpdated: new Date(),
-          isCalculated: true
-        });
-
-        loopMoment.add(1, 'day');
-      }
+      // Convert DayType[] to PortfolioHistoryDay[] for storage
+      const historyDays = days.map((day: DayType) => ({
+        portfolioId: portfolioId,
+        date: day.date,
+        invested: day.invested,
+        investedWithoutTrades: day.investedWithoutTrades,
+        cash: day.cash,
+        nav: day.nav,
+        index: day.index,
+        perfomance: day.perfomance,
+        shares: day.shares,
+        navShare: day.navShare,
+        perfShare: day.perfShare,
+        lastUpdated: new Date(),
+        isCalculated: true
+      }));
 
       // Save all history days
       await PortfolioHistoryService.saveHistoryDays(historyDays);

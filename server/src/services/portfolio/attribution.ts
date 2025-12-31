@@ -114,17 +114,17 @@ export async function attribution(
     baseCurrency: portfolio.currency,
     totalReturn: finalize(totalReturn),
     breakdown: {
-      trading: { 
-        amount: finalize(tradingAmount), 
-        percent: totalReturn ? Math.round((tradingAmount / totalReturn) * 10000) / 100 : 0 
+      trading: {
+        amount: finalize(tradingAmount),
+        percent: totalReturn ? Math.round((tradingAmount / totalReturn) * 10000) / 100 : 0
       },
-      passive: { 
-        amount: finalize(passiveAmount), 
-        percent: totalReturn ? Math.round((passiveAmount / totalReturn) * 10000) / 100 : 0 
+      passive: {
+        amount: finalize(passiveAmount),
+        percent: totalReturn ? Math.round((passiveAmount / totalReturn) * 10000) / 100 : 0
       },
-      currency: { 
-        amount: finalize(currencyAmount), 
-        percent: totalReturn ? Math.round((currencyAmount / totalReturn) * 10000) / 100 : 0 
+      currency: {
+        amount: finalize(currencyAmount),
+        percent: totalReturn ? Math.round((currencyAmount / totalReturn) * 10000) / 100 : 0
       }
     }
   };
