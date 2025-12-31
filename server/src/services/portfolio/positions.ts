@@ -342,7 +342,7 @@ export async function positions(
   const trades = allTrades as Trade[];
   console.log("allTrades.length", trades.length);
   if (trades.length === 0) {
-    return;
+    return [];
   }
   const positions = await getPositions(trades, portfolio, closed);
   currencyInvested = positions.currencyInvested;
