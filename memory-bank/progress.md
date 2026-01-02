@@ -21,6 +21,8 @@ This file tracks the project's progress using a task list format.
 *   Verify portfolio calculation accuracy against external NAV reports.
 *   Consider adding more granular access controls for sensitive portfolio data.
 *   Update PS2 documentation to reflect the new `source` field in signup command.
+*   Fixed `tools.statistics` for portfolios to calculate returns based on invested value changes only (excludes cash flows).
+*   Added `startDate` field to statistics response for frontend CAGR display control.
 
 2025-06-23 12:32:17 - Updated `commands_overview.md` with `portfolios.debug` documentation; Consolidated Memory Bank files (`productContext.md`, `systemPatterns.md`, `activeContext.md`).
 2025-06-23 14:15:59 - Redesigned `portfolios.debug` output metrics in `commands_overview.md` to match user-provided NAV report.

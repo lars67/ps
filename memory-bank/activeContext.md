@@ -15,6 +15,8 @@ This file tracks the project's current status, including recent changes, current
 *   Reverted attribution percentage calculation changes - original logic restored.
 *   Considering more granular access controls for sensitive portfolio data.
 *   Updating PS2 documentation to reflect new signup `source` field.
+*   Fixed `tools.statistics` for portfolios to use invested value changes instead of NAV (excludes cash flows from return calculation).
+*   Added `startDate` field to statistics response for frontend to control CAGR display based on portfolio age.
 
 ## Recent Changes
 
