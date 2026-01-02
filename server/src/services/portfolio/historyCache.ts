@@ -138,8 +138,8 @@ export class PortfolioHistoryCache {
       // Always perform incremental update for cron jobs - portfolios need daily market data updates
       // Market prices change daily, so all portfolios need recalculation to get current values
 
-      console.log(`Performing full recalculation for portfolio ${portfolioId} (daily cron update)`);
-      return await this.updateHistory(portfolioId, undefined, true);
+      console.log(`Performing incremental recalculation for portfolio ${portfolioId} (daily cron update)`);
+      return await this.updateHistory(portfolioId, undefined, true, true); // incrementalUpdate = true
 
     } catch (error) {
       const calculationTime = Date.now() - startTime;
@@ -243,7 +243,8 @@ export class PortfolioHistoryCache {
   static async updateHistory(
     portfolioId: string,
     fromDate?: string,
-    fullRecalculation: boolean = false
+    fullRecalculation: boolean = false,
+    incrementalUpdate: boolean = false
   ): Promise<{
     success: boolean;
     recordsUpdated: number;
@@ -264,7 +265,8 @@ export class PortfolioHistoryCache {
         fromDate,
         undefined, // till - use default (today)
         2, // precision
-        true // forceRefresh to ensure fresh calculation
+        true, // forceRefresh to ensure fresh calculation
+        incrementalUpdate // preserve previous performance values
       );
 
       if (calculationResult.error) {

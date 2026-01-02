@@ -88,7 +88,8 @@ export class PortfolioCalculator {
     from?: string,
     till?: string,
     precision: number = 2,
-    forceRefresh: boolean = false
+    forceRefresh: boolean = false,
+    incrementalUpdate: boolean = false
   ): Promise<{
     days: DayType[];
     withoutPrices: string[];
@@ -125,6 +126,23 @@ export class PortfolioCalculator {
       let startDateMoment: moment.Moment;
       const firstTradeDate = allTrades.length > 0 ? allTrades[0].tradeTime.split("T")[0] : null;
 
+      // For incremental updates, start from the day after the last existing record
+      let lastExistingRecord: any = null;
+      if (incrementalUpdate) {
+        try {
+          const PortfolioHistoryModel = require('../../models/portfolioHistory');
+          lastExistingRecord = await PortfolioHistoryModel.findOne({
+            portfolioId: realId
+          }).sort({ date: -1 }).limit(1);
+
+          if (lastExistingRecord) {
+            console.log(`Incremental update: Found last existing record from ${lastExistingRecord.date}`);
+          }
+        } catch (err) {
+          console.warn(`Could not find last existing record for incremental update:`, err);
+        }
+      }
+
       if (from) {
         if (!isValidDateFormat(from)) return { days: [], withoutPrices: [], error: "Wrong 'from' date format" };
         startDateMoment = moment.utc(from.split("T")[0], formatYMD);
@@ -132,6 +150,10 @@ export class PortfolioCalculator {
           console.warn(`'from' date ${from} is before first trade date ${firstTradeDate}. Using first trade date as start.`);
           startDateMoment = moment.utc(firstTradeDate, formatYMD);
         }
+      } else if (incrementalUpdate && lastExistingRecord) {
+        // For incremental updates, start from the day after the last existing record
+        startDateMoment = moment.utc(lastExistingRecord.date, formatYMD).add(1, 'day');
+        console.log(`Incremental update: Starting calculation from ${startDateMoment.format(formatYMD)} (day after last record)`);
       } else if (firstTradeDate) {
         startDateMoment = moment.utc(firstTradeDate, formatYMD);
       } else {
@@ -143,7 +165,8 @@ export class PortfolioCalculator {
         if (!isValidDateFormat(till)) return { days: [], withoutPrices: [], error: "Wrong 'till' date format" };
         endDateMoment = moment.utc(till.split("T")[0], formatYMD);
       } else {
-        endDateMoment = moment.utc();
+        // Exclude today's trading day from results to avoid incomplete data
+        endDateMoment = moment.utc().subtract(1, 'day');
       }
 
       if (startDateMoment.isAfter(endDateMoment)) {
@@ -189,43 +212,132 @@ export class PortfolioCalculator {
       let initialNavForPerf = 0;
       let baseIndexValue = 100000;
 
-      // Process Initial State (Trades Before Start Date)
-      const tradesBeforeStart = allTrades.filter(trade => moment.utc(trade.tradeTime).isBefore(startDateMoment, 'day'));
-      for (const trade of tradesBeforeStart) {
-        const rate = getRate(trade.currency, portfolio.currency, trade.tradeTime);
-        if (rate == null) {
-          console.warn(`Skipping pre-start trade due to missing rate: ${trade.symbol || 'CashOp'} on ${trade.tradeTime}`);
-          continue;
+      // For incremental updates, preserve previous performance values and state
+      let previousPerformanceValue = 0;
+      let firstHistoricalNavShare = 0;
+      if (incrementalUpdate && lastExistingRecord) {
+        try {
+          previousPerformanceValue = lastExistingRecord.perfomance || 0;
+          console.log(`Incremental update: Using previous performance ${previousPerformanceValue} from ${lastExistingRecord.date}`);
+
+          // Also get the very first historical navShare for perfShare baseline
+          const PortfolioHistoryModel = require('../../models/portfolioHistory');
+          const firstRecord = await PortfolioHistoryModel.findOne({
+            portfolioId: realId
+          }).sort({ date: 1 }).limit(1);
+
+          if (firstRecord) {
+            firstHistoricalNavShare = firstRecord.navShare || 0;
+            console.log(`Incremental update: Using historical baseline navShare ${firstHistoricalNavShare} from ${firstRecord.date}`);
+          }
+        } catch (perfError) {
+          console.warn(`Could not retrieve previous performance data for incremental update:`, perfError);
         }
-        switch (trade.tradeType) {
-          case TradeTypes.Trade:
-            const { symbol } = trade;
-            if (!currentHoldings[symbol]) {
-              currentHoldings[symbol] = { volume: 0, currency: trade.currency };
-            }
-            const dir = trade.side === "B" ? 1 : -1;
-            const cashChange = -dir * (trade.price * rate * trade.volume) - (trade.fee * rate);
-            currentHoldings[symbol].volume += dir * trade.volume;
-            cash += cashChange;
-            break;
-          case TradeTypes.Cash:
-            if (trade.side === "P" || trade.side === TradeSide.PUT) {
-              cash += trade.price * rate + (trade.fee || 0) * rate;
-            } else if (trade.side === "W" || trade.side === TradeSide.WITHDRAW) {
-              cash -= trade.price * rate + (trade.fee || 0) * rate;
-            }
-            break;
-          case TradeTypes.Dividends:
-            const dividendAmount = trade.price * rate + (trade.fee || 0) * rate;
-            cash += dividendAmount;
-            break;
-          case TradeTypes.Investment:
-            const investmentAmount = trade.price * rate + (trade.fee || 0) * rate;
-            cash += investmentAmount;
-            if (trade.shares) {
-              shares += trade.shares;
-            }
-            break;
+      }
+
+      // Process Initial State (Trades Before Start Date)
+      if (incrementalUpdate && lastExistingRecord) {
+        // For incremental updates, start from the last existing record's state
+        cash = lastExistingRecord.cash || 0;
+        shares = lastExistingRecord.shares || 1;
+
+        // Reconstruct holdings from trades up to the last existing record
+        // This is a simplified approach - in production you'd store holdings state
+        console.log(`Incremental update: Starting from last record state - cash: ${cash}, shares: ${shares}`);
+
+        // We still need to process any trades that occurred on the last record date
+        // to ensure we have the correct state for the next day
+        const lastRecordDate = moment.utc(lastExistingRecord.date, formatYMD);
+        const tradesUpToLastRecord = allTrades.filter(trade =>
+          moment.utc(trade.tradeTime).isSameOrBefore(lastRecordDate, 'day')
+        );
+
+        // Reset holdings and recalculate up to the last record
+        currentHoldings = {};
+        let tempCash = 0;
+        let tempShares = 0;
+
+        for (const trade of tradesUpToLastRecord) {
+          const rate = getRate(trade.currency, portfolio.currency, trade.tradeTime);
+          if (rate == null) {
+            console.warn(`Skipping trade due to missing rate: ${trade.symbol || 'CashOp'} on ${trade.tradeTime}`);
+            continue;
+          }
+          switch (trade.tradeType) {
+            case TradeTypes.Trade:
+              const { symbol } = trade;
+              if (!currentHoldings[symbol]) {
+                currentHoldings[symbol] = { volume: 0, currency: trade.currency };
+              }
+              const dir = trade.side === "B" ? 1 : -1;
+              const cashChange = -dir * (trade.price * rate * trade.volume) - (trade.fee * rate);
+              currentHoldings[symbol].volume += dir * trade.volume;
+              tempCash += cashChange;
+              break;
+            case TradeTypes.Cash:
+              if (trade.side === "P" || trade.side === TradeSide.PUT) {
+                tempCash += trade.price * rate + (trade.fee || 0) * rate;
+              } else if (trade.side === "W" || trade.side === TradeSide.WITHDRAW) {
+                tempCash -= trade.price * rate + (trade.fee || 0) * rate;
+              }
+              break;
+            case TradeTypes.Dividends:
+              const dividendAmount = trade.price * rate + (trade.fee || 0) * rate;
+              tempCash += dividendAmount;
+              break;
+            case TradeTypes.Investment:
+              const investmentAmount = trade.price * rate + (trade.fee || 0) * rate;
+              tempCash += investmentAmount;
+              if (trade.shares) {
+                tempShares += trade.shares;
+              }
+              break;
+          }
+        }
+
+        // Use the reconstructed state
+        cash = tempCash;
+        shares = tempShares > 0 ? tempShares : 1;
+
+      } else {
+        // Standard full calculation
+        const tradesBeforeStart = allTrades.filter(trade => moment.utc(trade.tradeTime).isBefore(startDateMoment, 'day'));
+        for (const trade of tradesBeforeStart) {
+          const rate = getRate(trade.currency, portfolio.currency, trade.tradeTime);
+          if (rate == null) {
+            console.warn(`Skipping pre-start trade due to missing rate: ${trade.symbol || 'CashOp'} on ${trade.tradeTime}`);
+            continue;
+          }
+          switch (trade.tradeType) {
+            case TradeTypes.Trade:
+              const { symbol } = trade;
+              if (!currentHoldings[symbol]) {
+                currentHoldings[symbol] = { volume: 0, currency: trade.currency };
+              }
+              const dir = trade.side === "B" ? 1 : -1;
+              const cashChange = -dir * (trade.price * rate * trade.volume) - (trade.fee * rate);
+              currentHoldings[symbol].volume += dir * trade.volume;
+              cash += cashChange;
+              break;
+            case TradeTypes.Cash:
+              if (trade.side === "P" || trade.side === TradeSide.PUT) {
+                cash += trade.price * rate + (trade.fee || 0) * rate;
+              } else if (trade.side === "W" || trade.side === TradeSide.WITHDRAW) {
+                cash -= trade.price * rate + (trade.fee || 0) * rate;
+              }
+              break;
+            case TradeTypes.Dividends:
+              const dividendAmount = trade.price * rate + (trade.fee || 0) * rate;
+              cash += dividendAmount;
+              break;
+            case TradeTypes.Investment:
+              const investmentAmount = trade.price * rate + (trade.fee || 0) * rate;
+              cash += investmentAmount;
+              if (trade.shares) {
+                shares += trade.shares;
+              }
+              break;
+          }
         }
       }
 
@@ -349,7 +461,13 @@ export class PortfolioCalculator {
 
           // Calculate Daily Performance
           if (days.length === 0) {
-            perfomanceNominal = dayNav;
+            // For incremental updates, continue from previous performance value
+            if (incrementalUpdate && previousPerformanceValue > 0) {
+              perfomanceNominal = previousPerformanceValue;
+              console.log(`Incremental update: Continuing performance from ${previousPerformanceValue}`);
+            } else {
+              perfomanceNominal = dayNav;
+            }
             initialNavForPerf = dayNav;
           } else if (Object.keys(currentHoldings).length > 0) {
             try {
@@ -377,7 +495,9 @@ export class PortfolioCalculator {
         // Store Daily Snapshot
         const finalShares = shares > 0 ? shares : 1;
         const navShare = finalShares > 0 ? dayNav / finalShares : 0;
-        const firstNavShare = days[0]?.navShare ?? (navShare || 1);
+
+        // For incremental updates, use the historical baseline navShare
+        const baselineNavShare = incrementalUpdate && firstHistoricalNavShare > 0 ? firstHistoricalNavShare : (days[0]?.navShare ?? (navShare || 1));
 
         const currentIndexValue = getDateSymbolPrice(currentDayString, portfolio.baseInstrument) || baseIndexValue;
         if (currentIndexValue !== baseIndexValue && days.length === 0) {
@@ -394,7 +514,7 @@ export class PortfolioCalculator {
           perfomance: toNumLocal(perfomanceNominal),
           shares: finalShares,
           navShare: toNumLocal(navShare),
-          perfShare: toNumLocal(100 * navShare / (firstNavShare !== 0 ? firstNavShare : 1))
+          perfShare: toNumLocal(100 * navShare / (baselineNavShare !== 0 ? baselineNavShare : 1))
         });
 
         loopMoment.add(1, 'day');

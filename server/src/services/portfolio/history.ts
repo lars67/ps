@@ -80,7 +80,7 @@ export async function history(
     }
 
     // --- 4. Calculate History Using Shared Calculator ---
-    const calculationResult = await PortfolioCalculator.calculatePortfolioHistory(_id, from, till, precision, forceRefresh);
+    const calculationResult = await PortfolioCalculator.calculatePortfolioHistory(_id, from, till, precision, forceRefresh, false); // incrementalUpdate = false for user requests
 
     if (calculationResult.error) {
       return { error: calculationResult.error };
