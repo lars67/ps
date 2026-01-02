@@ -166,7 +166,11 @@ function statistics(
   result.total_return = utils.comp(r);
   result.ytd = result.total_return;
   result.cagr = utils.calc_cagr(dp);
-  result.incep = result.total_return; // Use total return for incep, especially for < 1 year
+  // Add startDate for frontend to decide CAGR display
+  result.startDate = dp[0][0].format('YYYY-MM-DD');
+  // Calculate inception return: use CAGR for >=1 year, total_return for <1 year
+  const periodYears = utils.year_frac(dp[0][0], dp[dp.length - 1][0]);
+  result.incep = periodYears >= 1 ? result.cagr : result.total_return;
   
   const drawdown = utils.to_drawdown_series(dp);
   result.max_drawdown = utils.findMin(drawdown);

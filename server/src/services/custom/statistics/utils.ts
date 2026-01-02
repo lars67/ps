@@ -316,6 +316,7 @@ export default {
     getInterval,
     getIntervalFrom,
     drawdown_details,
+    year_frac,
     // New functions
     calculate_rolling_std,
     calculate_percentile,

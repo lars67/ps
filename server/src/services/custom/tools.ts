@@ -107,7 +107,7 @@ export async function statistic(
         userData,
       );
       const prices = (h as { days: DayType[] }).days
-        .map((p) => [moment(p.date, formatYMD), Number(p.nav)])
+        .map((p) => [moment(p.date, formatYMD), Number(p.invested)])
         .filter((p) => p[1]) as DataPoint[];
       const statistic = statistics.statistics(prices, 0);
       return { statistic };
