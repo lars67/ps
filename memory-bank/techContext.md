@@ -165,6 +165,20 @@ REACT_APP_URL_DATA=https://top.softcapital.com/ps2console # Base URL for static 
 - **Focus Areas:** WebSocket connectivity, Auth flow, Command execution & authorization, Error handling.
 - **SSE Stress Testing:** A plan exists (`cline_docs/sse_stress_test_plan.md`) to create a script (`stress-test-sse.ts`?) to simulate various load scenarios (connection flood, long-running, churn, mixed load) to reproduce and test fixes for the SSE `ECONNRESET` issue. *(Implementation status unknown)*.
 
+## Database Index Analysis (2026-01-04)
+
+**Conclusion:** The PS2 MongoDB database is highly optimized with excellent index coverage.
+
+### Index Status by Collection:
+- **portfolios**: ✓ Well indexed (6 indexes including compound userId+access)
+- **portfolio_histories**: ✓ Excellent optimization (9 indexes with compound, partial, and covering indexes)
+- **trades**: ✓ Perfectly indexed (compound index on portfolioId+state+tradeTime matches main query)
+- **users**: ✓ Properly indexed (login index for authentication)
+- **commands**: ⚠ Only default _id index (77 documents - negligible performance impact)
+
+### Assessment:
+No significant index optimization opportunities found. All major collections have appropriate indexes for their query patterns. The commands collection could benefit from access/ownerId indexes but with only 77 documents, the performance gain would be minimal.
+
 ## Known Technical Constraints & Considerations
 
 - **WebSocket Security:** WSS is enforced. Authentication is token-based. Authorization is role-based.
