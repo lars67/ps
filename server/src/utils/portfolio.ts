@@ -99,9 +99,18 @@ export const getCurrentPosition = async (_id:string) => {
 
 
 async function getPositions(allTrades: Trade[], portfolio: Portfolio) {
-    const { startDate, endDate, uniqueSymbols, uniqueCurrencies } =
-        await checkPortfolioPricesCurrencies(allTrades, portfolio.currency);
-    console.log("P", startDate, uniqueSymbols, uniqueCurrencies);
+  // COMMENTED OUT: Historical price fetching not needed for positions
+  // const { startDate, endDate, uniqueSymbols, uniqueCurrencies } =
+  //     await checkPortfolioPricesCurrencies(allTrades, portfolio.currency);
+
+  // Extract basic info from trades instead of fetching historical data
+  const uniqueSymbols = extractUniqueFields(allTrades, "symbol");
+  const uniqueCurrencies = extractUniqueFields(allTrades, "currency");
+  const lastTrade = findMinByField<Trade>(allTrades, "tradeTime");
+  const startDate = lastTrade.tradeTime;
+  const endDate = lastTrade.tradeTime; // For positions, we don't need full date range
+
+  console.log("P", startDate, uniqueSymbols, uniqueCurrencies);
 
     let cash = 0;
     const fees: Record<string, number> = {};

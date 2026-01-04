@@ -7,6 +7,7 @@ This file tracks the project's progress using a task list format.
 
 ## Completed Tasks
 
+*   ✅ **CRITICAL FIX**: Modified PS2 to prioritize local high-precision CSV data from CustomYahooDownload.py over EODHD API. Fixed filename format bug (DANSKE_XCSE.csv → DANSKE:XCSE.csv) ensuring PS2 reads Yahoo Finance data with full precision instead of rounded EODHD values.
 *   Implement and refine the `portfolios.debug` command for comprehensive portfolio error detection and reporting, including backend logic, calculation fixes, and command dispatch resolution.
 *   Add `source` field to signup command to track user signup origins (e.g., web-form, mobile-app, partner-referral).
 

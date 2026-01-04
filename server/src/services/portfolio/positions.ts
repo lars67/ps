@@ -149,6 +149,7 @@ export async function positions(
   userData: UserData,
   socket: WebSocket,
 ): Promise<{} | undefined> {
+  const startTime = Date.now();
   logger.log(`POSITIONS CALL ${userModif}|${msgId} `);
   if (requestType === "77") {
     Object.values(subscribers[userModif]).forEach((subscriber) => {
@@ -180,11 +181,13 @@ export async function positions(
   if (!subscribers[userModif]) {
     subscribers[userModif] = {};
   }
+  console.log(`[${Date.now() - startTime}ms] About to get portfolio instance`);
   const {
     _id: realId,
     error,
     instance: portfolio,
   } = await getPortfolioInstanceByIDorName(_id, userData);
+  console.log(`[${Date.now() - startTime}ms] Got portfolio instance`);
   if (error) {
     return error;
   }
@@ -333,6 +336,7 @@ export async function positions(
     }
   }
 
+  console.log(`[${Date.now() - startTime}ms] Getting trades`);
   const allTrades = await getPortfolioTrades(realId, undefined, {
     state: { $in: [1] },
   });
@@ -340,11 +344,13 @@ export async function positions(
     return allTrades as { error: string };
   }
   const trades = allTrades as Trade[];
-  console.log("allTrades.length", trades.length);
+  console.log(`[${Date.now() - startTime}ms] Got ${trades.length} trades`);
   if (trades.length === 0) {
     return [];
   }
+  console.log(`[${Date.now() - startTime}ms] Starting getPositions calculation`);
   const positions = await getPositions(trades, portfolio, closed);
+  console.log(`[${Date.now() - startTime}ms] Finished getPositions calculation`);
   currencyInvested = positions.currencyInvested;
   regionInvested = positions.regionInvested;
   subRegionInvested = positions.subRegionInvested;
@@ -893,6 +899,7 @@ export async function positions(
   };
 
   eventEmitter.on(eventName, subscribers[userModif][msgId].handler);
+  console.log(`[${Date.now() - startTime}ms] Total positions call completed`);
   //const { positions , fees,...rest } = positions;
   return { msg: requestType === "1" ? "subscribed" : "snapshot", eventName };
 }

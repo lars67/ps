@@ -7,6 +7,7 @@ This file tracks the project's current status, including recent changes, current
 
 ## Current Focus
 
+*   ✅ **FIXED**: PS2 now prioritizes local high-precision CSV data from CustomYahooDownload.py over EODHD API
 *   Investigating and resolving WebSocket connection stability issues.
 *   Addressing potential SSE (Server-Sent Events) connection instability issues.
 *   Verifying portfolio calculation accuracy against external NAV reports.
