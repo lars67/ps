@@ -40,6 +40,7 @@ import {
 } from "../../services/portfolio/helper";
 import logger from "../../utils/logger";
 import { isGBXQuoted } from "../../services/app/companies";
+import profiler from "../../utils/profiler";
 const subscribers: Record<string, SubscribeMsgs> = {}; //userModif-> SubscribeMsgs
 
 type QuoteData2 = {
@@ -149,6 +150,14 @@ export async function positions(
   userData: UserData,
   socket: WebSocket,
 ): Promise<{} | undefined> {
+  profiler.startTimer("positions.main", userModif, msgId, { 
+    requestType, 
+    portfolioId: _id,
+    includeAttribution,
+    totalsMode,
+    closed 
+  });
+  
   const startTime = Date.now();
   logger.log(`POSITIONS CALL ${userModif}|${msgId} `);
   if (requestType === "77") {
@@ -181,13 +190,13 @@ export async function positions(
   if (!subscribers[userModif]) {
     subscribers[userModif] = {};
   }
-  console.log(`[${Date.now() - startTime}ms] About to get portfolio instance`);
+  profiler.logPoint("positions.main", userModif, msgId, "get_portfolio_start");
   const {
     _id: realId,
     error,
     instance: portfolio,
   } = await getPortfolioInstanceByIDorName(_id, userData);
-  console.log(`[${Date.now() - startTime}ms] Got portfolio instance`);
+  profiler.logPoint("positions.main", userModif, msgId, "get_portfolio_end", { portfolioId: realId });
   if (error) {
     return error;
   }
@@ -336,21 +345,29 @@ export async function positions(
     }
   }
 
-  console.log(`[${Date.now() - startTime}ms] Getting trades`);
+  profiler.startTimer("positions.fetch_trades", userModif, msgId, { portfolioId: realId });
   const allTrades = await getPortfolioTrades(realId, undefined, {
     state: { $in: [1] },
   });
   if ((allTrades as { error: string }).error) {
+    profiler.endTimer("positions.fetch_trades", userModif, msgId, { error: true });
     return allTrades as { error: string };
   }
   const trades = allTrades as Trade[];
-  console.log(`[${Date.now() - startTime}ms] Got ${trades.length} trades`);
+  profiler.endTimer("positions.fetch_trades", userModif, msgId, { tradesCount: trades.length });
+  
   if (trades.length === 0) {
+    profiler.endTimer("positions.main", userModif, msgId, { result: "empty" });
     return [];
   }
-  console.log(`[${Date.now() - startTime}ms] Starting getPositions calculation`);
+  
+  profiler.startTimer("positions.calculate_positions", userModif, msgId, { tradesCount: trades.length });
   const positions = await getPositions(trades, portfolio, closed);
-  console.log(`[${Date.now() - startTime}ms] Finished getPositions calculation`);
+  profiler.endTimer("positions.calculate_positions", userModif, msgId, { 
+    positionsCount: positions.positions.length,
+    uniqueSymbols: positions.uniqueSymbols.length,
+    uniqueCurrencies: positions.uniqueCurrencies.length
+  });
   currencyInvested = positions.currencyInvested;
   regionInvested = positions.regionInvested;
   subRegionInvested = positions.subRegionInvested;
@@ -404,21 +421,24 @@ export async function positions(
       //    (q: QuoteData) => !positions.uniqueSymbols.includes(q.symbol),
       (q: QuoteData) => isCurrency(q.symbol),
     );
-    console.log("processQuoteData rates", rates, positions.uniqueCurrencies);
-    //  console.log('currencyData,symbolData: ', currencyData.map(c=>c.symbol), symbolData.map(c=>c.symbol));
+    // Reduced verbose logging for quote processing
+    logger.log(`[QUOTE_PROCESSING] Processing ${data.length} quotes: ${currencyData.length} FX, ${symbolData.length} symbols`);
+    
     positions.uniqueCurrencies.forEach(cur=> {
       if (cur === portfolio.currency) {
         rates[cur] = 1
       } else {
         let fxData = data.find(d => d.symbol === `${cur}${portfolio.currency}:FX`);
-        console.log('fxData', fxData, data)
         let inv = false;
         if (!fxData) {
           fxData = data.find(d => d.symbol === `${portfolio.currency}${cur}:FX`);
           inv = true;
         }
         rates[cur] = fxData ? (inv ? 1.0 / fxData.close : fxData.close) : 1;
-        console.log(cur, rates[cur]);
+        // Only log significant rate changes or errors
+        if (!fxData) {
+          logger.error(`[FX_RATE] Missing FX data for ${cur} vs ${portfolio.currency}`);
+        }
       }
     });
     if (requestType === "0") {
@@ -476,11 +496,9 @@ export async function positions(
 
     q2Symbols.forEach((p) => {
       const { symbol, marketPrice, marketClose } = p as QuoteData2;
-      console.log('symbol', symbol, Object.keys(portfolioPositions));
       let change = {} as QuoteChange;
       if (!portfolioPositions[symbol]) {
         logger.error(`ERR for ${symbol}, portfolioPositions keys = ${Object.keys(portfolioPositions).join(',')}`)
-        logger.log(`q2Symbols = ${Object.keys(q2Symbols).join(',')}`)
       }
       const cur = portfolioPositions[symbol].currency as string;
       const volume = Number(portfolioPositions[symbol].volume);
@@ -899,8 +917,14 @@ export async function positions(
   };
 
   eventEmitter.on(eventName, subscribers[userModif][msgId].handler);
-  console.log(`[${Date.now() - startTime}ms] Total positions call completed`);
-  //const { positions , fees,...rest } = positions;
+  
+  profiler.endTimer("positions.main", userModif, msgId, { 
+    success: true,
+    totalDuration: Date.now() - startTime,
+    symbolsSubscribed: symbols.length,
+    eventName: requestType === "1" ? "subscribed" : "snapshot"
+  });
+  
   return { msg: requestType === "1" ? "subscribed" : "snapshot", eventName };
 }
 
@@ -961,12 +985,34 @@ async function getPositions(
   portfolio: Portfolio,
   closed: string,
 ) {
-  //console.log('getPositions....');
+  profiler.startTimer("getPositions.total", "system", "getPositions");
+  profiler.logPoint("getPositions.total", "system", "getPositions", "start", { tradesCount: allTrades.length });
+  
   const lastTrade = findMaxByField<Trade>(allTrades, "tradeTime");
   const endDate = lastTrade.tradeTime;
   const uniqueSymbols = extractUniqueFields(allTrades, "symbol");
   const uniqueCurrencies = extractUniqueFields(allTrades, "currency");
+  
+  profiler.startTimer("getPositions.symbolCountries", "system", "getPositions");
   const symbolCountries = await getSymbolsCountries(uniqueSymbols);
+  profiler.endTimer("getPositions.symbolCountries", "system", "getPositions", { symbolsCount: uniqueSymbols.length });
+  
+  // Always fetch GICS data for now - it's needed for sector/industry totals
+  // TODO: Make this conditional on totalsMode parameter when available
+  profiler.startTimer("getPositions.gicsLookup", "system", "getPositions");
+  const nonFXSymbols = uniqueSymbols.filter((s) => !s.endsWith(":FX"));
+
+  // Batch GICS lookup for all symbols
+  for (const symbol of nonFXSymbols) {
+    const { sector, industry } = await getGICS(symbol);
+    gicsCache.set(symbol, { sector, industry });
+  }
+  profiler.endTimer("getPositions.gicsLookup", "system", "getPositions", {
+    symbolsCount: nonFXSymbols.length,
+    cacheSize: gicsCache.size,
+    skipped: false
+  });
+  
   let cashes: Record<string, number> = {}; //local,port
   let dividends: Record<string, number> = {};
   //console.log('uniqueSymbols', uniqueSymbols, 'uniqueCurrencies', uniqueCurrencies);
@@ -1010,10 +1056,15 @@ async function getPositions(
     string,
     Partial<Trade & { sector?: string; industry?: string }>
   > = {};
-  console.log(
-    `tradeTime, symbol, side, price,volume, rate, volumeOld,volumeNew,avgPrice, realizedPnL,realized,totalCost`,
-  );
+  
+  profiler.startTimer("getPositions.tradeLoop", "system", "getPositions");
+  profiler.logPoint("getPositions.tradeLoop", "system", "getPositions", "start_loop", { tradesCount: allTrades.length });
+  
+  let gicsCallCount = 0;
+  let tradeProcessCount = 0;
+  
   for (const trade of allTrades) {
+    tradeProcessCount++;
 
     switch (trade.tradeType) {
       case "1":
@@ -1066,7 +1117,10 @@ async function getPositions(
           "region",
           "subRegion",
         ]);
-        const { sector, industry } = await getGICS(symbol);
+        
+        // Use cached GICS data instead of making individual calls per trade
+        const gicsData = gicsCache.get(symbol) || { sector: '', industry: '' };
+        const { sector, industry } = gicsData;
         const dir = trade.side === "B" ? 1 : -1; //calculate invested
         const isGBX = trade.currency === 'GBX';
         const priceAdj = isGBX ? trade.price / 100 : trade.price;
@@ -1178,6 +1232,12 @@ async function getPositions(
         currencyInvested[trade.currency].investedSymbol += trade.price;*/
     }
   }
+  
+  profiler.endTimer("getPositions.tradeLoop", "system", "getPositions", { 
+    tradesProcessed: tradeProcessCount,
+    gicsCallsTotal: gicsCallCount 
+  });
+  
   let currentDay = endDate.split("T")[0];
   const nowDay = moment().format(formatYMD); //!!!!!!!!!!!!!!!!!!!!!!!!
   const allSymbols = Object.keys(oldPortfolio);
@@ -1232,6 +1292,18 @@ async function getPositions(
   }));*/
   // console.log('getPositiins.curentPositions ', curentPositions )
 
+  profiler.startTimer("getPositions.mapKeyToName", "system", "getPositions");
+  const mappedPortfoliosInvested = await mapKeyToName(portfoliosInvested);
+  profiler.endTimer("getPositions.mapKeyToName", "system", "getPositions", { 
+    portfolioCount: Object.keys(portfoliosInvested).length 
+  });
+
+  profiler.endTimer("getPositions.total", "system", "getPositions", { 
+    totalPositions: curentPositions.length,
+    totalSymbols: actualSymbols.length,
+    totalRealized: realized
+  });
+
   return {
     date: nowDay,
     invested,
@@ -1246,7 +1318,7 @@ async function getPositions(
     countryInvested,
     sectorInvested,
     industryInvested,
-    portfoliosInvested: await mapKeyToName(portfoliosInvested),
+    portfoliosInvested: mappedPortfoliosInvested,
     uniqueSymbols,
     uniqueCurrencies,
     cashes,
