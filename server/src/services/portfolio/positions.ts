@@ -395,7 +395,6 @@ export async function positions(
         symbols.push(r);
       }
     });
-  console.log("SYMBOLS", symbols);
 
   eventEmitter.on("trade.change", subscriberOnTrades);
   const sseService = new SSEService("quotes", symbols.join(","), eventName);
@@ -471,7 +470,6 @@ export async function positions(
       } else if (cur2 !== portfolio.currency) {
         haveRate =false;
       }
-      console.log(cur,'haveRate', haveRate, newRate);
       if (haveRate) {
         if (!rates[cur] && newRate) {
           newRates[cur] = newRate;
@@ -482,7 +480,6 @@ export async function positions(
         }
       }
     });
-    console.log("rates", rates,  "fees", fees);
 
     const q2Symbols = prepareQuoteData2(
       symbolData.filter((d) => !isCurrency(d.symbol)),
@@ -490,7 +487,6 @@ export async function positions(
       basePrice,
       isFirst,
     ).filter(Boolean);
-    console.log("isFirst", isFirst, "q2Symbols", q2Symbols);
 
     const changes: CommonPortfolioPosition[] = [];
 
@@ -649,7 +645,6 @@ export async function positions(
     let neutral_trading = 0;
     let neutral_passive = 0;
     let changes = processQuoteData(data as QuoteData[]);
-    console.log("calcChanges ==>", changes);
     if (changes.length === 0) {
       return undefined;
     }
@@ -690,7 +685,6 @@ export async function positions(
     switch (closed) {
       case "no":
         changes = changes.filter((c): c is PortfolioPositionFull => {
-          console.log(c.symbol, portfolioPositions[c.symbol]);
           return portfolioPositions[c.symbol]?.volume !== 0;
         });
         break;
@@ -743,13 +737,13 @@ export async function positions(
       //let changesCountry: PortfolioPositionFull[] = [];
       // summationTotal(changes, countryInvested, "currencyTotal");
       //sector->industry
-      const sectorIndustryMap = {} as Record<string, Set<string>>;
+      const sectorIndustryMap = new Map<string, string[]>();
       Object.values(portfolioPositions)
         .filter((p) => !(p as PortfolioPositionFull).totalType)
         .forEach(({ sector, industry }) => {
           if (sector && industry) {
-            if (!sectorIndustryMap[sector]) sectorIndustryMap[sector] = new Set();
-            sectorIndustryMap[sector].add(industry);
+            if (!sectorIndustryMap.get(sector)) sectorIndustryMap.set(sector, []);
+            sectorIndustryMap.get(sector)!.push(industry);
           }
         });
 
@@ -761,8 +755,8 @@ export async function positions(
       changesSec.forEach((reg) => {
         const aname = reg.name.split("_").pop() || "";
         //console.log("aname=", aname, sectorIndustryMap[aname]);
-        const indRegs = sectorIndustryMap[aname]
-          ? Array.from(sectorIndustryMap[aname]).map((n) => `TOTAL_${n}`)
+        const indRegs = sectorIndustryMap.get(aname)
+          ? Array.from(sectorIndustryMap.get(aname) || []).map((n) => `TOTAL_${n}`)
           : [];
         //console.log("indRegs", indRegs);
         changes.push(...changesInd.filter((s) => indRegs.includes(s.name)));
@@ -993,6 +987,9 @@ async function getPositions(
   const uniqueSymbols = extractUniqueFields(allTrades, "symbol");
   const uniqueCurrencies = extractUniqueFields(allTrades, "currency");
   
+  // Declare gicsCache at function level so it is accessible in trade loop
+  let gicsCache = new Map<string, { sector: string; industry: string }>();
+
   profiler.startTimer("getPositions.symbolCountries", "system", "getPositions");
   const symbolCountries = await getSymbolsCountries(uniqueSymbols);
   profiler.endTimer("getPositions.symbolCountries", "system", "getPositions", { symbolsCount: uniqueSymbols.length });
@@ -1191,7 +1188,6 @@ async function getPositions(
 
         break;
       case "20": //Dividends = "20",
-          console.log('DIIIIIIIIIIIIIIIIIIIIIIv',oldPortfolio,trade.symbol);
         const dividendPriceAdj = trade.currency === 'GBX' ? trade.price / 100 : trade.price;
         if (!dividends[trade.symbol]) {
           dividends[trade.symbol] = dividendPriceAdj;
@@ -1269,7 +1265,6 @@ async function getPositions(
     curentPositions.push(...Object.values(notTradeChanges));
   }*/
   const curentPositions = Object.values(positions);
-  console.log("curentPositions", curentPositions, "positions", positions);
   let realized = allSymbols.reduce(
     (sum, symbol) => sum + symbolRealized[symbol].realized,
     0,
