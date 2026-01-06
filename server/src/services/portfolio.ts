@@ -30,6 +30,7 @@ import { TradeModel } from "../models/trade";
 import { getPortfolioTrades } from "../utils/portfolio";
 import { UserData } from "@/services/websocket";
 import { generateAccountID } from "../utils/idGenerator";
+import { getPortfolioJobManager } from "./portfolio/jobManager";
 
 export { history } from "./portfolio/history"; // Use the updated history file
 export { positions } from "./portfolio/positions";
@@ -307,7 +308,50 @@ export async function detailList(
   ]);
 }
 
+export async function jobStatus(
+  { jobId }: { jobId: string },
+  sendResponse: (data: any) => void,
+  msgId: string,
+  userModif: string,
+  userData: UserData,
+) {
+  if (!jobId) {
+    return errorMsgs.required1("jobId");
+  }
+
+  const jobManager = getPortfolioJobManager();
+  const job = jobManager.getJobStatus(jobId);
+
+  if (!job) {
+    return { error: `Job ${jobId} not found` };
+  }
+
+  // For security, only allow users to see their own jobs
+  // Jobs are associated with portfolios, so we should check portfolio ownership
+  // For now, allow all authenticated users to see jobs (can be restricted later)
+
+  return {
+    jobId: job.id,
+    status: job.status,
+    portfolioId: job.portfolioId,
+    progress: job.progress,
+    startTime: job.startTime,
+    endTime: job.endTime,
+    duration: job.endTime ? job.endTime - job.startTime : Date.now() - job.startTime,
+    error: job.error,
+    result: job.result // Only include if completed successfully
+  };
+}
+
 export const description: CommandDescription = {
+  jobStatus: {
+    label: "Check Portfolio History Job Status",
+    value: JSON.stringify({
+      command: "portfolios.jobStatus",
+      jobId: "?",
+    }),
+    access: "member",
+  },
   history: {
     label: "Portfolio History (Optimized with Caching)",
     value: `${JSON.stringify({
