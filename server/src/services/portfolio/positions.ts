@@ -663,10 +663,8 @@ export async function positions(
       0,
     );
 
-    // Always include weights for initial snapshot, respect totalsMode for updates
-    if (totalsMode === "none" && !isInitialSnapshot) {
-      // Skip weights calculation completely for maximum performance on updates
-    } else {
+    // Weights calculation - only skip when totalsMode is "none"
+    if (totalsMode !== "none") {
       //weights add to portfolioPositions
       Object.keys(portfolioPositions).forEach((symbol) => {
         let change = changes.find((c) => c.symbol === symbol);
@@ -698,9 +696,11 @@ export async function positions(
         break;
     }
 
-    // Initial snapshot always includes all totals for page rendering
-    // Subsequent updates respect totalsMode for performance
-    if (isInitialSnapshot || totalsMode === "all") {
+    // Determine which totals to include based on totalsMode
+    // "all" = include all totals (currency, region, subregion, country, sector, industry, portfolios)
+    // "minimal" = only main TOTAL row
+    // "none" = no totals at all
+    if (totalsMode === "all") {
       summationTotal(
         changes as PortfolioPositionFull[],
         currencyInvested,
