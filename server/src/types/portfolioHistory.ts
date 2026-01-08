@@ -46,3 +46,4 @@ export type PortfolioHistoryResult = {
   hasGaps: boolean; // Whether there are missing dates in the range
   calculationTime: number; // Time taken to calculate (ms)
 };
+// Interface for portfolio positions snapshot (daily collection)
