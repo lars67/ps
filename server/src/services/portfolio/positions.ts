@@ -433,7 +433,7 @@ export async function positions(
           fxData = data.find(d => d.symbol === `${portfolio.currency}${cur}:FX`);
           inv = true;
         }
-        rates[cur] = fxData ? (inv ? 1.0 / fxData.close : fxData.close) : 1;
+        rates[cur] = fxData ? (inv ? 1.0 / fxData.latestPrice : fxData.latestPrice) : 1;
         // Only log significant rate changes or errors
         if (!fxData) {
           logger.error(`[FX_RATE] Missing FX data for ${cur} vs ${portfolio.currency}`);
