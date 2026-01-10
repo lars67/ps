@@ -1,4 +1,5 @@
 import { parentPort, workerData } from 'worker_threads';
+import mongoose from 'mongoose';
 import moment from "moment";
 import { Trade, TradeTypes, TradeSide } from "../../types/trade";
 import { Portfolio } from "../../types/portfolio";
@@ -435,9 +436,40 @@ if (parentPort) {
   console.log(`🧵 Portfolio Worker ${workerData?.workerId || 'unknown'} started`);
 
   parentPort.on('message', async (task: WorkerTask) => {
+    let currentTask: WorkerTask | null = null;
     try {
+      currentTask = task;
+
       if (task.type === 'portfolio_history') {
         console.log(`🧵 Worker processing portfolio history for ${task.data.portfolioId}`);
+
+        // Connect to database if not already connected
+        if (mongoose.connection.readyState === 0) {
+          console.log(`🧵 Worker connecting to database...`);
+          await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/ps2');
+          console.log(`🧵 Worker connected to database`);
+        }
+
+        // Wait for connection to be ready (readyState === 1)
+        if (mongoose.connection.readyState !== 1) {
+          console.log(`🧵 Worker waiting for database connection to be ready...`);
+          await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              reject(new Error('Database connection timeout'));
+            }, 30000); // 30 second timeout
+
+            mongoose.connection.once('connected', () => {
+              clearTimeout(timeout);
+              resolve(undefined);
+            });
+
+            mongoose.connection.once('error', (err) => {
+              clearTimeout(timeout);
+              reject(err);
+            });
+          });
+          console.log(`🧵 Worker database connection ready`);
+        }
 
         const result = await WorkerPortfolioCalculator.calculatePortfolioHistory(
           task.data.portfolioId,
@@ -463,10 +495,10 @@ if (parentPort) {
         throw new Error(`Unknown task type: ${task.type}`);
       }
     } catch (error) {
-      console.error(`🧵 Worker error processing task ${task.id}:`, error);
+      console.error(`🧵 Worker error processing task ${currentTask?.id || 'unknown'}:`, error);
 
       const errorResult: WorkerResult = {
-        taskId: task.id,
+        taskId: currentTask?.id || 'unknown',
         success: false,
         error: error instanceof Error ? error.message : String(error)
       };

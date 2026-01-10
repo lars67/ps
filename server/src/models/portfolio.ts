@@ -19,8 +19,24 @@ export const PortfolioModel: Model<Portfolio> =
   (models && models.Portfolio) ||
   model("Portfolio", PortfolioSchema, "portfolios");
 
-// Apply indexes
-PortfolioModel.collection.createIndex({ userId: 1 });
-PortfolioModel.collection.createIndex({ access: 1 });
-PortfolioModel.collection.createIndex({ userId: 1, access: 1 });
-PortfolioModel.collection.createIndex({ accountId: 1 });
+// Defer index creation to happen after connection is established
+// This prevents buffering timeouts in worker threads
+const ensureIndexes = async () => {
+  try {
+    if (PortfolioModel.collection) {
+      await PortfolioModel.collection.createIndex({ userId: 1 });
+      await PortfolioModel.collection.createIndex({ access: 1 });
+      await PortfolioModel.collection.createIndex({ userId: 1, access: 1 });
+      await PortfolioModel.collection.createIndex({ accountId: 1 });
+      console.log('✅ Portfolio indexes ensured');
+    }
+  } catch (error) {
+    console.warn('⚠️ Failed to create portfolio indexes:', error);
+    // Don't throw - indexes might already exist or connection might not be ready
+  }
+};
+
+// Ensure indexes when the model is first used
+PortfolioModel.init().then(() => {
+  ensureIndexes();
+});

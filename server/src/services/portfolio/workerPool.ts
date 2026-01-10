@@ -19,6 +19,11 @@ interface WorkerResult {
   };
 }
 
+interface WorkerReadyMessage {
+  type: 'ready';
+  workerId?: number;
+}
+
 interface QueuedJob {
   task: WorkerTask;
   resolve: (result: any) => void;
@@ -37,6 +42,8 @@ export class PortfolioWorkerPool {
   private jobQueue: QueuedJob[] = [];
   private activeJobs = new Map<string, QueuedJob>();
   private isShuttingDown = false;
+  private workerFailureCount = 0;
+  private readonly maxWorkerFailures = 10; // Prevent infinite worker replacement
 
   constructor(private poolSize = 4) { // Set to 4 workers for optimal performance on 8-core system
     console.log(`🚀 Initializing Portfolio Worker Pool with ${poolSize} workers`);
@@ -163,7 +170,7 @@ export class PortfolioWorkerPool {
       workerData: { workerId: this.workers.length }
     });
 
-    worker.on('message', (message: WorkerResult) => {
+    worker.on('message', (message: WorkerResult | WorkerReadyMessage) => {
       this.handleWorkerMessage(worker, message);
     });
 
@@ -181,10 +188,27 @@ export class PortfolioWorkerPool {
     this.availableWorkers.push(worker);
   }
 
-  private handleWorkerMessage(worker: Worker, message: WorkerResult): void {
-    const job = this.activeJobs.get(message.taskId);
+  private handleWorkerMessage(worker: Worker, message: WorkerResult | WorkerReadyMessage): void {
+    // Check if this is a worker ready message
+    if ('type' in message && message.type === 'ready') {
+      console.log(`✅ Worker ${message.workerId || 'unknown'} is ready`);
+      this.makeWorkerAvailable(worker);
+      this.processQueue();
+      return;
+    }
+
+    // Handle worker result messages
+    const resultMessage = message as WorkerResult;
+
+    // Handle undefined taskId (worker startup/initialization messages)
+    if (!resultMessage.taskId || resultMessage.taskId === 'unknown') {
+      console.warn(`⚠️ Received message with undefined taskId:`, resultMessage);
+      return;
+    }
+
+    const job = this.activeJobs.get(resultMessage.taskId);
     if (!job) {
-      console.warn(`⚠️ Received result for unknown task ${message.taskId}`);
+      console.warn(`⚠️ Received result for unknown task ${resultMessage.taskId}`);
       return;
     }
 
@@ -194,20 +218,21 @@ export class PortfolioWorkerPool {
     }
 
     // Handle result
-    if (message.success) {
-      job.resolve(message.result);
+    if (resultMessage.success) {
+      job.resolve(resultMessage.result);
     } else {
-      job.reject(new Error(message.error || 'Worker calculation failed'));
+      job.reject(new Error(resultMessage.error || 'Worker calculation failed'));
     }
 
     // Clean up
-    this.activeJobs.delete(message.taskId);
+    this.activeJobs.delete(resultMessage.taskId);
     this.makeWorkerAvailable(worker);
     this.processQueue();
   }
 
   private handleWorkerError(worker: Worker, error: Error): void {
     console.error('💥 Worker thread encountered error:', error);
+    this.workerFailureCount++;
 
     // Find and fail any active job on this worker
     for (const [taskId, job] of this.activeJobs) {
@@ -218,19 +243,30 @@ export class PortfolioWorkerPool {
       this.activeJobs.delete(taskId);
     }
 
-    // Remove failed worker and create replacement
+    // Remove failed worker
     this.removeWorker(worker);
-    if (!this.isShuttingDown) {
-      console.log('🔄 Creating replacement worker...');
+
+    // Only create replacement if we haven't exceeded failure threshold
+    if (!this.isShuttingDown && this.workerFailureCount < this.maxWorkerFailures) {
+      console.log(`🔄 Creating replacement worker... (${this.workerFailureCount}/${this.maxWorkerFailures} failures)`);
       this.createWorker();
+    } else if (this.workerFailureCount >= this.maxWorkerFailures) {
+      console.error(`🚨 Too many worker failures (${this.workerFailureCount}). Stopping automatic worker replacement.`);
+      console.error('Manual intervention required - check MongoDB connection and worker code.');
     }
   }
 
   private handleWorkerExit(worker: Worker): void {
     this.removeWorker(worker);
     if (!this.isShuttingDown) {
-      console.log('🔄 Creating replacement worker after exit...');
-      this.createWorker();
+      this.workerFailureCount++;
+      if (this.workerFailureCount < this.maxWorkerFailures) {
+        console.log(`🔄 Creating replacement worker after exit... (${this.workerFailureCount}/${this.maxWorkerFailures} failures)`);
+        this.createWorker();
+      } else {
+        console.error(`🚨 Too many worker failures (${this.workerFailureCount}). Stopping automatic worker replacement.`);
+        console.error('Manual intervention required - check MongoDB connection and worker code.');
+      }
     }
   }
 
