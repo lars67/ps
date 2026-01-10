@@ -494,7 +494,8 @@ export async function positions(
       const { symbol, marketPrice, marketClose } = p as QuoteData2;
       let change = {} as QuoteChange;
       if (!portfolioPositions[symbol]) {
-        logger.error(`ERR for ${symbol}, portfolioPositions keys = ${Object.keys(portfolioPositions).join(',')}`)
+        logger.warn(`Skipping quote data for symbol ${symbol} not in current portfolio positions (likely old data after position changes)`);
+        return;
       }
       const cur = portfolioPositions[symbol].currency as string;
       const volume = Number(portfolioPositions[symbol].volume);

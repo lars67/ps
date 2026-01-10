@@ -21,6 +21,7 @@ This file tracks the project's current status, including recent changes, current
 
 ## Recent Changes
 
+*   **FIXED CRITICAL CRASH**: Resolved TypeError in `processQuoteData` where accessing `portfolioPositions[symbol].currency` for symbols no longer in portfolio caused server crashes. Added guard clause to skip processing quote data for symbols not in current portfolio positions (race condition fix for SSE quote processing).
 *   Fixed critical bug in `fetchHistory` where FX rates keyed by symbol name (e.g., `USDDKK:FX`) were being ignored.
 *   Updated `getRate` to throw an error instead of falling back to `1.0` when exchange rates are missing.
 *   Completed implementation of `portfolios.debug` command for comprehensive portfolio error detection and reporting.
