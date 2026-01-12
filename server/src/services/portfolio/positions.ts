@@ -874,10 +874,11 @@ export async function positions(
       if (actualChanges.length === 0) {
         return;
       }
-      // For streaming updates, only send minimal totals (grand total only) to reduce bandwidth
-      // Initial subscription sends full totals
+      // For streaming updates, only send minimal totals (grand total only) and no attribution to reduce bandwidth
+      // Initial subscription sends full totals and attribution
       const streamingTotalsMode = isSubscriptionInitial ? totalsMode : "minimal";
-      const changes = calcChanges(actualChanges, includeAttribution, streamingTotalsMode, isSubscriptionInitial);
+      const streamingIncludeAttribution = isSubscriptionInitial ? includeAttribution : false;
+      const changes = calcChanges(actualChanges, streamingIncludeAttribution, streamingTotalsMode, isSubscriptionInitial);
       console.log(
         moment().format("HH:mm:ss SSS"),
         "subscriber SSE-> ",
