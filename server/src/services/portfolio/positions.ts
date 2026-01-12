@@ -874,7 +874,10 @@ export async function positions(
       if (actualChanges.length === 0) {
         return;
       }
-      const changes = calcChanges(actualChanges, includeAttribution, totalsMode, isSubscriptionInitial);
+      // For streaming updates, only send minimal totals (grand total only) to reduce bandwidth
+      // Initial subscription sends full totals
+      const streamingTotalsMode = isSubscriptionInitial ? totalsMode : "minimal";
+      const changes = calcChanges(actualChanges, includeAttribution, streamingTotalsMode, isSubscriptionInitial);
       console.log(
         moment().format("HH:mm:ss SSS"),
         "subscriber SSE-> ",
@@ -886,7 +889,7 @@ export async function positions(
       );
       changes && sendResponse(changes);
 
-      // After first update, set to false so totalsMode is respected for performance
+      // After first update, set to false so minimal totals are used for streaming performance
       isSubscriptionInitial = false;
 
       if (socket.readyState === WebSocket.CLOSED) {
@@ -896,7 +899,7 @@ export async function positions(
           logger.log(`[SSEService  in closed state ${userModif}|${msgId} ${sseService.getEventName()}`)
 
           console.log(
-            "STOPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP SSE",
+            "STOPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP SSE",
             sseService.getEventName(),
           );
           sseService.stop();
