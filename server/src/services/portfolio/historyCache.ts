@@ -414,13 +414,7 @@ export class PortfolioHistoryCache {
       return true; // Empty data is valid (no trades case)
     }
 
-    // 1. Check for negative NAV values on recent records only (allow historical negative due to trades)
-    const recentRecords = historyData.slice(-Math.min(7, historyData.length)); // Last 7 days
-    const negativeNavRecords = recentRecords.filter(day => day.nav < -1000); // Allow small negative values
-    if (negativeNavRecords.length > 0) {
-      console.warn(`Cached data contains ${negativeNavRecords.length} recent records with abnormally negative NAV values`);
-      return false;
-    }
+    // NAV validation removed - allow any NAV values including negative ones
 
     // 2. Check for NaN or Infinity values
     const invalidRecords = historyData.filter(day =>

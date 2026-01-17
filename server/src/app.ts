@@ -57,9 +57,7 @@ const startServer = async () => {
   let httpsServerLogin, httpsServerApp, httpsServerGuest, httpsMainServer;
   
   try {
-    console.log("Creating HTTPS servers for production mode");
     const certPath = path.join(process.cwd(), "../Certificate");
-    console.log("Using certificates from:", certPath);
     
     const key = fs.readFileSync(path.join(certPath, "STAR.softcapital.com.key"));
     const cert = fs.readFileSync(path.join(certPath, "STAR.softcapital.com.crt"));
@@ -81,7 +79,6 @@ const startServer = async () => {
   }
   
   // Create HTTP servers (for development)
-  console.log("Creating HTTP servers for development mode");
   const httpServerLogin = http.createServer(app);
   const httpServerApp = http.createServer(app);
   const httpServerGuest = http.createServer(app);
@@ -317,6 +314,72 @@ app.post("/run-dividend-job", async (req, res) => {
       success: false,
       error: errorMessage
     });
+  }
+});
+
+app.post("/run-portfolio-history-job", async (req, res) => {
+  console.log("Manual portfolio history job triggered via API");
+
+  try {
+    const stats = await portfolioHistoryCronJob.runNow();
+    console.log("Manual portfolio history job completed:", stats);
+
+    res.json({
+      success: true,
+      message: "Portfolio history job completed manually",
+      stats: stats
+    });
+  } catch (error) {
+    console.error("Manual portfolio history job failed:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    res.status(500).json({
+      success: false,
+      error: errorMessage
+    });
+  }
+});
+
+app.post("/rebuild-portfolio-history-cache", async (req, res) => {
+  console.log("COMPLETE PORTFOLIO HISTORY CACHE REBUILD triggered via API - THIS WILL CLEAR ALL EXISTING DATA");
+
+  try {
+    const stats = await portfolioHistoryCronJob.rebuildCompleteCache();
+    console.log("Complete portfolio history cache rebuild completed:", stats);
+
+    res.json({
+      success: true,
+      message: "Complete portfolio history cache rebuild completed - all data recalculated from scratch",
+      warning: "This operation cleared all existing cached history data",
+      stats: stats
+    });
+  } catch (error) {
+    console.error("Complete portfolio history cache rebuild failed:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    res.status(500).json({
+      success: false,
+      error: errorMessage
+    });
+  }
+});
+
+app.get("/count-portfolios", async (req, res) => {
+  try {
+    const PortfolioModel = require('./models/portfolio');
+    const count = await PortfolioModel.countDocuments();
+    console.log(`Portfolios count: ${count}`);
+
+    // Also check portfolio_histories
+    const PortfolioHistoryModel = require('./models/portfolioHistory');
+    const historyCount = await PortfolioHistoryModel.countDocuments();
+    console.log(`Portfolio history records: ${historyCount}`);
+
+    res.json({
+      portfolios: count,
+      historyRecords: historyCount
+    });
+  } catch (error) {
+    console.error("Count portfolios failed:", error);
+    res.status(500).json({ error: "Failed to count portfolios" });
   }
 });
 

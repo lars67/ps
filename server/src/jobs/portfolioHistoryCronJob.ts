@@ -37,7 +37,7 @@ class PortfolioHistoryCronJobManager {
 
   /**
    * Start the daily portfolio history cron job
-   * Runs at 05:00 CET daily (1 hour after dividend cron job)
+   * Runs at 05:00 CET daily in production, more frequently in development
    */
   start(): void {
     if (this.cronJob) {
@@ -45,11 +45,11 @@ class PortfolioHistoryCronJobManager {
       return;
     }
 
-    // Cron expression: "0 5 * * *"
-    // 0 = minute 0, 5 = hour 5, * = every day, * = every month, * = every day of week
-    const schedule = '0 5 * * *';
+    // Use production schedule for both environments - development should use manual triggering
+    const schedule = '0 5 * * *'; // 05:00 CET daily for both dev and prod
+    const scheduleDescription = '05:00 CET daily';
 
-    logger.log(`Starting portfolio history cron job with schedule: ${schedule} (05:00 CET daily)`);
+    logger.log(`Starting portfolio history cron job with schedule: ${schedule} (${scheduleDescription})`);
 
     this.cronJob = cron.schedule(schedule, async () => {
       if (this.isRunning) {
@@ -102,6 +102,23 @@ class PortfolioHistoryCronJobManager {
   }
 
   /**
+   * Rebuild complete cache for all portfolios (destructive operation)
+   */
+  async rebuildCompleteCache(): Promise<CronJobStats> {
+    if (this.isRunning) {
+      throw new Error('Portfolio history maintenance is already running');
+    }
+
+    this.isRunning = true;
+    try {
+      logger.log('Starting complete cache rebuild - this will clear ALL existing history data');
+      return await this.runCompleteRebuild();
+    } finally {
+      this.isRunning = false;
+    }
+  }
+
+  /**
    * Get cron job status
    */
   getStatus(): {
@@ -116,6 +133,136 @@ class PortfolioHistoryCronJobManager {
       nextRun: this.cronJob ? this.getNextRunTime() : undefined,
       schedule: '05:00 CET daily'
     };
+  }
+
+  /**
+   * Complete cache rebuild - clears all history data and rebuilds from scratch
+   */
+  private async runCompleteRebuild(): Promise<CronJobStats> {
+    const stats: CronJobStats = {
+      portfoliosProcessed: 0,
+      portfoliosSkipped: 0,
+      portfoliosWithErrors: 0,
+      totalRecordsUpdated: 0,
+      gapsDetected: 0,
+      gapsFilled: 0,
+      oldRecordsCleaned: 0,
+      startTime: new Date()
+    };
+
+    try {
+      // Check available memory before starting
+      const memUsage = process.memoryUsage();
+      const memUsageMB = memUsage.heapUsed / 1024 / 1024;
+      const memLimitMB = 4000; // Conservative 4GB limit
+
+      if (memUsageMB > memLimitMB) {
+        throw new Error(`Insufficient memory to start rebuild. Current usage: ${memUsageMB.toFixed(1)}MB (limit: ${memLimitMB}MB)`);
+      }
+
+      logger.log(`Memory check passed: ${memUsageMB.toFixed(1)}MB used (limit: ${memLimitMB}MB)`);
+      // 1. Clear ALL existing portfolio history data
+      logger.log('Clearing all existing portfolio history data...');
+      const { PortfolioHistoryModel } = require('../models/portfolioHistory');
+      const deleteResult = await PortfolioHistoryModel.deleteMany({});
+      stats.oldRecordsCleaned = deleteResult.deletedCount || 0;
+      logger.log(`Cleared ${stats.oldRecordsCleaned} existing history records`);
+
+      // 2. Find ALL portfolios in the system
+      const { PortfolioModel } = require('../models/portfolio');
+      logger.log('Querying portfolios collection...');
+      const allPortfolios = await PortfolioModel.find({}, { _id: 1 }).lean();
+      logger.log(`Raw portfolio query result: ${allPortfolios.length} documents`);
+      const portfolioIds = allPortfolios.map((p: any) => p._id.toString());
+      logger.log(`Found ${portfolioIds.length} portfolios to rebuild history for: ${portfolioIds.slice(0, 5).join(', ')}`);
+
+      // 3. Process portfolios in batches with memory management (full recalculation)
+      const batchSize = 3; // Even smaller batches for memory safety
+      const maxConcurrentBatches = 2; // Limit concurrent processing
+
+      for (let i = 0; i < portfolioIds.length; i += batchSize * maxConcurrentBatches) {
+        const concurrentBatches = [];
+
+        // Create up to maxConcurrentBatches concurrent batch operations
+        for (let j = 0; j < maxConcurrentBatches && (i + j * batchSize) < portfolioIds.length; j++) {
+          const batchStart = i + j * batchSize;
+          const batch = portfolioIds.slice(batchStart, batchStart + batchSize);
+          const batchIndex = Math.floor(batchStart / batchSize) + 1;
+
+          logger.log(`Processing batch ${batchIndex}/${Math.ceil(portfolioIds.length / batchSize)} (${batch.length} portfolios)`);
+
+          const batchPromise = Promise.allSettled(
+            batch.map((portfolioId: string) => this.rebuildPortfolioHistory(portfolioId))
+          ).then(batchResults => {
+            // Update stats for this batch
+            batchResults.forEach(result => {
+              if (result.status === 'fulfilled') {
+                const portfolioStats = result.value;
+                stats.portfoliosProcessed++;
+                stats.totalRecordsUpdated += portfolioStats.recordsUpdated;
+              } else {
+                stats.portfoliosWithErrors++;
+                logger.error(`Portfolio rebuild failed: ${result.reason}`);
+              }
+            });
+            return batchResults;
+          });
+
+          concurrentBatches.push(batchPromise);
+        }
+
+        // Wait for all concurrent batches in this group to complete
+        await Promise.all(concurrentBatches);
+
+        // Monitor memory usage after batch processing
+        const currentMemUsage = process.memoryUsage();
+        const currentMemUsageMB = currentMemUsage.heapUsed / 1024 / 1024;
+        logger.log(`Memory usage after batch: ${currentMemUsageMB.toFixed(1)}MB heap used`);
+
+        // Check if memory usage is getting dangerously high
+        const memoryWarningThreshold = 6000; // 6GB warning threshold
+        const memoryCriticalThreshold = 7000; // 7GB critical threshold
+
+        if (currentMemUsageMB > memoryCriticalThreshold) {
+          logger.error(`CRITICAL: Memory usage too high (${currentMemUsageMB.toFixed(1)}MB). Aborting rebuild to prevent crash.`);
+          throw new Error(`Memory usage exceeded critical threshold: ${currentMemUsageMB.toFixed(1)}MB`);
+        } else if (currentMemUsageMB > memoryWarningThreshold) {
+          logger.warn(`WARNING: High memory usage (${currentMemUsageMB.toFixed(1)}MB). Consider reducing batch size or concurrency.`);
+        }
+
+        // Force garbage collection if available (Node.js with --expose-gc)
+        if (global.gc) {
+          global.gc();
+          logger.log('Forced garbage collection after batch processing');
+        }
+
+        // Longer delay between batch groups to allow memory cleanup
+        if (i + batchSize * maxConcurrentBatches < portfolioIds.length) {
+          logger.log(`Completed batch group. Waiting 5 seconds for memory cleanup...`);
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+      }
+
+      // 4. Update stats
+      stats.endTime = new Date();
+      stats.duration = stats.endTime.getTime() - stats.startTime.getTime();
+
+      // 5. Write rebuild log
+      this.writeRebuildLog(stats);
+
+      logger.log(`Complete cache rebuild completed: ${stats.portfoliosProcessed} portfolios, ${stats.totalRecordsUpdated} records`);
+
+      return stats;
+
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      logger.error(`Critical error in complete rebuild: ${errorMsg}`);
+      stats.endTime = new Date();
+      stats.duration = stats.endTime.getTime() - stats.startTime.getTime();
+
+      this.writeLogFile(stats);
+      return stats;
+    }
   }
 
   /**
@@ -218,6 +365,32 @@ class PortfolioHistoryCronJobManager {
       logger.error(`Error finding portfolios needing updates: ${errorMsg}`);
       return [];
     }
+  }
+
+  /**
+   * Rebuild history for a single portfolio (complete recalculation)
+   */
+  private async rebuildPortfolioHistory(portfolioId: string): Promise<{
+    recordsUpdated: number;
+  }> {
+    const result = {
+      recordsUpdated: 0
+    };
+
+    try {
+      // Use full recalculation for rebuild
+      const updateResult = await PortfolioHistoryCache.updateHistory(portfolioId, undefined, true, false);
+
+      if (updateResult.success) {
+        result.recordsUpdated = updateResult.recordsUpdated;
+      }
+
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      logger.error(`Error rebuilding portfolio ${portfolioId}: ${errorMsg}`);
+    }
+
+    return result;
   }
 
   /**
@@ -332,6 +505,41 @@ class PortfolioHistoryCronJobManager {
   }
 
   /**
+   * Write log file specifically for complete rebuild operations
+   */
+  private writeRebuildLog(stats: CronJobStats): void {
+    try {
+      const dateStr = moment(stats.startTime).format('YYYY-MM-DD');
+      const timeStr = moment(stats.startTime).format('HH:mm:ss');
+      const filename = `${dateStr}-portfolio-history-rebuild.log`;
+      const filepath = path.join(this.logsDir, filename);
+
+      let logContent = `${dateStr} ${timeStr} - COMPLETE CACHE REBUILD STARTED\n`;
+
+      logContent += `Old records cleared: ${stats.oldRecordsCleaned}\n`;
+      logContent += `Portfolios processed: ${stats.portfoliosProcessed}\n`;
+      logContent += `Portfolios with errors: ${stats.portfoliosWithErrors}\n`;
+      logContent += `New records created: ${stats.totalRecordsUpdated}\n`;
+
+      const endTimeStr = stats.endTime ? moment(stats.endTime).format('HH:mm:ss') : 'unknown';
+      logContent += `${dateStr} ${endTimeStr} - COMPLETE CACHE REBUILD COMPLETED`;
+
+      if (stats.duration) {
+        const durationMinutes = Math.round(stats.duration / 1000 / 60);
+        logContent += ` (${durationMinutes} minutes)`;
+      }
+
+      logContent += '\n';
+
+      fs.appendFileSync(filepath, logContent, 'utf8');
+      logger.log(`Portfolio history rebuild log written to: ${filepath}`);
+
+    } catch (error) {
+      logger.error(`Failed to write portfolio history rebuild log: ${error}`);
+    }
+  }
+
+  /**
    * Ensure the logs directory exists
    */
   private ensureLogsDirectory(): void {
@@ -351,25 +559,13 @@ class PortfolioHistoryCronJobManager {
   private getNextRunTime(): Date | undefined {
     if (!this.cronJob) return undefined;
 
-    // Calculate next 05:00 CET
+    // Production: 05:00 CET daily
     const now = new Date();
     const nextRun = new Date(now);
-
-    // Set to 05:00 today or next valid day
     nextRun.setHours(5, 0, 0, 0);
 
-    // If it's already past 04:00 today and today is Mon-Sat, schedule for tomorrow
-    if (now >= nextRun && now.getDay() >= 1 && now.getDay() <= 6) {
-      nextRun.setDate(nextRun.getDate() + 1);
-    }
-
-    // If today is Sunday, schedule for Monday
-    if (now.getDay() === 0) {
-      nextRun.setDate(nextRun.getDate() + 1); // Monday
-    }
-
-    // If calculated day is Sunday, move to Monday
-    if (nextRun.getDay() === 0) {
+    // If it's already past 05:00 today, schedule for tomorrow
+    if (now >= nextRun) {
       nextRun.setDate(nextRun.getDate() + 1);
     }
 
