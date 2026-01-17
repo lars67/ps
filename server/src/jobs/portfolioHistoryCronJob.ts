@@ -137,6 +137,7 @@ class PortfolioHistoryCronJobManager {
 
   /**
    * Complete cache rebuild - clears all history data and rebuilds from scratch
+   * Now supports resume capability for crash recovery
    */
   private async runCompleteRebuild(): Promise<CronJobStats> {
     const stats: CronJobStats = {
@@ -150,6 +151,8 @@ class PortfolioHistoryCronJobManager {
       startTime: new Date()
     };
 
+    const rebuildSessionId = `rebuild_${Date.now()}`;
+
     try {
       // Check available memory before starting
       const memUsage = process.memoryUsage();
@@ -161,20 +164,41 @@ class PortfolioHistoryCronJobManager {
       }
 
       logger.log(`Memory check passed: ${memUsageMB.toFixed(1)}MB used (limit: ${memLimitMB}MB)`);
-      // 1. Clear ALL existing portfolio history data
-      logger.log('Clearing all existing portfolio history data...');
-      const { PortfolioHistoryModel } = require('../models/portfolioHistory');
-      const deleteResult = await PortfolioHistoryModel.deleteMany({});
-      stats.oldRecordsCleaned = deleteResult.deletedCount || 0;
-      logger.log(`Cleared ${stats.oldRecordsCleaned} existing history records`);
 
-      // 2. Find ALL portfolios in the system
-      const { PortfolioModel } = require('../models/portfolio');
-      logger.log('Querying portfolios collection...');
-      const allPortfolios = await PortfolioModel.find({}, { _id: 1 }).lean();
-      logger.log(`Raw portfolio query result: ${allPortfolios.length} documents`);
-      const portfolioIds = allPortfolios.map((p: any) => p._id.toString());
-      logger.log(`Found ${portfolioIds.length} portfolios to rebuild history for: ${portfolioIds.slice(0, 5).join(', ')}`);
+      // 1. Check for existing rebuild session (resume capability)
+      const existingSession = await this.checkExistingRebuildSession();
+      let portfolioIds: string[];
+      let resumeMode = false;
+
+      if (existingSession) {
+        // Resume from previous session
+        portfolioIds = existingSession.remainingPortfolios;
+        stats.portfoliosProcessed = existingSession.completedPortfolios.length;
+        stats.totalRecordsUpdated = existingSession.totalRecordsProcessed || 0;
+        resumeMode = true;
+        logger.log(`🔄 RESUMING rebuild from session ${existingSession.sessionId} - ${stats.portfoliosProcessed} already completed`);
+      } else {
+        // Start fresh rebuild
+        logger.log(`🆕 Starting fresh rebuild session ${rebuildSessionId}`);
+
+        // 1a. Clear ALL existing portfolio history data
+        logger.log('Clearing all existing portfolio history data...');
+        const { PortfolioHistoryModel } = require('../models/portfolioHistory');
+        const deleteResult = await PortfolioHistoryModel.deleteMany({});
+        stats.oldRecordsCleaned = deleteResult.deletedCount || 0;
+        logger.log(`Cleared ${stats.oldRecordsCleaned} existing history records`);
+
+        // 1b. Find ALL portfolios in the system
+        const { PortfolioModel } = require('../models/portfolio');
+        logger.log('Querying portfolios collection...');
+        const allPortfolios = await PortfolioModel.find({}, { _id: 1 }).lean();
+        logger.log(`Raw portfolio query result: ${allPortfolios.length} documents`);
+        portfolioIds = allPortfolios.map((p: any) => p._id.toString());
+        logger.log(`Found ${portfolioIds.length} portfolios to rebuild history for: ${portfolioIds.slice(0, 5).join(', ')}`);
+
+        // 1c. Save rebuild session for resume capability
+        await this.saveRebuildSession(rebuildSessionId, portfolioIds, [], 0);
+      }
 
       // 3. Process portfolios in batches with memory management (full recalculation)
       const batchSize = 3; // Even smaller batches for memory safety
@@ -193,18 +217,39 @@ class PortfolioHistoryCronJobManager {
 
           const batchPromise = Promise.allSettled(
             batch.map((portfolioId: string) => this.rebuildPortfolioHistory(portfolioId))
-          ).then(batchResults => {
+          ).then(async (batchResults) => {
             // Update stats for this batch
+            const completedInThisBatch: string[] = [];
             batchResults.forEach(result => {
               if (result.status === 'fulfilled') {
                 const portfolioStats = result.value;
                 stats.portfoliosProcessed++;
                 stats.totalRecordsUpdated += portfolioStats.recordsUpdated;
+                // Track which portfolios were completed in this batch
+                const portfolioIndex = batchResults.indexOf(result);
+                if (portfolioIndex >= 0) {
+                  completedInThisBatch.push(batch[portfolioIndex]);
+                }
               } else {
                 stats.portfoliosWithErrors++;
                 logger.error(`Portfolio rebuild failed: ${result.reason}`);
               }
             });
+
+            // Update session state with completed portfolios
+            if (resumeMode || stats.portfoliosProcessed > 0) {
+              const allCompleted = [
+                ...(existingSession?.completedPortfolios || []),
+                ...completedInThisBatch
+              ];
+              await this.saveRebuildSession(
+                existingSession?.sessionId || rebuildSessionId,
+                existingSession?.allPortfolios || portfolioIds,
+                allCompleted,
+                stats.totalRecordsUpdated
+              );
+            }
+
             return batchResults;
           });
 
@@ -550,6 +595,94 @@ class PortfolioHistoryCronJobManager {
       }
     } catch (error) {
       logger.error(`Failed to create portfolio history logs directory: ${error}`);
+    }
+  }
+
+  /**
+   * Check for existing rebuild session for resume capability
+   */
+  private async checkExistingRebuildSession(): Promise<{
+    sessionId: string;
+    allPortfolios: string[];
+    completedPortfolios: string[];
+    remainingPortfolios: string[];
+    totalRecordsProcessed: number;
+  } | null> {
+    try {
+      // Look for rebuild session files in logs directory
+      const sessionFiles = fs.readdirSync(this.logsDir)
+        .filter(file => file.includes('rebuild_session_'))
+        .sort()
+        .reverse(); // Most recent first
+
+      if (sessionFiles.length === 0) {
+        return null;
+      }
+
+      const latestSessionFile = sessionFiles[0];
+      const sessionPath = path.join(this.logsDir, latestSessionFile);
+
+      if (!fs.existsSync(sessionPath)) {
+        return null;
+      }
+
+      const sessionData = JSON.parse(fs.readFileSync(sessionPath, 'utf8'));
+      logger.log(`Found existing rebuild session: ${sessionData.sessionId}`);
+
+      return sessionData;
+    } catch (error) {
+      logger.warn(`Could not check for existing rebuild session: ${error}`);
+      return null;
+    }
+  }
+
+  /**
+   * Save rebuild session for resume capability
+   */
+  private async saveRebuildSession(
+    sessionId: string,
+    allPortfolios: string[],
+    completedPortfolios: string[],
+    totalRecordsProcessed: number
+  ): Promise<void> {
+    try {
+      const remainingPortfolios = allPortfolios.filter(id => !completedPortfolios.includes(id));
+
+      const sessionData = {
+        sessionId,
+        allPortfolios,
+        completedPortfolios,
+        remainingPortfolios,
+        totalRecordsProcessed,
+        lastUpdated: new Date().toISOString()
+      };
+
+      const sessionFile = `rebuild_session_${sessionId}.json`;
+      const sessionPath = path.join(this.logsDir, sessionFile);
+
+      fs.writeFileSync(sessionPath, JSON.stringify(sessionData, null, 2));
+      logger.log(`Saved rebuild session ${sessionId} (${completedPortfolios.length}/${allPortfolios.length} completed)`);
+    } catch (error) {
+      logger.error(`Failed to save rebuild session: ${error}`);
+    }
+  }
+
+  /**
+   * Clean up rebuild session files
+   */
+  private async cleanupRebuildSessions(): Promise<void> {
+    try {
+      const sessionFiles = fs.readdirSync(this.logsDir)
+        .filter(file => file.includes('rebuild_session_'));
+
+      for (const file of sessionFiles) {
+        const filePath = path.join(this.logsDir, file);
+        fs.unlinkSync(filePath);
+      }
+
+      logger.log(`Cleaned up ${sessionFiles.length} rebuild session files`);
+    } catch (error) {
+      logger.warn(`Could not cleanup rebuild sessions: ${error}`);
     }
   }
 
