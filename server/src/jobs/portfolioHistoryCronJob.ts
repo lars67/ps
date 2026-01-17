@@ -119,6 +119,23 @@ class PortfolioHistoryCronJobManager {
   }
 
   /**
+   * Test rebuild - processes only first 5 portfolios and stops (for testing resume)
+   */
+  async testRebuildResume(): Promise<CronJobStats> {
+    if (this.isRunning) {
+      throw new Error('Portfolio history maintenance is already running');
+    }
+
+    this.isRunning = true;
+    try {
+      logger.log('🧪 Starting TEST rebuild - will process only 5 portfolios and stop (for resume testing)');
+      return await this.runCompleteRebuild(true); // testMode = true
+    } finally {
+      this.isRunning = false;
+    }
+  }
+
+  /**
    * Get cron job status
    */
   getStatus(): {
@@ -139,7 +156,7 @@ class PortfolioHistoryCronJobManager {
    * Complete cache rebuild - clears all history data and rebuilds from scratch
    * Now supports resume capability for crash recovery
    */
-  private async runCompleteRebuild(): Promise<CronJobStats> {
+  private async runCompleteRebuild(testMode: boolean = false): Promise<CronJobStats> {
     const stats: CronJobStats = {
       portfoliosProcessed: 0,
       portfoliosSkipped: 0,
@@ -203,8 +220,9 @@ class PortfolioHistoryCronJobManager {
       // 3. Process portfolios in batches with memory management (full recalculation)
       const batchSize = 3; // Even smaller batches for memory safety
       const maxConcurrentBatches = 2; // Limit concurrent processing
+      const testModeStopAfter = testMode ? 5 : portfolioIds.length; // Stop after 5 portfolios in test mode
 
-      for (let i = 0; i < portfolioIds.length; i += batchSize * maxConcurrentBatches) {
+      for (let i = 0; i < Math.min(testModeStopAfter, portfolioIds.length); i += batchSize * maxConcurrentBatches) {
         const concurrentBatches = [];
 
         // Create up to maxConcurrentBatches concurrent batch operations
@@ -428,10 +446,13 @@ class PortfolioHistoryCronJobManager {
 
       if (updateResult.success) {
         result.recordsUpdated = updateResult.recordsUpdated;
+        // Log completion with timestamp for real-time progress tracking
+        console.log(`${new Date().toISOString()} ✅ Portfolio ${portfolioId} completed (${result.recordsUpdated} records)`);
       }
 
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
+      console.log(`${new Date().toISOString()} ❌ Portfolio ${portfolioId} failed: ${errorMsg}`);
       logger.error(`Error rebuilding portfolio ${portfolioId}: ${errorMsg}`);
     }
 
