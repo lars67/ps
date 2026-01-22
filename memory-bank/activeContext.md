@@ -7,20 +7,17 @@ This file tracks the project's current status, including recent changes, current
 
 ## Current Focus
 
-*   ✅ **FIXED**: PS2 now prioritizes local high-precision CSV data from CustomYahooDownload.py over EODHD API
+*   ✅ **COMPLETED**: Real-time portfolio positions streaming test script implementation
+*   ✅ **IMPLEMENTED**: Enhanced `portfolios.positions` command with `requestType: "1"` (subscribe) returning initial positions data
+*   ✅ **IMPLEMENTED**: Fragmented message handling for both initial responses and streaming updates
+*   ✅ **IMPLEMENTED**: Latest Price (`basePrice: "2"`, `marketPrice: "2"`) support for real-time data
 *   Investigating and resolving WebSocket connection stability issues.
 *   Addressing potential SSE (Server-Sent Events) connection instability issues.
 *   Verifying portfolio calculation accuracy against external NAV reports.
-*   Corrected FX rate fetching bug where symbol-keyed prices were missed in `fetchHistory`.
-*   Hardened currency conversion by removing unsafe 1.0 parity fallbacks in `getRate`.
-*   Reverted attribution percentage calculation changes - original logic restored.
-*   Considering more granular access controls for sensitive portfolio data.
-*   Updating PS2 documentation to reflect new signup `source` field.
-*   Fixed `tools.statistics` for portfolios to use invested value changes instead of NAV (excludes cash flows from return calculation).
-*   Added `startDate` field to statistics response for frontend to control CAGR display based on portfolio age.
 
 ## Recent Changes
 
+*   **COMPLETED PORTFOLIO STREAMING**: Implemented comprehensive real-time portfolio positions streaming test script with detailed documentation for external programmers. Enhanced `portfolios.positions` command with `requestType: "1"` (subscribe) to return initial positions data and establish streaming connections. Added robust fragmented message handling for both initial responses and streaming updates. Implemented Latest Price support (`basePrice: "2"`, `marketPrice: "2"`) for real-time market data calculations.
 *   **OPTIMIZED STREAMING PERFORMANCE**: Modified portfolio positions streaming to send only grand total in updates (not all subtotal breakdowns) and no attribution data to reduce bandwidth usage. Initial subscription still sends full totals and attribution for complete data.
 *   **FIXED CRITICAL CRASH**: Resolved TypeError in `processQuoteData` where accessing `portfolioPositions[symbol].currency` for symbols no longer in portfolio caused server crashes. Added guard clause to skip processing quote data for symbols not in current portfolio positions (race condition fix for SSE quote processing).
 *   Fixed critical bug in `fetchHistory` where FX rates keyed by symbol name (e.g., `USDDKK:FX`) were being ignored.

@@ -16,6 +16,7 @@ This file provides a high-level overview of the project and the expected product
 *   User command customization and management.
 *   JWT-based authentication with secure cookie storage.
 *   Separate WebSocket endpoints for Login, Main App, and Guest access.
+*   Real-time portfolio positions streaming with fragmented message handling.
 *   Comprehensive API documentation for all commands (e.g., `commands_overview.md`).
 *   Debugging capabilities for portfolio calculations (`portfolios.debug`).
 

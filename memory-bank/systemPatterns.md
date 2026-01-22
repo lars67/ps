@@ -13,8 +13,8 @@ It is optional, but recommended to be updated as the project evolves.
 ## Architectural Patterns
 
 *   **Microservices/Modular Design**: Separate concerns for backend (Node.js/Express.js), frontend (React), and help system (Next.js).
-*   **Event-Driven Architecture**: Real-time communication via WebSockets (`ws` library) with separate endpoints for Login, Main App, and Guest access.
-*   **Command-Based Interface**: JSON commands sent over WebSockets, with responses fragmented for large data. Commands dispatched via modular handlers (e.g., portfolios, trades, commands).
+*   **Event-Driven Architecture**: Real-time communication via WebSockets (`ws` library) with separate endpoints for Login, Main App, and Guest access. SSE (Server-Sent Events) for market data streaming.
+*   **Command-Based Interface**: JSON commands sent over WebSockets, with responses fragmented for large data. Commands dispatched via modular handlers (e.g., portfolios, trades, commands). Real-time streaming with subscribe/unsubscribe patterns.
 *   **Data Persistence**: MongoDB (via Mongoose) for data storage (commands, user data, portfolios, trades).
 *   **Authentication**: JWT-based for secure API access, with HTTPOnly cookies for token storage.
 *   **Authorization**: Role-based access control (Public, Member, Admin) enforced at command level.

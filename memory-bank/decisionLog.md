@@ -58,6 +58,23 @@ This file records architectural and implementation decisions using a list format
 *   Modified `authSignUpThunk` in `react/src/store/slices/user.ts` to send source field via WebSocket.
 *   Updated React signup form to include source parameter with default "web-form".
 *   Added source field to test HTML page with default "test-page".
+
+## Decision
+
+*   Implemented real-time portfolio positions streaming with enhanced `portfolios.positions` command.
+
+## Rationale
+
+*   Real-time portfolio streaming was needed to provide live market data updates for portfolio positions. The existing snapshot-only approach (`requestType: "0"`) didn't support continuous updates. Users needed to see live price changes and P&L updates without manual refresh.
+
+## Implementation Details
+
+*   Enhanced `portfolios.positions` command to support `requestType: "1"` (subscribe) which returns initial positions data and establishes streaming connection.
+*   Added fragmented message handling for both initial responses and streaming updates to handle large payloads.
+*   Implemented Latest Price support (`basePrice: "2"`, `marketPrice: "2"`) for real-time market data calculations.
+*   Created comprehensive test script (`tests/get_portfolio_positions.js`) with detailed documentation for external programmers.
+*   Added robust error handling and graceful unsubscription after monitoring period.
+*   Updated server code to return positions data for subscribe requests and handle streaming message reassembly.
 2025-06-23 14:15:27 - Redesigned `portfolios.debug` output metrics to match user-provided NAV report.
 2025-11-20 08:52:07 - Logged completion of `portfolios.debug` command implementation and updated memory bank accordingly.
 2025-11-20 08:58:48 - Logged decision to add source field to signup command and completed implementation across frontend, backend, database, and test files.
