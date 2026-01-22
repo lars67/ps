@@ -1,20 +1,98 @@
 #!/usr/bin/env node
 
 /**
- * Standalone PS2 Portfolio Positions Script
+ * PS2 Portfolio Positions Streaming Test Script
  *
- * This script connects to PS2 (Portfolio Management System) and fetches portfolio positions.
+ * This script demonstrates real-time portfolio position streaming from the PS2 trading system.
+ * It subscribes to live position updates for a specified portfolio and displays both initial
+ * positions and real-time market data changes.
  *
- * Usage:
+ * USAGE:
  *   node get_portfolio_positions.js
  *
- * Configuration:
- * - Set SSL_CERT_BUNDLE and SSL_CERT_FILE environment variables to point to your SSL certificates
- * - Modify the portfolioId and credentials as needed
- * - For development: set NODE_ENV=development to use ws://
- * - For production: set NODE_ENV=production to use wss:// and proper certificates
+ * CONFIGURATION:
+ * - Portfolio ID: Modify the `portfolioId` variable in the script
+ * - Authentication: Uses admin login (admin/111111) - modify credentials as needed
+ * - SSL Certificates: Set SSL_CERT_BUNDLE and SSL_CERT_FILE environment variables
+ * - Environment: Set NODE_ENV=development (ws://) or production (wss://)
+ * - Monitoring Duration: Set to 5 minutes by default
  *
- * Dependencies: only requires 'ws' and built-in Node.js modules
+ * MESSAGE FORMAT:
+ * The script sends a portfolios.positions command with requestType: "1" (subscribe):
+ * {
+ *   "command": "portfolios.positions",
+ *   "_id": "portfolio_id",
+ *   "requestType": "1",           // Subscribe mode
+ *   "basePrice": "2",             // Latest Price for cost basis calculations
+ *   "marketPrice": "2",           // Latest Price for market value calculations
+ *   "closed": "no",               // Include only open positions
+ *   "totalsMode": "none",         // No totals aggregation
+ *   "includeAttribution": false,  // No income attribution breakdown
+ *   "msgId": "subscribe_..."      // Auto-generated message ID
+ * }
+ *
+ * RESPONSE FORMAT:
+ * Initial subscribe response includes positions data:
+ * {
+ *   "command": "portfolios.positions",
+ *   "msgId": "subscribe_...",
+ *   "data": {
+ *     "msg": "subscribed",
+ *     "eventName": "SSE_QUOTES_...",
+ *     "positions": [
+ *       {
+ *         "symbol": "AAPL",
+ *         "volume": 100,
+ *         "price": 150.00,
+ *         "invested": 15000.00,
+ *         // ... other position fields
+ *       }
+ *     ]
+ *   }
+ * }
+ *
+ * Streaming updates (when market prices change):
+ * {
+ *   "command": "portfolios.positions",
+ *   "msgId": "subscribe_...",
+ *   "data": [
+ *     {
+ *       "symbol": "AAPL",
+ *       "marketPrice": 151.00,
+ *       "marketValue": 15100.00,
+ *       "result": 100.00,
+ *       // ... updated fields
+ *     }
+ *   ]
+ * }
+ *
+ * PRICE TYPES:
+ * - "0": IEX Bid Price
+ * - "1": IEX Ask Price
+ * - "2": Latest Price (recommended for real-time data)
+ * - "4": Previous Close
+ * - "5": Daily High
+ * - "6": Daily Low
+ * - "7": Mid Price (bid/ask average)
+ * - "8": Latest or Mid Price
+ *
+ * DEPENDENCIES:
+ * - Node.js built-in modules (fs, path, https, tls)
+ * - 'ws' WebSocket library (npm install ws)
+ *
+ * FEATURES:
+ * - WebSocket connection with SSL/TLS support
+ * - Fragmented message handling for large responses
+ * - Real-time streaming position updates
+ * - Graceful error handling and reconnection
+ * - Automatic unsubscription after monitoring period
+ * - Comprehensive logging for debugging
+ *
+ * NOTES:
+ * - Requires valid SSL certificates for production
+ * - Streaming updates only occur when market prices actually change
+ * - Script monitors for 5 minutes then unsubscribes automatically
+ * - Use Ctrl+C to stop early if needed
  */
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -125,9 +203,18 @@ class PS2LoginHandler {
 
             this.ws.onmessage = (event) => {
                 try {
+                    const rawData = event.data;
+                    console.log('RAW MESSAGE RECEIVED:', rawData.substring(0, 200) + (rawData.length > 200 ? '...' : ''));
                     const data = JSON.parse(event.data);
+                    console.log('PARSED MESSAGE:', { command: data.command, msgId: data.msgId, dataType: Array.isArray(data.data) ? 'array' : typeof data.data, hasPositions: !!data.positions });
 
                     if (data.msgId && this.messageListeners.has(data.msgId)) {
+                        // Check if this is a streaming update for a subscribe command
+                        if (data.command === 'portfolios.positions' && Array.isArray(data.data) && data.msgId.startsWith('subscribe_')) {
+                            console.log('DETECTED: Real-time position update received:');
+                            console.log(JSON.stringify(data, null, 2));
+                            return; // Don't pass to normal handler for streaming updates
+                        }
                         this.messageListeners.get(data.msgId)(data);
                     } else if (data.token && this.lastSentMsgId) {
                         // Handle login responses that don't have msgId but have token
@@ -139,6 +226,16 @@ class PS2LoginHandler {
                         if (this.messageListeners.has(this.lastSentMsgId)) {
                             this.messageListeners.get(this.lastSentMsgId)(data);
                         }
+                    } else if (Array.isArray(data) || (data.command === 'portfolios.positions' && data.data)) {
+                        // Handle real-time position updates (streaming data without msgId)
+                        console.log('FALLBACK: Real-time position update received:');
+                        console.log(JSON.stringify(data, null, 2));
+                    } else if (typeof data === 'object' && !data.msgId && !data.token) {
+                        // Handle other streaming updates
+                        console.log('FALLBACK: Streaming update received:');
+                        console.log(JSON.stringify(data, null, 2));
+                    } else {
+                        console.log('UNHANDLED MESSAGE:', JSON.stringify(data, null, 2));
                     }
                 } catch (error) {
                     console.error('PS2 message processing error:', error.message);
@@ -168,7 +265,7 @@ class PS2LoginHandler {
                 console.error(`Message timeout for ${msgId}`);
                 this.messageListeners.delete(msgId);
                 reject(new Error(`Timeout waiting for response to ${message.command}`));
-            }, 60000);
+            }, 300000);
 
             const cleanup = () => {
                 if (timeout) clearTimeout(timeout);
@@ -217,33 +314,78 @@ class PS2LoginHandler {
                     // Handle fragmented messages
                     if (total > 1) {
                         expectedTotal = Number(total);
-                        fragments[Number(index)] = data;
+                        // Convert data to string if it's an object
+                        fragments[Number(index)] = typeof data === 'string' ? data : JSON.stringify(data);
                         receivedCount++;
 
                         console.log(`Fragment received: ${index}/${total} (${receivedCount}/${expectedTotal})`);
 
                         if (receivedCount === expectedTotal) {
                             const body = fragments.join('');
-                            console.log(`Complete fragmented response (${body.length} chars)`);
+                            console.log(`Complete fragmented response (${body.length} chars):`, body.substring(0, 500) + (body.length > 500 ? '...' : ''));
 
                             try {
+                                // Try to parse as single JSON first
                                 const parsedData = JSON.parse(body);
-                                console.log(`Parsed fragmented data:`, parsedData);
+                                console.log(`Parsed fragmented data as single JSON:`, parsedData);
+
+                                // Check if this is a streaming update for subscribe
+                                if (parsedData.command === 'portfolios.positions' && Array.isArray(parsedData.data) && parsedData.msgId && parsedData.msgId.startsWith('subscribe_')) {
+                                    console.log('REASSEMBLED: Real-time position update received:');
+                                    console.log(JSON.stringify(parsedData, null, 2));
+                                    return; // Don't resolve for streaming updates
+                                }
+
                                 cleanup();
                                 resolve(parsedData);
-                            } catch (error) {
-                                console.error(`Error parsing fragmented response:`, error);
-                                cleanup();
-                                reject(error);
+                            } catch (singleError) {
+                                console.log('Failed to parse as single JSON, trying to parse as concatenated JSON strings');
+                                try {
+                                    // Try to find JSON objects in the body and parse them
+                                    const jsonMatches = body.match(/\{[^}]*\}/g);
+                                    if (jsonMatches && jsonMatches.length > 0) {
+                                        const parsedObjects = jsonMatches.map(json => JSON.parse(json));
+                                        console.log('Parsed fragmented data as multiple objects:', parsedObjects);
+
+                                        // For streaming updates, the first object should be the message structure
+                                        if (parsedObjects.length >= 1 && parsedObjects[0].command === 'portfolios.positions') {
+                                            console.log('REASSEMBLED: Real-time position update received:');
+                                            console.log(JSON.stringify(parsedObjects[0], null, 2));
+                                            return; // Don't resolve for streaming updates
+                                        }
+                                    }
+                                    throw new Error('Could not parse fragmented data');
+                                } catch (multiError) {
+                                    console.error(`Error parsing fragmented response:`, multiError);
+                                    cleanup();
+                                    reject(multiError);
+                                }
                             }
                         }
                     } else {
                         // Handle single message responses
                         if (message.command === 'portfolios.positions') {
+                            // Handle subscribe streaming updates (arrays with same msgId)
+                            if (Array.isArray(data) && message.requestType === "1") {
+                                console.log('Real-time position update received:');
+                                console.log(JSON.stringify(response, null, 2));
+                                // Don't resolve or cleanup for streaming updates
+                                return;
+                            }
+
                             // Handle snapshot message first
                             if (data && data.includes && data.includes('snapshot')) {
                                 console.log('Received positions snapshot, waiting for data...');
                                 // Keep timeout active for actual data
+                                return;
+                            }
+
+                            // Handle subscribe response with positions data
+                            if (response.positions) {
+                                console.log('Received positions data in subscribe response');
+                                // For subscribe, don't cleanup the listener so streaming updates can be received
+                                // cleanup(); // Remove this line to keep listener alive
+                                resolve(response);
                                 return;
                             }
 
@@ -359,7 +501,7 @@ class PS2LoginHandler {
 const ps2Handler = new PS2LoginHandler();
 
 async function getPortfolioPositions() {
-    const portfolioId = '6954e020cade05039ba76d01';
+    const portfolioId = '697083689a5f1b1271d7d872';
 
     try {
         console.log('Logging into PS2...');
@@ -378,24 +520,55 @@ async function getPortfolioPositions() {
         await ps2Handler.connectWebSocket('ps2', ps2Handler.token);
         console.log('Connected to PS2 endpoint');
 
-        // Fetch portfolio positions (single call with attribution parameter)
-        console.log(`Fetching positions for portfolio: ${portfolioId}`);
-        const message = {
+        // Subscribe to portfolio positions updates (provides initial positions + starts streaming)
+        console.log(`Subscribing to positions for portfolio: ${portfolioId}`);
+        const subscribeMsgId = ps2Handler.generateMsgId('subscribe');
+        const subscribeMessage = {
             command: 'portfolios.positions',
             _id: portfolioId,
-            includeAttribution: false,  // Set to true if you want attribution
-            token: ps2Handler.token,
-            msgId: ps2Handler.generateMsgId('positions')
+            requestType: "1",
+            marketPrice: "2",
+            basePrice: "2",
+            closed: "no",
+            totalsMode: "none",
+            includeAttribution: false,
+            msgId: subscribeMsgId
         };
 
-        const positions = await ps2Handler.sendMessage(message);
-        console.log('Portfolio positions result:');
-        console.log(JSON.stringify(positions, null, 2));
+        const subscribeResponse = await ps2Handler.sendMessage(subscribeMessage);
+        console.log('Subscribe response:');
+        console.log(JSON.stringify(subscribeResponse, null, 2));
 
-        // Close connection
-        ps2Handler.closeConnection();
+        // Keep running continuously - updates will be displayed as they occur
+        console.log('Monitoring for position updates (5 minutes)...');
 
-        console.log('Script completed successfully');
+        // Handle graceful shutdown after 5 minutes
+        setTimeout(async () => {
+            console.log('\n5 minutes elapsed, unsubscribing...');
+            try {
+                const unsubscribeMessage = {
+                    command: 'portfolios.positions',
+                    _id: portfolioId,
+                    requestType: "2",
+                    subscribeId: subscribeMsgId,
+                    token: ps2Handler.token,
+                    msgId: ps2Handler.generateMsgId('unsubscribe')
+                };
+
+                const unsubscribeResponse = await ps2Handler.sendMessage(unsubscribeMessage);
+                console.log('Unsubscribe response:');
+                console.log(JSON.stringify(unsubscribeResponse, null, 2));
+            } catch (error) {
+                console.error('Error during unsubscribe:', error);
+            } finally {
+                ps2Handler.closeConnection();
+                console.log('Script completed successfully');
+                process.exit(0);
+            }
+        }, 300000);
+
+        // Keep the process alive
+        await new Promise(() => {}); // This will run forever until timeout
     } catch (error) {
         console.error('Script failed:', error);
         ps2Handler.closeConnection();

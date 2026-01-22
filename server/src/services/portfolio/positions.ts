@@ -646,8 +646,22 @@ export async function positions(
     let neutral_trading = 0;
     let neutral_passive = 0;
     let changes = processQuoteData(data as QuoteData[]);
-    if (changes.length === 0) {
+    if (changes.length === 0 && !isInitialSnapshot) {
       return undefined;
+    }
+    // For initial snapshots, ensure we have positions data even if no changes
+    if (changes.length === 0 && isInitialSnapshot) {
+      // Force processing with current data to get positions
+      changes = processQuoteData([]); // This should create positions from current state
+      if (changes.length === 0) {
+        // If still no changes, we need to build positions manually
+        Object.keys(portfolioPositions).forEach(symbol => {
+          const pos = portfolioPositions[symbol];
+          if (pos && !changes.find(c => c.symbol === symbol)) {
+            changes.push(pos as QuoteChange);
+          }
+        });
+      }
     }
     // console.log('$#$ portfolioPositions', portfolioPositions)
     const marketValue = Object.keys(portfolioPositions).reduce((sum, symbol) => {
@@ -917,14 +931,22 @@ export async function positions(
 
   eventEmitter.on(eventName, subscribers[userModif][msgId].handler);
   
-  profiler.endTimer("positions.main", userModif, msgId, { 
+  profiler.endTimer("positions.main", userModif, msgId, {
     success: true,
     totalDuration: Date.now() - startTime,
     symbolsSubscribed: symbols.length,
     eventName: requestType === "1" ? "subscribed" : "snapshot"
   });
-  
-  return { msg: requestType === "1" ? "subscribed" : "snapshot", eventName };
+
+  // For subscribe requests, return the initial positions data along with subscription confirmation
+  if (requestType === "1") {
+    // Initialize positions data by calling processQuoteData first
+    processQuoteData([]);
+    const initialPositions = calcChanges([], includeAttribution, totalsMode, true);
+    return { msg: "subscribed", eventName, positions: initialPositions };
+  }
+
+  return { msg: "snapshot" };
 }
 
 //--
