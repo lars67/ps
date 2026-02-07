@@ -490,6 +490,54 @@ export async function positions(
 
     const changes: CommonPortfolioPosition[] = [];
 
+    // If this is the first processing and we have no quote data, enrich positions with default market data
+    if (isFirst && q2Symbols.length === 0) {
+      Object.keys(portfolioPositions).forEach((symbol) => {
+        const pos = portfolioPositions[symbol];
+        if (pos && !pos.marketValue) { // Only enrich if not already enriched
+          const cur = pos.currency as string;
+          const volume = Number(pos.volume);
+          const invested = Number(pos.invested);
+          const investedFull = Number(pos.investedFull);
+          const investedFullSymbol = Number(pos.investedFullSymbol);
+
+          // Use default market price of 0 if no quote data available
+          const marketPrice = 0;
+          const bprice = 0;
+
+          console.log(
+            symbol,
+            "volume,investedFull, fees (no quotes)",
+            volume,
+            investedFull,
+            fees[symbol].fee,
+          );
+          investedPortfolio += investedFull;
+          portfolioPositions[symbol] = {
+            ...portfolioPositions[symbol],
+            marketRate: rates[cur] || 1,
+            marketValue: (rates[cur] || 1) * marketPrice * volume,
+            marketValueSymbol: marketPrice * volume,
+            avgPremium: volume !== 0 ? (investedFull + fees[symbol].fee) / volume : 0,
+            avgPremiumSymbol: volume !== 0 ? (investedFullSymbol + fees[symbol].feeSym) / volume : 0,
+            marketPrice,
+            marketClose: 0, // Default close price when no quote data available
+            bprice,
+            fee: fees[symbol].fee,
+            feeSymbol: fees[symbol].feeSym,
+          };
+
+          const change = portfolioPositions[symbol] as QuoteChange;
+          change.resultSymbol = ((change.marketValueSymbol || 0) - Number(pos.investedFullSymbol) - fees[symbol].feeSym);
+          change.result = change.resultSymbol * (rates[cur] || 1);
+          change.todayResult = 0; // No quote data, so no today result
+          change.todayResultPercent = 0;
+
+          changes.push(change);
+        }
+      });
+    }
+
     q2Symbols.forEach((p) => {
       const { symbol, marketPrice, marketClose } = p as QuoteData2;
       let change = {} as QuoteChange;
@@ -938,12 +986,57 @@ export async function positions(
     eventName: requestType === "1" ? "subscribed" : "snapshot"
   });
 
-  // For subscribe requests, return the initial positions data along with subscription confirmation
+  // For subscribe requests, wait for initial quotes to provide comprehensive data like snapshot mode
   if (requestType === "1") {
-    // Initialize positions data by calling processQuoteData first
-    processQuoteData([]);
-    const initialPositions = calcChanges([], includeAttribution, totalsMode, true);
-    return { msg: "subscribed", eventName, positions: initialPositions };
+    // Set up a promise that resolves when initial quotes arrive or timeout
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        // If no quotes within timeout, return with processed data (may be incomplete)
+        isFirst = true;
+        processQuoteData([]);
+        const initialPositions = calcChanges([], includeAttribution, totalsMode, true);
+        resolve({ msg: "subscribed", eventName, positions: initialPositions });
+      }, 2000); // Wait up to 2 seconds for initial quotes
+
+      // Modify the handler to resolve the promise on first quote data
+      const originalHandler = subscribers[userModif][msgId].handler;
+      subscribers[userModif][msgId].handler = (data: object) => {
+        const actualChanges = (data as QuoteData[]).filter((d: QuoteData) =>
+          d.lastTradeTime
+            ? Object.keys(d).length > 2
+            : Object.keys(d).length >= 2,
+        );
+
+        if (actualChanges.length > 0) {
+          clearTimeout(timeout);
+          // Process the initial quotes
+          isFirst = true;
+          processQuoteData(actualChanges);
+          const initialPositions = calcChanges([], includeAttribution, totalsMode, true);
+          resolve({ msg: "subscribed", eventName, positions: initialPositions });
+
+          // Switch to streaming handler for subsequent updates
+          subscribers[userModif][msgId].handler = (data: object) => {
+            const streamingChanges = (data as QuoteData[]).filter((d: QuoteData) =>
+              d.lastTradeTime
+                ? Object.keys(d).length > 2
+                : Object.keys(d).length >= 2,
+            );
+            if (streamingChanges.length === 0) {
+              return;
+            }
+            // For streaming updates, use minimal totals and no attribution
+            const streamingTotalsMode = "minimal";
+            const streamingIncludeAttribution = false;
+            const changes = calcChanges(streamingChanges, streamingIncludeAttribution, streamingTotalsMode, false);
+            changes && sendResponse(changes);
+          };
+        } else {
+          // No actual changes, call original handler if needed
+          originalHandler(data);
+        }
+      };
+    });
   }
 
   return { msg: "snapshot" };
@@ -1370,7 +1463,7 @@ function prepareQuoteData2(
     }
   });
   const qData2 = data.map((q) => {
-    const { symbol, currency, volume, close, country } = q;
+    const { symbol, currency, volume, country } = q;
     //console.log('qData2=>', q)
     if (symbol) {
       const qt: Partial<QuoteData2> = {};
@@ -1378,7 +1471,9 @@ function prepareQuoteData2(
       const bprice = getBasePrice(q, basePrice);
       if (bprice) qt.bprice = bprice;
 
-      if (close) {
+      // @ts-ignore - previousClose may not be in QuoteData type but exists in API response
+      const close = q.previousClose;
+      if (close !== undefined) {
         qt.marketClose = close;
       }
       if (needAddNameCountry) {

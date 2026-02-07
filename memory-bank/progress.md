@@ -12,6 +12,7 @@ This file tracks the project's progress using a task list format.
 *   ✅ **IMPLEMENTED**: Enhanced `portfolios.positions` command with `requestType: "1"` (subscribe) returning initial positions data and establishing streaming connections
 *   ✅ **IMPLEMENTED**: Fragmented message handling for both initial responses and streaming updates
 *   ✅ **IMPLEMENTED**: Latest Price support (`basePrice: "2"`, `marketPrice: "2"`) for real-time market data
+*   ✅ **FIXED**: Subscribe mode (`requestType: "1"`) now returns comprehensive initial data like snapshot mode (`requestType: "0"`)
 *   Implement and refine the `portfolios.debug` command for comprehensive portfolio error detection and reporting, including backend logic, calculation fixes, and command dispatch resolution.
 *   Add `source` field to signup command to track user signup origins (e.g., web-form, mobile-app, partner-referral).
 

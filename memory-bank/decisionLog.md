@@ -75,6 +75,21 @@ This file records architectural and implementation decisions using a list format
 *   Created comprehensive test script (`tests/get_portfolio_positions.js`) with detailed documentation for external programmers.
 *   Added robust error handling and graceful unsubscription after monitoring period.
 *   Updated server code to return positions data for subscribe requests and handle streaming message reassembly.
+
+## Decision
+
+*   Fixed subscribe mode (`requestType: "1"`) to return comprehensive initial data like snapshot mode (`requestType: "0"`).
+
+## Rationale
+
+*   Subscribe mode was returning incomplete position data compared to snapshot mode, lacking market values, results, fees, and other calculated fields. This inconsistency was problematic for users expecting the same level of detail in the initial response regardless of request type. The subscribe mode should provide the same comprehensive data initially, then optimize streaming updates for performance.
+
+## Implementation Details
+
+*   Modified `server/src/services/portfolio/positions.ts` to ensure subscribe mode processes quote data for initial positions enrichment.
+*   Added logic to `processQuoteData` function to enrich positions with market data even when no actual quote data is available (using default values for market prices).
+*   Ensured subscribe mode initial response includes all calculated fields: marketValue, marketValueSymbol, result, resultSymbol, fees, avgPremium, weights, etc.
+*   Streaming updates continue to use minimal totals for bandwidth optimization, but initial subscription provides full comprehensive data.
 2025-06-23 14:15:27 - Redesigned `portfolios.debug` output metrics to match user-provided NAV report.
 2025-11-20 08:52:07 - Logged completion of `portfolios.debug` command implementation and updated memory bank accordingly.
 2025-11-20 08:58:48 - Logged decision to add source field to signup command and completed implementation across frontend, backend, database, and test files.
