@@ -12,6 +12,7 @@ This file tracks the project's current status, including recent changes, current
 *   ✅ **IMPLEMENTED**: Fragmented message handling for both initial responses and streaming updates
 *   ✅ **IMPLEMENTED**: Latest Price (`basePrice: "2"`, `marketPrice: "2"`) support for real-time data
 *   ✅ **FIXED**: Subscribe mode (`requestType: "1"`) now returns comprehensive initial data like snapshot mode (`requestType: "0"`)
+*   ✅ **COMPLETED**: Full flow test script (`server/src/test-full-flow.ts`) with HTML report generation.
 *   Investigating and resolving WebSocket connection stability issues.
 *   Addressing potential SSE (Server-Sent Events) connection instability issues.
 *   Verifying portfolio calculation accuracy against external NAV reports.

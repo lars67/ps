@@ -1,0 +1,203 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PS2 Comprehensive API Test Report</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; background-color: #f4f7f6; }
+        h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        .pass { color: #27ae60; font-weight: bold; }
+        .fail { color: #e74c3c; font-weight: bold; }
+        table { border-collapse: collapse; width: 100%; background-color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.2); margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; vertical-align: top; }
+        th { background-color: #3498db; color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        code { background-color: #f8f8f8; padding: 2px 4px; border-radius: 4px; font-size: 0.9em; color: #c7254e; word-break: break-all; }
+        .doc { font-style: italic; color: #7f8c8d; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <h1>PS2 Comprehensive API Test Report</h1>
+    <p><strong>Generated at:</strong> 2/12/2026, 6:28:24 AM</p>
+    <p>This report summarizes the execution of all major PS2 commands. It serves as a reference for external developers to understand the API structure and expected responses.</p>
+    <table>
+        <tr>
+            <th>Test Name / Command</th>
+            <th>Status</th>
+            <th>Details</th>
+            <th>Documentation</th>
+            <th>Reply Snippet</th>
+        </tr>
+        
+        <tr>
+            <td><strong>Admin Login</strong></td>
+            <td class="pass">PASS</td>
+            <td>Logged in as admin</td>
+            <td class="doc">Authenticates user and returns JWT token for Main WS.</td>
+            <td><code>{"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6ImFkbWluIiwicm9sZSI6ImFkbWluIiwidXNlcklkIjoiNjczNGRjOWU0OGEyNTg1M2U5ZjU1MWUyIiwiaWF0IjoxNzc...</code></td>
+        </tr>
+        
+        <tr>
+            <td><strong>Create User</strong></td>
+            <td class="pass">PASS</td>
+            <td>Created user: testuser_1770874103742</td>
+            <td class="doc">Creates a new system user with required profile fields.</td>
+            <td><code>{"command":"users.add","msgId":"y45pna","data":{"login":"testuser_1770874103742","email":"testuser_1770874103742@example.com","role":"member","passwor...</code></td>
+        </tr>
+        
+        <tr>
+            <td><strong>Create Portfolio</strong></td>
+            <td class="pass">PASS</td>
+            <td>Created portfolio ID: 698d64f7ed306741f1dcc4a0</td>
+            <td class="doc">Creates a new portfolio. baseInstrument is used for benchmarking.</td>
+            <td><code>{"command":"portfolios.add","msgId":"n6qim","data":{"name":"Test Portfolio 1770874103911","currency":"DKK","userId":"698d64f7ed306741f1dcc49c","baseIn...</code></td>
+        </tr>
+        
+        <tr>
+            <td><strong>Insert Cash</strong></td>
+            <td class="pass">PASS</td>
+            <td>Inserted 100000 DKK</td>
+            <td class="doc">Adjusts portfolio cash balance. amount > 0 is deposit.</td>
+            <td><code>{"command":"portfolios.putCash","msgId":"nwbkrm","data":{"side":"P","tradeType":"31","portfolioId":"698d64f7ed306741f1dcc4a0","volume":0,"price":10000...</code></td>
+        </tr>
+        
+        <tr>
+            <td><strong>Add Trade MSFT</strong></td>
+            <td class="pass">PASS</td>
+            <td>Added 10 MSFT</td>
+            <td class="doc">Records a buy/sell transaction. rate is FX to portfolio base currency.</td>
+            <td><code>{"command":"trades.add","msgId":"zktoo","data":{"side":"B","tradeType":"1","portfolioId":"698d64f7ed306741f1dcc4a0","symbol":"MSFT","name":"Microsoft ...</code></td>
+        </tr>
+        
+        <tr>
+            <td><strong>Add Trade DANSKE</strong></td>
+            <td class="pass">PASS</td>
+            <td>Added 100 DANSKE:XCSE</td>
+            <td class="doc"></td>
+            <td><code>{"command":"trades.add","msgId":"t9zltc","data":{"side":"B","tradeType":"1","portfolioId":"698d64f7ed306741f1dcc4a0","symbol":"DANSKE:XCSE","name":"Da...</code></td>
+        </tr>
+        
+        <tr>
+            <td><strong>Add Dividend</strong></td>
+            <td class="pass">PASS</td>
+            <td>Added 50 USD dividend for MSFT</td>
+            <td class="doc">Records passive income. side="P" and tradeType="11" for dividends.</td>
+            <td><code>{"command":"trades.add","msgId":"u65kt5","data":{"side":"P","tradeType":"11","portfolioId":"698d64f7ed306741f1dcc4a0","symbol":"MSFT","currency":"USD"...</code></td>
+        </tr>
+        
+        <tr>
+            <td><strong>Withdraw Cash</strong></td>
+            <td class="pass">PASS</td>
+            <td>Withdrew 5000 DKK</td>
+            <td class="doc"></td>
+            <td><code>{"command":"portfolios.putCash","msgId":"fngc5r","data":{"side":"P","tradeType":"31","portfolioId":"698d64f7ed306741f1dcc4a0","volume":0,"price":-5000...</code></td>
+        </tr>
+        
+        <tr>
+            <td><strong>Subscribe</strong></td>
+            <td class="pass">PASS</td>
+            <td>Subscribed and received initial positions</td>
+            <td class="doc">requestType "1" initiates a subscription and returns the current snapshot.</td>
+            <td><code>{"command":"portfolios.positions","msgId":"egougc","data":[{"symbol":"MSFT","volume":10,"price":400,"currency":"USD","invested":27200,"tradeTime":"202...</code></td>
+        </tr>
+        
+        <tr>
+            <td><strong>Portfolio Result</strong></td>
+            <td class="pass">PASS</td>
+            <td>NAV: 47200 DKK, Real Positions: 2</td>
+            <td class="doc"></td>
+            <td><code>{"symbol":"TOTAL","name":"TOTAL","investedFull":47200,"investedFullSymbol":47200,"marketValue":0,"result":null,"todayResult":null,"realized":0,"totalT...</code></td>
+        </tr>
+        
+        <tr>
+            <td><strong>Portfolio History</strong></td>
+            <td class="pass">PASS</td>
+            <td>Received 1 history points</td>
+            <td class="doc">Retrieves aggregated historical performance data.</td>
+            <td><code>{"command":"portfolios.history","msgId":"ikt4x","data":{"days":[{"date":"2026-02-12","invested":45174.4,"investedWithoutTrades":45174.4,"cash":47756,"...</code></td>
+        </tr>
+        
+        <tr>
+            <td><strong>Portfolio Debug</strong></td>
+            <td class="pass">PASS</td>
+            <td>Received 9 debug rows</td>
+            <td class="doc">Provides detailed row-by-row calculation breakdown for auditing.</td>
+            <td><code>{"command":"portfolios.debug","msgId":"9hajmg","data":[{"Date":"2026-02-12","Type":"Portfolio Summary","Symbol":"","Volume":110,"Original price":218.1...</code></td>
+        </tr>
+        
+        <tr>
+            <td><strong>List Portfolios</strong></td>
+            <td class="pass">PASS</td>
+            <td>Found 237 portfolios</td>
+            <td class="doc"></td>
+            <td><code>{"command":"portfolios.list","msgId":"w1t09","data":[{"_id":"68d0c7faf2fc500b2833593b","name":"Jesper  Brogaard-Radoor jespernissenbrogaardradoor@gmai...</code></td>
+        </tr>
+        
+        <tr>
+            <td><strong>List Currencies</strong></td>
+            <td class="pass">PASS</td>
+            <td>Found 22 currencies</td>
+            <td class="doc"></td>
+            <td><code>{"command":"currencies.list","msgId":"obsz0a","data":[{"_id":"65df2224eaba5e4f97f231ab","currency_id":"36","symbol":"AUD","name":"Australian dollar","...</code></td>
+        </tr>
+        
+        <tr>
+            <td><strong>List Sectors</strong></td>
+            <td class="pass">PASS</td>
+            <td>Found 257 sectors</td>
+            <td class="doc"></td>
+            <td><code>{"command":"sectors.list","msgId":"1j3jw","data":[{"_id":"65df2224eaba5e4f97f231c1","industry_sector_id":"0","symbol":"No Sector","name":"No Sector"},...</code></td>
+        </tr>
+        
+        <tr>
+            <td><strong>Historical Prices</strong></td>
+            <td class="pass">PASS</td>
+            <td>Retrieved prices for MSFT,AAPL</td>
+            <td class="doc">Fetches historical prices for specific symbols on a given date.</td>
+            <td><code>{"command":"prices.historical","msgId":"gl6k1h","data":{"MSFT":400,"AAPL":null}}</code></td>
+        </tr>
+        
+        <tr>
+            <td><strong>Tools Statistic</strong></td>
+            <td class="pass">PASS</td>
+            <td>Retrieved system statistics</td>
+            <td class="doc">Provides high-level statistical analysis of portfolio performance.</td>
+            <td><code>{"command":"tools.statistic","msgId":"t64444","error":"Need set history or portfolio"}</code></td>
+        </tr>
+        
+        <tr>
+            <td><strong>Unsubscribe</strong></td>
+            <td class="pass">PASS</td>
+            <td>Unsubscribed from portfolio updates</td>
+            <td class="doc"></td>
+            <td><code>{"command":"portfolios.positions","msgId":"al7fqk","data":{"msg":"portfolio.positions unsubscribed from portfolio 'Test Portfolio 1770874103911'"}}</code></td>
+        </tr>
+        
+        <tr>
+            <td><strong>Delete Trades</strong></td>
+            <td class="pass">PASS</td>
+            <td>Removed all trades</td>
+            <td class="doc"></td>
+            <td><code>{"command":"trades.removeAll","msgId":"yp9fgm","data":{"acknowledged":true,"deletedCount":5}}</code></td>
+        </tr>
+        
+        <tr>
+            <td><strong>Delete Portfolio</strong></td>
+            <td class="pass">PASS</td>
+            <td>Removed portfolio</td>
+            <td class="doc"></td>
+            <td><code>{"command":"portfolios.remove","msgId":"bx074r","data":{"_id":"698d64f7ed306741f1dcc4a0","name":"Test Portfolio 1770874103911","currency":"DKK","userI...</code></td>
+        </tr>
+        
+        <tr>
+            <td><strong>Delete User</strong></td>
+            <td class="pass">PASS</td>
+            <td>Removed user: testuser_1770874103742</td>
+            <td class="doc"></td>
+            <td><code>{"command":"users.remove","msgId":"er7y","data":{"_id":"698d64f7ed306741f1dcc49c","login":"testuser_1770874103742","email":"testuser_1770874103742@exa...</code></td>
+        </tr>
+        
+    </table>
+</body>
+</html>
+    

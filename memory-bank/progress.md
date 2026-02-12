@@ -15,6 +15,7 @@ This file tracks the project's progress using a task list format.
 *   ✅ **FIXED**: Subscribe mode (`requestType: "1"`) now returns comprehensive initial data like snapshot mode (`requestType: "0"`)
 *   Implement and refine the `portfolios.debug` command for comprehensive portfolio error detection and reporting, including backend logic, calculation fixes, and command dispatch resolution.
 *   Add `source` field to signup command to track user signup origins (e.g., web-form, mobile-app, partner-referral).
+*   ✅ **COMPLETED**: Full flow test script with HTML report generation.
 
 ## Current Tasks
 
