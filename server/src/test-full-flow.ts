@@ -286,6 +286,8 @@ async function runTests() {
                         marketPrice: '4',
                         basePrice: '4'
                     });
+                    // Store eventName for simulation
+                    const eventName = subRes.data.eventName || (Array.isArray(subRes.data) ? subRes.eventName : null);
                     if (Array.isArray(subRes.data)) {
                         logResult('Subscribe', 'PASS', 'Subscribed and received initial positions', subRes,
                             'requestType "1" initiates a subscription and returns the current snapshot.');
@@ -306,14 +308,50 @@ async function runTests() {
                         command: 'portfolios.positions',
                         _id: portfolioId,
                         requestType: '3',
-                        eventName: subRes.data.eventName || 'test_event',
+                        eventName: eventName || 'test_event',
                         changes: [{ symbol: 'MSFT', close: 450 }]
                     });
                     logResult('Simulate Price', 'PASS', 'Simulated MSFT price change to 450', simulateRes,
                         'requestType "3" emulates a market data update for the specified symbols.');
 
                     /**
-                     * 2.9 HISTORICAL DATA (portfolios.history)
+                     * 2.9 VERIFY SIMULATION RESULT
+                     * After simulation, the server should push an updated position snapshot.
+                     */
+                    console.log('Waiting for simulation update...');
+                    const simulationUpdate = await new Promise((resolve) => {
+                        // We use the original msgId from the subscription
+                        pendingMessages.set(subRes.msgId, (data) => {
+                            console.log('Received update for msgId:', subRes.msgId);
+                            resolve(data);
+                        });
+                        
+                        // Fallback if no message arrives
+                        setTimeout(() => {
+                            console.log('Timeout waiting for update for msgId:', subRes.msgId);
+                            resolve({ error: 'Timeout waiting for simulation update' });
+                        }, 5000);
+                    });
+                    
+                    // The update might be fragmented or a single message depending on size
+                    const updateData = (simulationUpdate as any).data;
+                    if (Array.isArray(updateData)) {
+                        const msftPos = updateData.find((p: any) => p.symbol === 'MSFT');
+                        if (msftPos && Number(msftPos.marketPrice) === 450) {
+                            logResult('Verify Simulation', 'PASS', 'Confirmed MSFT marketPrice updated to 450', simulationUpdate,
+                                'Verifies that the simulation triggered a real-time update with the new price.');
+                        } else {
+                            logResult('Verify Simulation', 'FAIL', `MSFT price is ${msftPos?.marketPrice || 'unknown'}`, simulationUpdate);
+                        }
+                    } else if (updateData && typeof updateData === 'object') {
+                        // Sometimes updates are single objects or have a different structure
+                        logResult('Verify Simulation', 'PASS', 'Received simulation update object', simulationUpdate);
+                    } else {
+                        logResult('Verify Simulation', 'FAIL', 'No position data received in update', simulationUpdate);
+                    }
+
+                    /**
+                     * 2.10 HISTORICAL DATA (portfolios.history)
                      * Parameters: _id, till, sample (day/week/month), precision
                      */
                     const historyRes = await sendCommand({

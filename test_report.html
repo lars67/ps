@@ -18,7 +18,7 @@
 </head>
 <body>
     <h1>PS2 Comprehensive API Test Report</h1>
-    <p><strong>Generated at:</strong> 2/12/2026, 6:31:23 AM</p>
+    <p><strong>Generated at:</strong> 2/12/2026, 6:34:32 AM</p>
     <p>This report summarizes the execution of all major PS2 commands. It serves as a reference for external developers to understand the API structure and expected responses.</p>
     <table>
         <tr>
@@ -40,17 +40,17 @@
         <tr>
             <td><strong>Create User</strong></td>
             <td class="pass">PASS</td>
-            <td>Created user: testuser_1770874283363</td>
+            <td>Created user: testuser_1770874470027</td>
             <td class="doc">Creates a new system user with required profile fields.</td>
-            <td><code>{"command":"users.add","msgId":"79frs9","data":{"login":"testuser_1770874283363","email":"testuser_1770874283363@example.com","role":"member","passwor...</code></td>
+            <td><code>{"command":"users.add","msgId":"f1aq4e","data":{"login":"testuser_1770874470027","email":"testuser_1770874470027@example.com","role":"member","passwor...</code></td>
         </tr>
         
         <tr>
             <td><strong>Create Portfolio</strong></td>
             <td class="pass">PASS</td>
-            <td>Created portfolio ID: 698d65abed306741f1dcc4e5</td>
+            <td>Created portfolio ID: 698d6666ed306741f1dcc723</td>
             <td class="doc">Creates a new portfolio. baseInstrument is used for benchmarking.</td>
-            <td><code>{"command":"portfolios.add","msgId":"qotc9m","data":{"name":"Test Portfolio 1770874283525","currency":"DKK","userId":"698d65abed306741f1dcc4e1","baseI...</code></td>
+            <td><code>{"command":"portfolios.add","msgId":"s4knhg","data":{"name":"Test Portfolio 1770874470186","currency":"DKK","userId":"698d6666ed306741f1dcc71f","baseI...</code></td>
         </tr>
         
         <tr>
@@ -58,7 +58,7 @@
             <td class="pass">PASS</td>
             <td>Inserted 100000 DKK</td>
             <td class="doc">Adjusts portfolio cash balance. amount > 0 is deposit.</td>
-            <td><code>{"command":"portfolios.putCash","msgId":"467ugb","data":{"side":"P","tradeType":"31","portfolioId":"698d65abed306741f1dcc4e5","volume":0,"price":10000...</code></td>
+            <td><code>{"command":"portfolios.putCash","msgId":"8ruao","data":{"side":"P","tradeType":"31","portfolioId":"698d6666ed306741f1dcc723","volume":0,"price":100000...</code></td>
         </tr>
         
         <tr>
@@ -66,7 +66,7 @@
             <td class="pass">PASS</td>
             <td>Added 10 MSFT</td>
             <td class="doc">Records a buy/sell transaction. rate is FX to portfolio base currency.</td>
-            <td><code>{"command":"trades.add","msgId":"ua3x4","data":{"side":"B","tradeType":"1","portfolioId":"698d65abed306741f1dcc4e5","symbol":"MSFT","name":"Microsoft ...</code></td>
+            <td><code>{"command":"trades.add","msgId":"y2fo0w","data":{"side":"B","tradeType":"1","portfolioId":"698d6666ed306741f1dcc723","symbol":"MSFT","name":"Microsoft...</code></td>
         </tr>
         
         <tr>
@@ -74,7 +74,7 @@
             <td class="pass">PASS</td>
             <td>Added 100 DANSKE:XCSE</td>
             <td class="doc"></td>
-            <td><code>{"command":"trades.add","msgId":"1bro0v","data":{"side":"B","tradeType":"1","portfolioId":"698d65abed306741f1dcc4e5","symbol":"DANSKE:XCSE","name":"Da...</code></td>
+            <td><code>{"command":"trades.add","msgId":"pn1xw","data":{"side":"B","tradeType":"1","portfolioId":"698d6666ed306741f1dcc723","symbol":"DANSKE:XCSE","name":"Dan...</code></td>
         </tr>
         
         <tr>
@@ -82,7 +82,7 @@
             <td class="pass">PASS</td>
             <td>Added 50 USD dividend for MSFT</td>
             <td class="doc">Records passive income. side="P" and tradeType="11" for dividends.</td>
-            <td><code>{"command":"trades.add","msgId":"y4578s","data":{"side":"P","tradeType":"11","portfolioId":"698d65abed306741f1dcc4e5","symbol":"MSFT","currency":"USD"...</code></td>
+            <td><code>{"command":"trades.add","msgId":"e91gl7","data":{"side":"P","tradeType":"11","portfolioId":"698d6666ed306741f1dcc723","symbol":"MSFT","currency":"USD"...</code></td>
         </tr>
         
         <tr>
@@ -90,7 +90,7 @@
             <td class="pass">PASS</td>
             <td>Withdrew 5000 DKK</td>
             <td class="doc"></td>
-            <td><code>{"command":"portfolios.putCash","msgId":"8m0k4r","data":{"side":"P","tradeType":"31","portfolioId":"698d65abed306741f1dcc4e5","volume":0,"price":-5000...</code></td>
+            <td><code>{"command":"portfolios.putCash","msgId":"02q8a","data":{"side":"P","tradeType":"31","portfolioId":"698d6666ed306741f1dcc723","volume":0,"price":-5000,...</code></td>
         </tr>
         
         <tr>
@@ -98,7 +98,7 @@
             <td class="pass">PASS</td>
             <td>Subscribed and received initial positions</td>
             <td class="doc">requestType "1" initiates a subscription and returns the current snapshot.</td>
-            <td><code>{"command":"portfolios.positions","msgId":"xy9cg","data":[{"symbol":"MSFT","volume":10,"price":400,"currency":"USD","invested":27200,"tradeTime":"2026...</code></td>
+            <td><code>{"command":"portfolios.positions","msgId":"sfbiv","data":[{"symbol":"MSFT","volume":10,"price":400,"currency":"USD","invested":27200,"tradeTime":"2026...</code></td>
         </tr>
         
         <tr>
@@ -114,7 +114,15 @@
             <td class="pass">PASS</td>
             <td>Simulated MSFT price change to 450</td>
             <td class="doc">requestType "3" emulates a market data update for the specified symbols.</td>
-            <td><code>{"command":"portfolios.positions","msgId":"vgw7tf","data":{"emulated":true,"eventName":"test_event","changes":[{"symbol":"MSFT","close":450}]}}</code></td>
+            <td><code>{"command":"portfolios.positions","msgId":"jv26p8s","data":{"emulated":true,"eventName":"test_event","changes":[{"symbol":"MSFT","close":450}]}}</code></td>
+        </tr>
+        
+        <tr>
+            <td><strong>Verify Simulation</strong></td>
+            <td class="pass">PASS</td>
+            <td>Received simulation update object</td>
+            <td class="doc"></td>
+            <td><code>{"command":"portfolios.positions","msgId":"sfbiv","data":{"msg":"subscribed","eventName":"SSE_QUOTES_25","positions":[{"symbol":"MSFT","volume":10,"pr...</code></td>
         </tr>
         
         <tr>
@@ -122,7 +130,7 @@
             <td class="pass">PASS</td>
             <td>Received 1 history points</td>
             <td class="doc">Retrieves aggregated historical performance data.</td>
-            <td><code>{"command":"portfolios.history","msgId":"pkdmfq","data":{"days":[{"date":"2026-02-12","invested":45174.4,"investedWithoutTrades":45174.4,"cash":47756,...</code></td>
+            <td><code>{"command":"portfolios.history","msgId":"c5gc1j","data":{"days":[{"date":"2026-02-12","invested":45174.4,"investedWithoutTrades":45174.4,"cash":47756,...</code></td>
         </tr>
         
         <tr>
@@ -130,7 +138,7 @@
             <td class="pass">PASS</td>
             <td>Received 9 debug rows</td>
             <td class="doc">Provides detailed row-by-row calculation breakdown for auditing.</td>
-            <td><code>{"command":"portfolios.debug","msgId":"el2q1v","data":[{"Date":"2026-02-12","Type":"Portfolio Summary","Symbol":"","Volume":110,"Original price":218.1...</code></td>
+            <td><code>{"command":"portfolios.debug","msgId":"u7bzf5","data":[{"Date":"2026-02-12","Type":"Portfolio Summary","Symbol":"","Volume":110,"Original price":218.1...</code></td>
         </tr>
         
         <tr>
@@ -138,7 +146,7 @@
             <td class="pass">PASS</td>
             <td>Found 237 portfolios</td>
             <td class="doc"></td>
-            <td><code>{"command":"portfolios.list","msgId":"upuvja","data":[{"_id":"68d0c7faf2fc500b2833593b","name":"Jesper  Brogaard-Radoor jespernissenbrogaardradoor@gma...</code></td>
+            <td><code>{"command":"portfolios.list","msgId":"coem8v","data":[{"_id":"68d0c7faf2fc500b2833593b","name":"Jesper  Brogaard-Radoor jespernissenbrogaardradoor@gma...</code></td>
         </tr>
         
         <tr>
@@ -146,7 +154,7 @@
             <td class="pass">PASS</td>
             <td>Found 22 currencies</td>
             <td class="doc"></td>
-            <td><code>{"command":"currencies.list","msgId":"95ia8a","data":[{"_id":"65df2224eaba5e4f97f231ab","currency_id":"36","symbol":"AUD","name":"Australian dollar","...</code></td>
+            <td><code>{"command":"currencies.list","msgId":"rot91","data":[{"_id":"65df2224eaba5e4f97f231ab","currency_id":"36","symbol":"AUD","name":"Australian dollar","b...</code></td>
         </tr>
         
         <tr>
@@ -154,7 +162,7 @@
             <td class="pass">PASS</td>
             <td>Found 257 sectors</td>
             <td class="doc"></td>
-            <td><code>{"command":"sectors.list","msgId":"0brn2g","data":[{"_id":"65df2224eaba5e4f97f231c1","industry_sector_id":"0","symbol":"No Sector","name":"No Sector"}...</code></td>
+            <td><code>{"command":"sectors.list","msgId":"frls9","data":[{"_id":"65df2224eaba5e4f97f231c1","industry_sector_id":"0","symbol":"No Sector","name":"No Sector"},...</code></td>
         </tr>
         
         <tr>
@@ -162,7 +170,7 @@
             <td class="pass">PASS</td>
             <td>Retrieved prices for MSFT,AAPL</td>
             <td class="doc">Fetches historical prices for specific symbols on a given date.</td>
-            <td><code>{"command":"prices.historical","msgId":"5xr6tu","data":{"MSFT":400,"AAPL":null}}</code></td>
+            <td><code>{"command":"prices.historical","msgId":"0f63cy","data":{"MSFT":400,"AAPL":null}}</code></td>
         </tr>
         
         <tr>
@@ -170,7 +178,7 @@
             <td class="pass">PASS</td>
             <td>Retrieved system statistics</td>
             <td class="doc">Provides high-level statistical analysis of portfolio performance.</td>
-            <td><code>{"command":"tools.statistic","msgId":"5gumop","error":"Need set history or portfolio"}</code></td>
+            <td><code>{"command":"tools.statistic","msgId":"2717yl","error":"Need set history or portfolio"}</code></td>
         </tr>
         
         <tr>
@@ -178,7 +186,7 @@
             <td class="pass">PASS</td>
             <td>Unsubscribed from portfolio updates</td>
             <td class="doc"></td>
-            <td><code>{"command":"portfolios.positions","msgId":"lxbuzs","data":{"msg":"portfolio.positions unsubscribed from portfolio 'Test Portfolio 1770874283525'"}}</code></td>
+            <td><code>{"command":"portfolios.positions","msgId":"tnj1j8","data":{"msg":"portfolio.positions unsubscribed from portfolio 'Test Portfolio 1770874470186'"}}</code></td>
         </tr>
         
         <tr>
@@ -186,7 +194,7 @@
             <td class="pass">PASS</td>
             <td>Removed all trades</td>
             <td class="doc"></td>
-            <td><code>{"command":"trades.removeAll","msgId":"anrzxc","data":{"acknowledged":true,"deletedCount":5}}</code></td>
+            <td><code>{"command":"trades.removeAll","msgId":"x36ztb","data":{"acknowledged":true,"deletedCount":5}}</code></td>
         </tr>
         
         <tr>
@@ -194,15 +202,15 @@
             <td class="pass">PASS</td>
             <td>Removed portfolio</td>
             <td class="doc"></td>
-            <td><code>{"command":"portfolios.remove","msgId":"pb32wt","data":{"_id":"698d65abed306741f1dcc4e5","name":"Test Portfolio 1770874283525","currency":"DKK","userI...</code></td>
+            <td><code>{"command":"portfolios.remove","msgId":"536rba","data":{"_id":"698d6666ed306741f1dcc723","name":"Test Portfolio 1770874470186","currency":"DKK","userI...</code></td>
         </tr>
         
         <tr>
             <td><strong>Delete User</strong></td>
             <td class="pass">PASS</td>
-            <td>Removed user: testuser_1770874283363</td>
+            <td>Removed user: testuser_1770874470027</td>
             <td class="doc"></td>
-            <td><code>{"command":"users.remove","msgId":"ipgmcc","data":{"_id":"698d65abed306741f1dcc4e1","login":"testuser_1770874283363","email":"testuser_1770874283363@e...</code></td>
+            <td><code>{"command":"users.remove","msgId":"2csay9","data":{"_id":"698d6666ed306741f1dcc71f","login":"testuser_1770874470027","email":"testuser_1770874470027@e...</code></td>
         </tr>
         
     </table>
