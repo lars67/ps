@@ -297,7 +297,23 @@ async function runTests() {
                     }
 
                     /**
-                     * 2.8 HISTORICAL DATA (portfolios.history)
+                     * 2.8 PRICE SIMULATION (portfolios.positions with requestType "3")
+                     * Parameters: _id, requestType: "3", eventName, changes: [{symbol, close}]
+                     * This allows simulating market price changes for a subscribed portfolio.
+                     */
+                    console.log('Simulating price change...');
+                    const simulateRes = await sendCommand({
+                        command: 'portfolios.positions',
+                        _id: portfolioId,
+                        requestType: '3',
+                        eventName: subRes.data.eventName || 'test_event',
+                        changes: [{ symbol: 'MSFT', close: 450 }]
+                    });
+                    logResult('Simulate Price', 'PASS', 'Simulated MSFT price change to 450', simulateRes,
+                        'requestType "3" emulates a market data update for the specified symbols.');
+
+                    /**
+                     * 2.9 HISTORICAL DATA (portfolios.history)
                      * Parameters: _id, till, sample (day/week/month), precision
                      */
                     const historyRes = await sendCommand({
