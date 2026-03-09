@@ -45,7 +45,7 @@ export class PortfolioWorkerPool {
   private workerFailureCount = 0;
   private readonly maxWorkerFailures = 10; // Prevent infinite worker replacement
 
-  constructor(private poolSize = 4) { // Set to 4 workers for optimal performance on 8-core system
+  constructor(private poolSize = 8) { // 8 workers to handle concurrent history calculations under load
     console.log(`🚀 Initializing Portfolio Worker Pool with ${poolSize} workers`);
     this.initializeWorkers();
   }

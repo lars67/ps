@@ -1,7 +1,8 @@
 import { UserData } from "../../services/websocket";
 import { PortfolioHistoryCache } from "./historyCache";
 import { PortfolioHistoryService } from "./historyService";
-import { PortfolioCalculator } from "./portfolioCalculator";
+import { getPortfolioWorkerPool } from "./workerPool";
+import { DayType } from "./portfolioWorker";
 import moment from "moment";
 
 // Define Params type locally
@@ -115,22 +116,15 @@ export async function history(
       }
     }
 
-    // --- 4. Synchronous Calculation ---
-    console.log(`⚡ Using synchronous calculation for portfolio ${_id}`);
-
-    const calculationResult = await PortfolioCalculator.calculatePortfolioHistory(_id, from, till, precision, forceRefresh, false);
-
-    if (calculationResult.error) {
-      return { error: calculationResult.error };
-    }
-
-    const { days, withoutPrices } = calculationResult;
+    // --- 4. Worker Thread Calculation ---
+    console.log(`🧵 Offloading calculation to worker thread for portfolio ${_id}`);
+    const { days, withoutPrices } = await getPortfolioWorkerPool().executePortfolioHistory(_id, from, till, precision, forceRefresh);
 
     // --- 5. Store Results in Cache (only if not force refresh) ---
     if (!forceRefresh) {
       try {
         // Convert DayType[] to PortfolioHistoryDay[] for storage
-        const historyDays = days.map(day => ({
+        const historyDays = (days as DayType[]).map(day => ({
           portfolioId: _id,
           date: day.date,
           invested: day.invested,

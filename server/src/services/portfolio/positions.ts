@@ -172,6 +172,29 @@ export async function positions(
 
     return { msg: "Stop all positions" };
   }
+  // Unsubscribe does not need _id — handle before validation
+  if (requestType === "2") {
+    if (!subscribeId) {
+      return { error: "subscribeId is required in unsubscribe command" };
+    }
+    if (!subscribers[userModif]) {
+      return { error: `subscribeId=${subscribeId} is unknown` };
+    }
+    logger.log(`[SSEService.stop ${userModif}|${subscribeId} ${subscribers[userModif][subscribeId] ? 'defined' : 'undefined'}]`);
+    if (subscribers[userModif][subscribeId]) {
+      const sub = subscribers[userModif][subscribeId];
+      sub.sseService.stop();
+      eventEmitter.removeListener(sub.sseService.getEventName(), sub.registeredHandler);
+      if (sub.tradeHandler) {
+        eventEmitter.removeListener("trade.change", sub.tradeHandler);
+      }
+      delete subscribers[userModif][subscribeId];
+      return { msg: `portfolio.positions unsubscribed` };
+    } else {
+      return { error: `subscribeId=${subscribeId} is unknown` };
+    }
+  }
+
   if (!_id) {
     return { error: "Portolio _id is required" };
   }
@@ -325,25 +348,6 @@ export async function positions(
   };
   /////
 
-  if (requestType === "2") {
-    if (!subscribeId) {
-      return { error: "subscribeId is required  in unsubscrube command" };
-    }
-    logger.log(`[SSEService.stop ${userModif}${subscribeId} ${subscribers[userModif][subscribeId]? 'defined' : 'undefined'}]`)
-    if (subscribers[userModif][subscribeId]) {
-      subscribers[userModif][subscribeId].sseService.stop();
-      eventEmitter.removeListener(
-        subscribers[userModif][subscribeId].sseService.getEventName(),
-        subscribers[userModif][subscribeId].handler,
-      );
-      eventEmitter.removeListener("trade.change", subscriberOnTrades);
-      return {
-        msg: `portfolio.positions unsubscribed from portfolio '${portfolio.name}'`,
-      };
-    } else {
-      return { error: `subscribeId=${subscribeId} is unknown` };
-    }
-  }
 
   profiler.startTimer("positions.fetch_trades", userModif, msgId, { portfolioId: realId });
   const allTrades = await getPortfolioTrades(realId, undefined, {
@@ -395,6 +399,18 @@ export async function positions(
         symbols.push(r);
       }
     });
+
+  // Cleanup any existing subscription for this msgId to prevent duplicate handlers
+  if (subscribers[userModif][msgId]) {
+    const existing = subscribers[userModif][msgId];
+    existing.sseService.stop();
+    eventEmitter.removeListener(existing.sseService.getEventName(), existing.registeredHandler);
+    if (existing.tradeHandler) {
+      eventEmitter.removeListener("trade.change", existing.tradeHandler);
+    }
+    delete subscribers[userModif][msgId];
+    console.log(`Cleaned up stale subscription for ${userModif}|${msgId}`);
+  }
 
   eventEmitter.on("trade.change", subscriberOnTrades);
   const sseService = new SSEService("quotes", symbols.join(","), eventName);
@@ -924,61 +940,53 @@ export async function positions(
 
   let isSubscriptionInitial = true;
 
-  subscribers[userModif][msgId] = {
-    sseService,
-    handler: (data: object) => {
-      //console.log("handler event");
-      const actualChanges = (data as QuoteData[]).filter((d: QuoteData) =>
-        d.lastTradeTime
-          ? Object.keys(d).length > 2
-          : Object.keys(d).length >= 2,
-      );
-      if (actualChanges.length === 0) {
-        return;
+  const registeredHandler = (data: object) => {
+    const actualChanges = (data as QuoteData[]).filter((d: QuoteData) =>
+      d.lastTradeTime
+        ? Object.keys(d).length > 2
+        : Object.keys(d).length >= 2,
+    );
+    if (actualChanges.length === 0) {
+      return;
+    }
+    const streamingTotalsMode = isSubscriptionInitial ? totalsMode : "minimal";
+    const streamingIncludeAttribution = isSubscriptionInitial ? includeAttribution : false;
+    const changes = calcChanges(actualChanges, streamingIncludeAttribution, streamingTotalsMode, isSubscriptionInitial);
+    console.log(
+      moment().format("HH:mm:ss SSS"),
+      "subscriber SSE-> ",
+      userModif,
+      msgId,
+      "===>",
+      changes?.length,
+    );
+    changes && sendResponse(changes);
+
+    isSubscriptionInitial = false;
+
+    if (socket.readyState === WebSocket.CLOSED) {
+      if (!(socket as UserWebSocket).waitNum) {
+        (socket as UserWebSocket).waitNum = Date.now();
+      } else if (Date.now() - (socket as UserWebSocket).waitNum > 30000) {
+        logger.log(`[SSEService  in closed state ${userModif}|${msgId} ${sseService.getEventName()}`)
+        console.log("STOPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP SSE", sseService.getEventName());
+        sseService.stop();
+        eventEmitter.removeListener(sseService.getEventName(), registeredHandler);
       }
-      // For streaming updates, only send minimal totals (grand total only) and no attribution to reduce bandwidth
-      // Initial subscription sends full totals and attribution
-      const streamingTotalsMode = isSubscriptionInitial ? totalsMode : "minimal";
-      const streamingIncludeAttribution = isSubscriptionInitial ? includeAttribution : false;
-      const changes = calcChanges(actualChanges, streamingIncludeAttribution, streamingTotalsMode, isSubscriptionInitial);
-      console.log(
-        moment().format("HH:mm:ss SSS"),
-        "subscriber SSE-> ",
-        userModif,
-        msgId,
-        //data,
-        "===>",
-        changes?.length,
-      );
-      changes && sendResponse(changes);
-
-      // After first update, set to false so minimal totals are used for streaming performance
-      isSubscriptionInitial = false;
-
-      if (socket.readyState === WebSocket.CLOSED) {
-        if (!(socket as UserWebSocket).waitNum) {
-          (socket as UserWebSocket).waitNum = Date.now();
-        } else if (Date.now() - (socket as UserWebSocket).waitNum > 30000) {
-          logger.log(`[SSEService  in closed state ${userModif}|${msgId} ${sseService.getEventName()}`)
-
-          console.log(
-            "STOPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP SSE",
-            sseService.getEventName(),
-          );
-          sseService.stop();
-          eventEmitter.removeListener(
-            sseService.getEventName(),
-            subscribers[userModif][msgId].handler,
-          );
-        }
-      } else if (socket.readyState === WebSocket.OPEN) {
-        (socket as UserWebSocket).waitNum = 0;
-      }
-    },
+    } else if (socket.readyState === WebSocket.OPEN) {
+      (socket as UserWebSocket).waitNum = 0;
+    }
   };
 
-  eventEmitter.on(eventName, subscribers[userModif][msgId].handler);
-  
+  subscribers[userModif][msgId] = {
+    sseService,
+    tradeHandler: subscriberOnTrades,
+    handler: registeredHandler,
+    registeredHandler,
+  };
+
+  eventEmitter.on(eventName, registeredHandler);
+
   profiler.endTimer("positions.main", userModif, msgId, {
     success: true,
     totalDuration: Date.now() - startTime,

@@ -6,5 +6,5 @@ export type ErrorType = {
 
 export type StringRecord = Record<string, string>;
 
-export type SubscribeObj = { handler: (o: object) => void; sseService: SSEService };
+export type SubscribeObj = { handler: (o: object) => void; registeredHandler: (o: object) => void; sseService: SSEService; tradeHandler?: (ev: any) => void };
 export type SubscribeMsgs = Record<string, SubscribeObj>

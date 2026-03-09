@@ -179,6 +179,7 @@ export const quotes = async (
     //-
     subscribers[userModif][msgId] = {
         sseService,
+        registeredHandler: () => {},  // set below after handler is defined
         handler: (data: object) => {
            // console.log("handler event",data);
             const changes = Object.values(data);
@@ -203,7 +204,8 @@ export const quotes = async (
         },
     };
 
-    eventEmitter.on(eventName, subscribers[userModif][msgId].handler);
+    subscribers[userModif][msgId].registeredHandler = subscribers[userModif][msgId].handler;
+    eventEmitter.on(eventName, subscribers[userModif][msgId].registeredHandler);
     //const { positions , fees,...rest } = positions;
     return { msg: requestType === "1" ? "subscribed" : "snapshot", eventName };
 }
