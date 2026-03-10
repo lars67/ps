@@ -12,7 +12,8 @@ const PortfolioSchema = new Schema<Portfolio>({
   accountId:{type: String, index: true},
   access:{type: String, index: true},
   bookDividends: { type: Boolean, default: true }, // Enable/disable automatic dividend booking
-  lastDividendCheck: { type: Date, required: false } // Track last dividend check timestamp
+  lastDividendCheck: { type: Date, required: false }, // Track last dividend check timestamp
+  aiComment: { type: String, default: "" } // Free-text AI-generated or user-provided comment about the portfolio
 });
 
 export const PortfolioModel: Model<Portfolio> =

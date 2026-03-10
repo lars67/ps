@@ -16,6 +16,7 @@ export type Portfolio = {
   access?:string;
   bookDividends?: boolean; // Enable/disable automatic dividend booking
   lastDividendCheck?: Date; // Track last dividend check timestamp
+  aiComment?: string; // Free-text AI-generated or user-provided comment about the portfolio
 };
 
 export type PortfolioWithID = Portfolio & { _id: string | ObjectId };

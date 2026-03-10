@@ -48,6 +48,10 @@ This command is used to create a new portfolio within the system.
     *   **Description**: The ID of the user who owns or is associated with this portfolio.
     *   **Possible Values**: A string representing a user ID.
 
+*   **`aiComment`** (Optional)
+    *   **Description**: A free-text comment about the portfolio. Can be used to store AI-generated insights, strategy notes, or any other annotation.
+    *   **Possible Values**: Any string (e.g., `"Growth-focused portfolio benchmarked against SPY"`).
+
 ## `portfolios.history`
 
 This command allows you to retrieve the historical performance and data for a specific portfolio over a designated time period. It's useful for tracking how a portfolio's value has changed over time.
@@ -89,15 +93,23 @@ This command retrieves a list of portfolios, with optional filtering capabilitie
     *   **Description**: An object used to filter the list of portfolios returned. You can specify one or more portfolio fields and their desired values to narrow down the results.
     *   **Possible Values**: An object with key-value pairs matching portfolio properties (e.g., `{"currency": "USD"}`, `{"name": "My Investment Portfolio"}`).
 
+### Response fields (each portfolio):
+
+The response includes all portfolio fields: `_id`, `name`, `description`, `currency`, `userId`, `baseInstrument`, `portfolioType`, `portfolioIds`, `accountId`, `access`, `bookDividends`, `lastDividendCheck`, and `aiComment`.
+
 ## `portfolios.detailList`
 
-This command is assumed to retrieve a detailed list of portfolios, with optional filtering capabilities. The exact structure of the "detailed" output is not explicitly defined in the current documentation but is expected to contain more comprehensive information than `portfolios.list`.
+Retrieves a detailed list of portfolios with optional filtering. In addition to standard portfolio fields, each result includes `userName` and `userRole` (joined from the users collection).
 
 ### Parameters:
 
 *   **`filter`** (Optional)
     *   **Description**: An object used to filter the list of portfolios returned. You can specify one or more portfolio fields and their desired values to narrow down the results.
     *   **Possible Values**: An object with key-value pairs matching portfolio properties (e.g., `{"currency": "USD"}`, `{"name": "My Detailed Portfolio"}`).
+
+### Response fields (each portfolio):
+
+`_id`, `name`, `description`, `currency`, `userId`, `baseInstrument`, `portfolioType`, `portfolioIds`, `accountId`, `access`, `aiComment`, `userName`, `userRole`.
 
 ## `portfolios.debug`
 
@@ -716,6 +728,40 @@ Calculates and returns the performance metrics for a specified portfolio over a 
 Modifies an existing portfolio.
 
 ### Parameters:
+
+*   **`_id`** (Required)
+    *   **Description**: The ID or name of the portfolio to update.
+    *   **Possible Values**: A string representing a portfolio ID or name.
+
+*   **`name`** (Optional)
+    *   **Description**: New name for the portfolio.
+    *   **Possible Values**: Any unique string.
+
+*   **`description`** (Optional)
+    *   **Description**: Updated description of the portfolio.
+    *   **Possible Values**: Any string.
+
+*   **`baseInstrument`** (Optional)
+    *   **Description**: Updated benchmark instrument for performance comparison.
+    *   **Possible Values**: A valid financial instrument symbol (e.g., `"SPY"`).
+
+*   **`portfolioType`** (Optional)
+    *   **Description**: Updated portfolio type.
+    *   **Possible Values**: `"summation"`, `"fund"`, `"counterparty"`, `"normal"`.
+
+*   **`portfolioIds`** (Optional)
+    *   **Description**: Updated list of sub-portfolio IDs (for summation portfolios).
+    *   **Possible Values**: An array of portfolio ID strings.
+
+*   **`bookDividends`** (Optional)
+    *   **Description**: Enable or disable automatic dividend booking for this portfolio.
+    *   **Possible Values**: `true` or `false`.
+
+*   **`aiComment`** (Optional)
+    *   **Description**: A free-text comment about the portfolio. Can be used to store AI-generated insights, strategy notes, or any other annotation.
+    *   **Possible Values**: Any string (e.g., `"Rebalanced to reduce tech exposure"`).
+
+**Note:** `currency`, `accountId`, and `userId` cannot be changed via this command.
 
 ## `prices.getCurrent`
 

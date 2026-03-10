@@ -301,6 +301,7 @@ export async function detailList(
         portfolioIds: 1,
         accountId: 1,
         access: 1,
+        aiComment: 1,
         userName: "$userDetails.name", // Добавить поле userName с именем пользователя
         userRole: "$userDetails.role",
       },

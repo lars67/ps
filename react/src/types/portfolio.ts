@@ -12,6 +12,7 @@ export type Portfolio = {
     portfolioIds?:string[]
     accountId?: string;
     access?:string
+    aiComment?: string;
 
 }
 
