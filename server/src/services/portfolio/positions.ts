@@ -449,7 +449,8 @@ export async function positions(
           fxData = data.find(d => d.symbol === `${portfolio.currency}${cur}:FX`);
           inv = true;
         }
-        rates[cur] = fxData ? (inv ? 1.0 / fxData.latestPrice : fxData.latestPrice) : 1;
+        const fxPrice = fxData ? (fxData.latestPrice ?? fxData.close) : undefined;
+        rates[cur] = fxPrice != null ? (inv ? 1.0 / fxPrice : fxPrice) : 1;
         // Only log significant rate changes or errors
         if (!fxData) {
           logger.error(`[FX_RATE] Missing FX data for ${cur} vs ${portfolio.currency}`);
@@ -1524,7 +1525,7 @@ function getMarketPrice(
     case "1":
       return q.iexAskPrice;
     case "2":
-      return q.latestPrice;
+      return q.latestPrice ?? q.close;
     //case 3: return 'open'
     case "4":
       return q.latestPrice || (q.close + (q.change || 0));
