@@ -28,7 +28,7 @@ export async function signin(
       user.password || "",
     );
       // console.log(`credentials.password : ${credentials.password}`)
-      console.log(`isPasswordCorrect : $isPasswordCorrect} ${password}`)
+      console.log(`isPasswordCorrect : ${isPasswordCorrect} ${password}`)
 
     if (!isPasswordCorrect) throw new Error("Wrong credentials!");
 
