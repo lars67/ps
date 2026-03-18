@@ -63,7 +63,7 @@ export class PortfolioHistoryCache {
         // Data is stale - trigger immediate refresh for better UX
         console.log(`Data for portfolio ${portfolioId} is stale (${Math.round(cacheAgeMinutes)}min old), refreshing immediately`);
         try {
-          const updateResult = await this.updateHistory(portfolioId, undefined, false);
+          const updateResult = await this.updateHistory(portfolioId, undefined, false, true);
           if (updateResult.success) {
             // Fetch the freshly calculated data
             historyData = await PortfolioHistoryService.getHistory(portfolioId, from, till);
@@ -265,7 +265,7 @@ export class PortfolioHistoryCache {
         fromDate,
         undefined, // till - use default (today)
         2, // precision
-        true, // forceRefresh to ensure fresh calculation
+        fullRecalculation, // only flush price caches when explicitly requested
         incrementalUpdate // preserve previous performance values
       );
 

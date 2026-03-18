@@ -1,5 +1,4 @@
 import { UserData } from "../../services/websocket";
-import { PortfolioHistoryCache } from "./historyCache";
 import { PortfolioHistoryService } from "./historyService";
 import { getPortfolioWorkerPool } from "./workerPool";
 import { DayType } from "./portfolioWorker";
@@ -11,47 +10,33 @@ type HistoryParams = {
   from?: string;
   till?: string;
   detail?: string; // 0|1
-  sample?: string; // day|week|month - Resampling not implemented in this version yet
+  sample?: string; // day|week|month
   precision?: number;
-  forceRefresh?: boolean;    // NEW: Force recalculation
-  maxAge?: number;          // NEW: Max acceptable data age (minutes)
-  streamUpdates?: boolean;  // NEW: Enable real-time updates
+  forceRefresh?: boolean;
+  maxAge?: number;          // kept for API compatibility (unused in new flow)
+  streamUpdates?: boolean;
 };
 
-/**
- * Estimate if a portfolio history calculation will be long-running
- * @param from Start date
- * @param till End date
- * @returns true if calculation is estimated to take >2 seconds
- */
-function isLongRunningCalculation(from?: string, till?: string): boolean {
-  if (!from || !till) {
-    // No date range specified - assume could be long
-    return true;
-  }
-
-  try {
-    const startDate = moment(from);
-    const endDate = moment(till);
-
-    if (!startDate.isValid() || !endDate.isValid()) {
-      return true; // Invalid dates - assume long
-    }
-
-    const daysDiff = endDate.diff(startDate, 'days');
-
-    // Estimate: > 180 days is considered long-running
-    // This typically involves significant calculation with price lookups
-    return daysDiff > 180;
-  } catch (error) {
-    // If date parsing fails, assume long-running to be safe
-    return true;
-  }
+function toCacheDay(day: DayType, portfolioId: string) {
+  return {
+    portfolioId,
+    date: day.date,
+    invested: day.invested,
+    investedWithoutTrades: day.investedWithoutTrades,
+    cash: day.cash,
+    nav: day.nav,
+    index: day.index,
+    perfomance: day.perfomance,
+    shares: day.shares,
+    navShare: day.navShare,
+    perfShare: day.perfShare,
+    lastUpdated: new Date(),
+    isCalculated: true,
+  };
 }
 
-// Renamed function back to 'history'
 export async function history(
-  { _id, from, till, detail = "0", sample, precision = 2, forceRefresh = false, maxAge = 1440 }: HistoryParams,
+  { _id, from, till, detail = "0", sample, precision = 2, forceRefresh = false }: HistoryParams,
   sendResponse: (data: any) => void,
   msgId: string,
   userModif: string,
@@ -64,101 +49,120 @@ export async function history(
     }
 
     const withDetail = Number(detail) !== 0;
+    const yesterday = moment().subtract(1, 'day').format('YYYY-MM-DD');
 
-    // --- 2. Check Cache First (unless force refresh) ---
+    // --- 2. Non-forceRefresh: serve cached data immediately then stream update ---
     if (!forceRefresh) {
+      let metadata: Awaited<ReturnType<typeof PortfolioHistoryService.getMetadata>>;
       try {
-        console.log(`Checking cache for portfolio ${_id}, from="${from}", till="${till}", maxAge=${maxAge}`);
-        const cacheResult = await PortfolioHistoryCache.getHistory(_id, from, till, maxAge);
-        console.log(`Cache result: cached=${cacheResult.cached}, days=${cacheResult.days?.length || 0}, cacheAge=${cacheResult.cacheAge}`);
+        metadata = await PortfolioHistoryService.getMetadata(_id);
+      } catch (e) {
+        console.warn(`Could not fetch metadata for ${_id}, falling back to full calc:`, e);
+        metadata = null;
+      }
 
-        // If we have cached data, return it immediately
-        if (cacheResult.cached && cacheResult.days.length > 0) {
-          console.log(`✅ Serving cached history for portfolio ${_id} (${cacheResult.days.length} days, ${cacheResult.cacheAge}min old)`);
+      if (metadata && metadata.totalRecords > 0) {
+        // We have data — serve it immediately as first response
+        let existingDays: Awaited<ReturnType<typeof PortfolioHistoryService.getHistory>>;
+        try {
+          existingDays = await PortfolioHistoryService.getHistory(_id, from, till);
+        } catch (e) {
+          console.warn(`Could not fetch history for ${_id}:`, e);
+          existingDays = [];
+        }
 
-          return {
-            days: cacheResult.days,
+        if (existingDays.length > 0) {
+          const cacheAge = Math.round((Date.now() - metadata.lastUpdated.getTime()) / 60000);
+          console.log(`✅ Serving cached history for ${_id} (${existingDays.length} days, ${cacheAge}min old)`);
+
+          // First response — send immediately so the GUI can show something
+          sendResponse({
+            days: existingDays,
             cached: true,
-            cacheAge: cacheResult.cacheAge,
-            ...(cacheResult.metadata && { metadata: cacheResult.metadata }),
-            ...(withDetail && { details: [] }) // Cached data doesn't include details
-          };
-        }
+            cacheAge,
+            ...(withDetail && { details: [] }),
+          });
 
-        // If cache returned empty (no data exists), fall through to calculation
-        if (cacheResult.cached === false) {
-          console.log(`❌ No cached history found for portfolio ${_id}, calculating from scratch`);
-        } else {
-          console.log(`❌ Cache data exists but not returned (cached=${cacheResult.cached}, days=${cacheResult.days?.length || 0})`);
+          // Determine how far we have data
+          const lastDate = metadata.lastCalculatedDate
+            || existingDays[existingDays.length - 1].date;
+
+          if (lastDate >= yesterday) {
+            // Already up to date — second response not needed
+            console.log(`History for ${_id} is current (lastDate=${lastDate})`);
+            return { done: true };
+          }
+
+          // --- Incremental update: only calculate missing days ---
+          const incrementalFrom = moment(lastDate).add(1, 'day').format('YYYY-MM-DD');
+          console.log(`📈 Incremental update for ${_id}: ${incrementalFrom} → ${yesterday}`);
+
+          try {
+            const { days: newDays, withoutPrices } =
+              await getPortfolioWorkerPool().executePortfolioHistory(
+                _id, incrementalFrom, till, precision, false,
+              );
+
+            if (newDays.length > 0) {
+              // Persist new days
+              await PortfolioHistoryService.saveHistoryDays(
+                (newDays as DayType[]).map(d => toCacheDay(d, _id)),
+              ).catch(e => console.error(`Failed to save incremental days for ${_id}:`, e));
+
+              console.log(`✅ Appended ${newDays.length} incremental days for ${_id}`);
+              // Second response — just the new days so the client can append/merge
+              return {
+                days: newDays,
+                cached: false,
+                update: true,
+                ...(withoutPrices.length > 0 && { info: `Interpolated: ${withoutPrices.join(',')}` }),
+                ...(withDetail && { details: [] }),
+              };
+            }
+          } catch (err) {
+            // Incremental update failed — we already sent the cached data, so this is non-fatal
+            console.error(`Incremental update failed for ${_id}:`, err);
+          }
+
+          return { done: true };
         }
-      } catch (cacheError) {
-        console.warn(`Cache check failed for portfolio ${_id}, falling back to calculation:`, cacheError);
-        // Continue to calculation if cache fails
       }
+
+      // No data in DB at all — fall through to full calculation
+      console.log(`❌ No cached history for ${_id}, calculating from scratch`);
     }
 
-    // --- 3. Force Refresh Cache Clearing ---
+    // --- 3. forceRefresh: wipe existing data and price caches ---
     if (forceRefresh) {
-      console.log(`Force full recalculation requested for portfolio ${_id}`);
-      // For force refresh, we clear ALL caches first, then do fresh calculation
-      // The caches will NOT be updated after calculation completes
+      console.log(`Force full recalculation for portfolio ${_id}`);
       try {
-        // Clear portfolio history cache from MongoDB
         await PortfolioHistoryService.deleteHistory(_id);
-        console.log(`Portfolio history cache cleared for portfolio ${_id} due to forceRefresh`);
-
-        // Clear in-memory price caches to force fresh price fetching
-        const { clearCaches } = require('../services/app/priceCashe');
+        const { clearCaches } = require('../app/priceCashe');
         clearCaches();
-      } catch (deleteError) {
-        console.warn(`Failed to clear caches for portfolio ${_id}:`, deleteError);
-        // Continue with calculation even if cache clearing fails
+      } catch (e) {
+        console.warn(`Failed to clear caches for ${_id}:`, e);
       }
     }
 
-    // --- 4. Worker Thread Calculation ---
-    console.log(`🧵 Offloading calculation to worker thread for portfolio ${_id}`);
-    const { days, withoutPrices } = await getPortfolioWorkerPool().executePortfolioHistory(_id, from, till, precision, forceRefresh);
+    // --- 4. Full calculation via worker pool ---
+    console.log(`🧵 Full history calculation via worker for ${_id}`);
+    const { days, withoutPrices } = await getPortfolioWorkerPool().executePortfolioHistory(
+      _id, from, till, precision, forceRefresh,
+    );
 
-    // --- 5. Store Results in Cache (only if not force refresh) ---
-    if (!forceRefresh) {
-      try {
-        // Convert DayType[] to PortfolioHistoryDay[] for storage
-        const historyDays = (days as DayType[]).map(day => ({
-          portfolioId: _id,
-          date: day.date,
-          invested: day.invested,
-          investedWithoutTrades: day.investedWithoutTrades,
-          cash: day.cash,
-          nav: day.nav,
-          index: day.index,
-          perfomance: day.perfomance,
-          shares: day.shares,
-          navShare: day.navShare,
-          perfShare: day.perfShare,
-          lastUpdated: new Date(),
-          isCalculated: true
-        }));
-
-        // Save to cache synchronously to ensure data is available for subsequent requests
-        await PortfolioHistoryService.saveHistoryDays(historyDays);
-
-        console.log(`Calculated and cached ${historyDays.length} days of history for portfolio ${_id}`);
-      } catch (cacheError) {
-        console.error(`Error preparing history data for cache for portfolio ${_id}:`, cacheError);
-        // Continue with response even if caching fails
-      }
-    } else {
-      console.log(`Force refresh completed for portfolio ${_id} - cache was cleared and not updated`);
+    // --- 5. Persist result (always, including after forceRefresh) ---
+    if (days.length > 0) {
+      PortfolioHistoryService.saveHistoryDays(
+        (days as DayType[]).map(d => toCacheDay(d, _id)),
+      ).catch(e => console.error(`Failed to cache full history for ${_id}:`, e));
+      // fire-and-forget: don't block the response
     }
-
-    // --- 6. Final Output ---
-    // TODO: Implement resampling logic if required based on 'sample' parameter
 
     return {
-        ...(withoutPrices.length > 0 && { info: `Used trades for interpolating prices/rates: ${withoutPrices.join(',')}` }),
-        days,
-        ...(withDetail && { details: [] }) // Details not implemented in this version
+      days,
+      cached: false,
+      ...(withoutPrices.length > 0 && { info: `Interpolated: ${withoutPrices.join(',')}` }),
+      ...(withDetail && { details: [] }),
     };
 
   } catch (err) {
@@ -166,7 +170,3 @@ export async function history(
     return { error: `Failed to generate history: ${err instanceof Error ? err.message : String(err)}` };
   }
 }
-
-// Note: Performance calculation logic (like getPortfolioPerfomance) was complex and potentially
-// contributing to errors. It has been removed for this refactor but can be added back carefully if needed.
-// Resampling logic also needs to be re-implemented if the 'sample' parameter is used.

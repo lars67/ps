@@ -173,27 +173,68 @@ class WorkerPortfolioCalculator {
       const startDateString = startDateMoment.format(formatYMD);
       const endDateString = endDateMoment.format(formatYMD);
 
-      // Fetch Price Data
-      const tradesInDateRange = allTrades.filter(trade => moment.utc(trade.tradeTime).isBetween(startDateMoment, endDateMoment, 'day', '[]'));
-      const { uniqueSymbols, uniqueCurrencies, withoutPrices } =
-        await checkPortfolioPricesCurrencies(tradesInDateRange.length > 0 ? tradesInDateRange : allTrades, portfolio.currency, undefined, forceRefresh);
+      // Detect incremental mode: a 'from' date was supplied and there are trades before it.
+      // In this case we only need prices for the new period; pre-period state uses trade.rate.
+      const tradesBeforeStartDate = allTrades.filter(trade =>
+        moment.utc(trade.tradeTime).isBefore(startDateMoment, 'day')
+      );
+      const isIncrementalMode = !!from && tradesBeforeStartDate.length > 0;
 
-      if (portfolio.baseInstrument && !uniqueSymbols.includes(portfolio.baseInstrument)) {
-        uniqueSymbols.push(portfolio.baseInstrument);
-      }
+      // Fetch Price Data
+      // For incremental mode: extract symbols/currencies directly (avoid triggering a full
+      // historical price load via checkPortfolioPricesCurrencies which uses the first trade date).
+      // For full mode: use checkPortfolioPricesCurrencies as before.
+      let uniqueSymbols: string[];
+      let uniqueCurrencies: string[];
+      let withoutPrices: string[] = [];
 
       const priceCheckStartDate = startDateMoment.clone().subtract(10, 'days').format(formatYMD);
-      try {
-        await checkPrices(uniqueSymbols, priceCheckStartDate, undefined, undefined, forceRefresh);
-        for (const currency of uniqueCurrencies) {
-          await checkPriceCurrency(currency, portfolio.currency, priceCheckStartDate, forceRefresh);
+
+      if (isIncrementalMode) {
+        // Just extract the sets — no price fetch via allTrades
+        uniqueSymbols = [...new Set(allTrades.map(t => t.symbol).filter(Boolean) as string[])];
+        uniqueCurrencies = [...new Set(allTrades.map(t => t.currency).filter(Boolean) as string[])];
+        if (portfolio.baseInstrument && !uniqueSymbols.includes(portfolio.baseInstrument)) {
+          uniqueSymbols.push(portfolio.baseInstrument);
         }
-        if (withoutPrices.length > 0) {
-          await fillDateHistoryFromTrades(allTrades, withoutPrices, endDateString);
+        // Only fetch prices for the new date window
+        try {
+          await checkPrices(uniqueSymbols, priceCheckStartDate, undefined, undefined, false);
+          for (const currency of uniqueCurrencies) {
+            await checkPriceCurrency(currency, portfolio.currency, priceCheckStartDate, false);
+          }
+        } catch (priceError) {
+          console.error("Error fetching recent price data:", priceError);
+          return { days: [], withoutPrices: [], error: `Failed to fetch price data: ${priceError instanceof Error ? priceError.message : String(priceError)}` };
         }
-      } catch (priceError) {
-        console.error("Error fetching price data:", priceError);
-        return { days: [], withoutPrices: [], error: `Failed to fetch price/rate data: ${priceError instanceof Error ? priceError.message : String(priceError)}` };
+      } else {
+        // Full calculation: load prices from first trade date as usual
+        const tradesInDateRange = allTrades.filter(trade =>
+          moment.utc(trade.tradeTime).isBetween(startDateMoment, endDateMoment, 'day', '[]')
+        );
+        const priceResult = await checkPortfolioPricesCurrencies(
+          tradesInDateRange.length > 0 ? tradesInDateRange : allTrades,
+          portfolio.currency, undefined, forceRefresh
+        );
+        uniqueSymbols = priceResult.uniqueSymbols;
+        uniqueCurrencies = priceResult.uniqueCurrencies;
+        withoutPrices = priceResult.withoutPrices;
+
+        if (portfolio.baseInstrument && !uniqueSymbols.includes(portfolio.baseInstrument)) {
+          uniqueSymbols.push(portfolio.baseInstrument);
+        }
+        try {
+          await checkPrices(uniqueSymbols, priceCheckStartDate, undefined, undefined, forceRefresh);
+          for (const currency of uniqueCurrencies) {
+            await checkPriceCurrency(currency, portfolio.currency, priceCheckStartDate, forceRefresh);
+          }
+          if (withoutPrices.length > 0) {
+            await fillDateHistoryFromTrades(allTrades, withoutPrices, endDateString);
+          }
+        } catch (priceError) {
+          console.error("Error fetching price data:", priceError);
+          return { days: [], withoutPrices: [], error: `Failed to fetch price/rate data: ${priceError instanceof Error ? priceError.message : String(priceError)}` };
+        }
       }
 
       // Initialize State Variables
@@ -210,11 +251,14 @@ class WorkerPortfolioCalculator {
       let baseIndexValue = 100000;
 
       // Process Initial State (Trades Before Start Date)
-      const tradesBeforeStart = allTrades.filter(trade => moment.utc(trade.tradeTime).isBefore(startDateMoment, 'day'));
-      for (const trade of tradesBeforeStart) {
-        const rate = getRate(trade.currency, portfolio.currency, trade.tradeTime);
-        if (rate == null) {
-          console.warn(`Skipping pre-start trade due to missing rate: ${trade.symbol || 'CashOp'} on ${trade.tradeTime}`);
+      // Use trade.rate (the stored FX rate at execution time) so we don't need to load
+      // the full historical price series just to reconstruct the pre-period portfolio state.
+      for (const trade of tradesBeforeStartDate) {
+        const rate = trade.rate > 0
+          ? trade.rate
+          : getRate(trade.currency, portfolio.currency, trade.tradeTime);
+        if (!rate) {
+          console.warn(`Skipping pre-start trade (no rate): ${trade.symbol || 'CashOp'} on ${trade.tradeTime}`);
           continue;
         }
         switch (trade.tradeType) {

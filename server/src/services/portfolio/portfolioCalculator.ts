@@ -177,22 +177,53 @@ export class PortfolioCalculator {
       const endDateString = endDateMoment.format(formatYMD);
 
       // Fetch Price Data
-      const tradesInDateRange = allTrades.filter(trade => moment.utc(trade.tradeTime).isBetween(startDateMoment, endDateMoment, 'day', '[]'));
-      const { uniqueSymbols, uniqueCurrencies, withoutPrices } =
-        await checkPortfolioPricesCurrencies(tradesInDateRange.length > 0 ? tradesInDateRange : allTrades, portfolio.currency, undefined, forceRefresh);
+      const tradesBeforeStartDate = allTrades.filter(trade =>
+        moment.utc(trade.tradeTime).isBefore(startDateMoment, 'day')
+      );
+      const tradesInDateRange = allTrades.filter(trade =>
+        moment.utc(trade.tradeTime).isBetween(startDateMoment, endDateMoment, 'day', '[]')
+      );
+      // Incremental mode: a specific start date is given and there are pre-period trades.
+      // In this case we must NOT call checkPortfolioPricesCurrencies with allTrades, as that
+      // would set the price fetch window back to the very first trade (potentially years ago).
+      const isIncrementalMode = !!from && tradesBeforeStartDate.length > 0;
 
-      if (portfolio.baseInstrument && !uniqueSymbols.includes(portfolio.baseInstrument)) {
-        uniqueSymbols.push(portfolio.baseInstrument);
-      }
-
+      let uniqueSymbols: string[];
+      let uniqueCurrencies: string[];
+      let withoutPrices: string[] = [];
       const priceCheckStartDate = startDateMoment.clone().subtract(10, 'days').format(formatYMD);
+
       try {
-        await checkPrices(uniqueSymbols, priceCheckStartDate, undefined, undefined, forceRefresh);
-        for (const currency of uniqueCurrencies) {
-          await checkPriceCurrency(currency, portfolio.currency, priceCheckStartDate, forceRefresh);
-        }
-        if (withoutPrices.length > 0) {
-          await fillDateHistoryFromTrades(allTrades, withoutPrices, endDateString);
+        if (isIncrementalMode) {
+          // Only extract symbols/currencies from trades; fetch prices for the recent window only
+          uniqueSymbols = [...new Set(allTrades.map(t => t.symbol).filter(Boolean) as string[])];
+          uniqueCurrencies = [...new Set(allTrades.map(t => t.currency).filter(Boolean) as string[])];
+          if (portfolio.baseInstrument && !uniqueSymbols.includes(portfolio.baseInstrument)) {
+            uniqueSymbols.push(portfolio.baseInstrument);
+          }
+          await checkPrices(uniqueSymbols, priceCheckStartDate, undefined, undefined, false);
+          for (const currency of uniqueCurrencies) {
+            await checkPriceCurrency(currency, portfolio.currency, priceCheckStartDate, false);
+          }
+        } else {
+          const priceResult = await checkPortfolioPricesCurrencies(
+            tradesInDateRange.length > 0 ? tradesInDateRange : allTrades,
+            portfolio.currency, undefined, forceRefresh
+          );
+          uniqueSymbols = priceResult.uniqueSymbols;
+          uniqueCurrencies = priceResult.uniqueCurrencies;
+          withoutPrices = priceResult.withoutPrices;
+
+          if (portfolio.baseInstrument && !uniqueSymbols.includes(portfolio.baseInstrument)) {
+            uniqueSymbols.push(portfolio.baseInstrument);
+          }
+          await checkPrices(uniqueSymbols, priceCheckStartDate, undefined, undefined, forceRefresh);
+          for (const currency of uniqueCurrencies) {
+            await checkPriceCurrency(currency, portfolio.currency, priceCheckStartDate, forceRefresh);
+          }
+          if (withoutPrices.length > 0) {
+            await fillDateHistoryFromTrades(allTrades, withoutPrices, endDateString);
+          }
         }
       } catch (priceError) {
         console.error("Error fetching price data:", priceError);
@@ -258,7 +289,9 @@ export class PortfolioCalculator {
         let tempShares = 0;
 
         for (const trade of tradesUpToLastRecord) {
-          const rate = getRate(trade.currency, portfolio.currency, trade.tradeTime);
+          const rate = trade.rate > 0
+            ? trade.rate
+            : getRate(trade.currency, portfolio.currency, trade.tradeTime);
           if (rate == null) {
             console.warn(`Skipping trade due to missing rate: ${trade.symbol || 'CashOp'} on ${trade.tradeTime}`);
             continue;
@@ -301,9 +334,10 @@ export class PortfolioCalculator {
 
       } else {
         // Standard full calculation
-        const tradesBeforeStart = allTrades.filter(trade => moment.utc(trade.tradeTime).isBefore(startDateMoment, 'day'));
-        for (const trade of tradesBeforeStart) {
-          const rate = getRate(trade.currency, portfolio.currency, trade.tradeTime);
+        for (const trade of tradesBeforeStartDate) {
+          const rate = trade.rate > 0
+            ? trade.rate
+            : getRate(trade.currency, portfolio.currency, trade.tradeTime);
           if (rate == null) {
             console.warn(`Skipping pre-start trade due to missing rate: ${trade.symbol || 'CashOp'} on ${trade.tradeTime}`);
             continue;
