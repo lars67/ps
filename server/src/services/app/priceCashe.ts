@@ -50,28 +50,48 @@ export async function checkPrices(
       ? startDate0
       : moment(startDate0 as Date).format(formatYMD);
   const withoutPrices = [] as string[];
+  const nowStr = moment().format(formatYMD);
   try {
     for (const symbol of portfolioSymbols) {
-      if (forceRefresh || !histories[symbol] || histories[symbol] > startDate) {
+      const endKey = symbol + '_end';
+      const needFullFetch = forceRefresh || !histories[symbol] || histories[symbol] > startDate;
+      // Also do an incremental top-up if the cached data doesn't reach today
+      const needTopUp = !needFullFetch && histories[endKey] && histories[endKey] < nowStr;
+
+      if (needFullFetch) {
         console.log("fetchHistory", symbol, startDate, forceRefresh ? "(force refresh)" : "");
         const history = await fetchHistory({ symbol, from: startDate });
-        console.log(symbol, history);
         if (history.length === 0) {
           withoutPrices.push(symbol);
         }
         histories[symbol] = startDate;
         for (const h of history) {
           const { date, close } = h;
-          // Store historical prices as-is (in pence for LSE stocks)
-          // Scaling to GBP will be done in position calculations
-
           if (!dateHistory[date]) {
             dateHistory[date] = { [symbol]: close };
           } else {
             dateHistory[date][symbol] = close;
           }
         }
-       console.log('dateHistory', dateHistory);
+        if (history.length > 0) {
+          histories[endKey] = history[history.length - 1].date;
+        }
+      } else if (needTopUp) {
+        // Fetch only the missing recent window (from day after last cached date)
+        const topUpFrom = moment(histories[endKey]).add(1, 'day').format(formatYMD);
+        console.log("fetchHistory top-up", symbol, topUpFrom);
+        const history = await fetchHistory({ symbol, from: topUpFrom });
+        for (const h of history) {
+          const { date, close } = h;
+          if (!dateHistory[date]) {
+            dateHistory[date] = { [symbol]: close };
+          } else {
+            dateHistory[date][symbol] = close;
+          }
+        }
+        if (history.length > 0) {
+          histories[endKey] = history[history.length - 1].date;
+        }
       }
     }
   } catch (error) {
@@ -307,7 +327,8 @@ export async function checkPriceCurrency(
     formatYMD,
   );
 
-  const addFXHistory = async (fx: string, startDate: string) => {
+  // Returns the actual last date stored, or false if nothing was fetched
+  const addFXHistory = async (fx: string, startDate: string): Promise<string | false> => {
     let history = await fetchHistory({
       symbol: `${fx}:FX`,
       from: startDate,
@@ -335,7 +356,8 @@ export async function checkPriceCurrency(
         }
      //   i <=10 && console.log(date,dateHistory[date]);
       });
-      return true;
+      // Return the actual last date in the fetched data (may be < today if CSV is stale)
+      return history[history.length - 1].date;
     }
     return false;
   };
@@ -356,10 +378,18 @@ export async function checkPriceCurrency(
         return;
       }
     }
-    const addedFX = await addFXHistory(fx, startDate);
-    if (addedFX) histories[fx + '_end'] = nowStr;
-    const addedFX2 = await addFXHistory(fx2, startDate);
-    if (addedFX2) histories[fx2 + '_end'] = nowStr;
+    // For re-fetches: if we already have data up to some date, only request from that date
+    // forward so that readLocalCSVData returns empty and the external API fills the gap.
+    const fxFetchFrom = (!forceRefresh && histories[fx + '_end'])
+      ? moment(histories[fx + '_end']).add(1, 'day').format(formatYMD)
+      : startDate;
+    const fx2FetchFrom = (!forceRefresh && histories[fx2 + '_end'])
+      ? moment(histories[fx2 + '_end']).add(1, 'day').format(formatYMD)
+      : startDate;
+    const addedFX = await addFXHistory(fx, fxFetchFrom);
+    if (addedFX) histories[fx + '_end'] = addedFX; // actual last date, not today
+    const addedFX2 = await addFXHistory(fx2, fx2FetchFrom);
+    if (addedFX2) histories[fx2 + '_end'] = addedFX2; // actual last date, not today
     if (currency==='CNH' || (!addedFX && !addedFX2)) {
       //console.log(`FX price absent for ${fx} ${fx2} !!!!!!!!!!`);
       badSymbol= `${fx}:FX`
