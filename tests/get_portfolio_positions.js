@@ -501,7 +501,7 @@ class PS2LoginHandler {
 const ps2Handler = new PS2LoginHandler();
 
 async function getPortfolioPositions() {
-    const portfolioId = '697083689a5f1b1271d7d872';
+    const portfolioId = '69bbba8fb4f3805cb1e09066';
 
     try {
         console.log('Logging into PS2...');

@@ -21,6 +21,7 @@ import eventEmitter, { sendEvent } from "../../services/app/eventEmiter";
 import {
   getCompanyField,
   getGICS,
+  getSymbolCountry,
   getSymbolsCountries,
 } from "../../services/app/companies";
 import { actualizeTrades, getPortfolioTrades } from "../../utils/portfolio";
@@ -1128,10 +1129,13 @@ async function getPositions(
   profiler.startTimer("getPositions.gicsLookup", "system", "getPositions");
   const nonFXSymbols = uniqueSymbols.filter((s) => !s.endsWith(":FX"));
 
-  // Batch GICS lookup for all symbols
+  // Batch GICS + country lookup for all symbols
+  const symbolCountryMap = new Map<string, string>();
   for (const symbol of nonFXSymbols) {
     const { sector, industry } = await getGICS(symbol);
     gicsCache.set(symbol, { sector, industry });
+    const country = await getSymbolCountry(symbol);
+    symbolCountryMap.set(symbol, country);
   }
   profiler.endTimer("getPositions.gicsLookup", "system", "getPositions", {
     symbolsCount: nonFXSymbols.length,
@@ -1180,7 +1184,7 @@ async function getPositions(
 
   let oldPortfolio: Record<
     string,
-    Partial<Trade & { sector?: string; industry?: string }>
+    Partial<Trade & { sector?: string; industry?: string; country?: string }>
   > = {};
   
   profiler.startTimer("getPositions.tradeLoop", "system", "getPositions");
@@ -1237,8 +1241,8 @@ async function getPositions(
           //         console.log('v', symbol, v, 'fee',trade.fee*trade.rate);
         }
 
-        const country = symbolCountries[symbol];
-        const { region, subRegion } = getCountryFields(country, [
+        const country = symbolCountryMap.get(symbol) || symbolCountries[symbol] || "";
+        const { a2, region, subRegion } = getCountryFields(country, [
           "a2",
           "region",
           "subRegion",
@@ -1282,6 +1286,7 @@ async function getPositions(
           tradeTime: trade.tradeTime,
           sector,
           industry,
+          country,
         };
         const vs = /*-*/ priceAdj * trade.volume * dir;
         const v = vs * trade.rate;
@@ -1486,17 +1491,8 @@ function prepareQuoteData2(
         qt.marketClose = close;
       }
       if (needAddNameCountry) {
-        const { a2, region, subRegion } = getCountryFields(q.country, [
-          "a2",
-          "region",
-          "subRegion",
-        ]);
-        console.log(q.country, a2, region, subRegion);
         qt.name = q.companyName;
-        qt.country = q.country;
-        qt.a2 = a2; //getCountryField(q.country)
-        qt.region = region;
-        qt.subRegion = subRegion;
+        // country/a2/region/subRegion come from MongoDB via oldPortfolio — do not overwrite with SSE data
       }
 
       // Apply GBX scaling for LSE stocks (all GBP-denominated stocks from LSE are quoted in pence)

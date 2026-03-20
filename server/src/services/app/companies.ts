@@ -137,6 +137,41 @@ export const getGICS = async (
     await client.close();
   }
 };
+
+const symbolCountryCache: Record<string, string> = {};
+
+export const getSymbolCountry = async (symbol: string): Promise<string> => {
+  if (symbol in symbolCountryCache) return symbolCountryCache[symbol];
+
+  if (!process.env.MONGODB_URI) return "";
+
+  const client = new MongoClient(process.env.MONGODB_URI);
+  try {
+    await client.connect();
+    const collection = client.db('Aktia').collection('Symbols');
+
+    let doc = await collection.findOne({ 'Symbol-Mic': symbol });
+    if (!doc) {
+      doc = await collection.findOne({
+        $or: [
+          { Symbol: symbol },
+          { 'Symbol-Mic': new RegExp(`^${symbol}:`) },
+        ]
+      });
+    }
+
+    const country = doc?.['Country or region of registration'] || "";
+    symbolCountryCache[symbol] = country;
+    return country;
+  } catch (err) {
+    console.log("Error in getSymbolCountry for symbol:", symbol, err);
+    symbolCountryCache[symbol] = "";
+    return "";
+  } finally {
+    await client.close();
+  }
+};
+
 export const getGICSAr = async (
   symbolsAr: string[],
 ): Promise<Record<string, { sector: string; industry: string }>> => {
