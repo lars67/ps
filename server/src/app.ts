@@ -17,6 +17,13 @@ import { portfolioHistoryCronJob } from "./jobs/portfolioHistoryCronJob";
 const cors = require("cors");
 const https = require("https");
 
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("[unhandledRejection] Unhandled promise rejection:", reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("[uncaughtException] Uncaught exception:", err);
+});
+
 const app = express();
 //app.use(cors());
 app.use(
