@@ -111,6 +111,9 @@ export async function add(
   }
 
 
+  if (trade.fee !== undefined && isNaN(trade.fee as unknown as number)) trade.fee = 0;
+  if (trade.feeSymbol !== undefined && isNaN(trade.feeSymbol as unknown as number)) trade.feeSymbol = 0;
+
   trade.state = "1";
   const newTrade = new TradeModel(trade);
   const added = await newTrade.save();
