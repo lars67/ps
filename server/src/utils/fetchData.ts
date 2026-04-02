@@ -147,28 +147,56 @@ export async function loadCurrenciesList(symbols: StringRecord) {
  * Read historical data from local CSV files created by CustomYahooDownload.py
  * This prioritizes local data over external API calls for better precision and performance
  */
-async function readLocalCSVData(symbol: string, query: StringRecord): Promise<HistoricalData[] | null> {
+const US_MICS = ['XNAS', 'XNYS', 'ARCX', 'XASE', 'XNMS', 'XNCM'];
+
+async function findCSVPath(symbol: string, csvDir: string): Promise<string | null> {
+    // First try the exact symbol as provided
+    const directPath = path.join(csvDir, `${symbol}.csv`);
+    if (fs.existsSync(directPath)) {
+        return directPath;
+    }
+
+    // If symbol doesn't have a MIC suffix (no colon) and looks like a US ticker,
+    // try common US MICs
+    if (!symbol.includes(':') && !symbol.includes('.')) {
+        for (const mic of US_MICS) {
+            const micPath = path.join(csvDir, `${symbol}:${mic}.csv`);
+            if (fs.existsSync(micPath)) {
+                console.log(`Found MIC version: ${micPath}`);
+                return micPath;
+            }
+        }
+    }
+
+    return null;
+}
+
+async function readLocalCSVData(symbol: string, query: StringRecord, retried: boolean = false): Promise<HistoricalData[] | null> {
     try {
-        // PS2 symbol format matches CSV filename format
-        // Both use DANSKE:XCSE format (with colons)
-        const csvSymbol = symbol;
         const csvDir = '/home/lars/projects/Finex/FastCla/Data/symbols/MicSymbols';
-        const csvPath = path.join(csvDir, `${csvSymbol}.csv`);
+
+        // Find the CSV file (handles both direct name and MIC-suffixed names)
+        let csvPath = await findCSVPath(symbol, csvDir);
 
         // Check if CSV file exists
-        if (!fs.existsSync(csvPath)) {
-            console.log(`CSV file not found: ${csvPath}, attempting to download...`);
+        if (!csvPath) {
+            console.log(`CSV file not found for ${symbol}, attempting to download...`);
             // Try to download the missing data using the Python script
             const downloadSuccess = await downloadMissingCSVData(symbol);
             if (!downloadSuccess) {
                 console.log(`Failed to download CSV data for ${symbol}`);
                 return null;
             }
+            // Re-check if file exists after download attempt
+            csvPath = await findCSVPath(symbol, csvDir);
+            if (!csvPath) {
+                console.log(`CSV file still not found after download attempt for ${symbol}`);
+                return null;
+            }
         }
 
-        // Re-check if file exists after download attempt
-        if (!fs.existsSync(csvPath)) {
-            console.log(`CSV file still not found after download attempt: ${csvPath}`);
+        // At this point csvPath should not be null, but check for TypeScript
+        if (!csvPath) {
             return null;
         }
 
@@ -177,7 +205,21 @@ async function readLocalCSVData(symbol: string, query: StringRecord): Promise<Hi
         const lines = csvContent.split('\n').filter(line => line.trim());
 
         if (lines.length < 2) {
-            console.log(`CSV file ${csvPath} has insufficient data`);
+            console.log(`CSV file ${csvPath} has insufficient data (only header or empty)`);
+            // Delete the insufficient file and try to re-download
+            if (!retried) {
+                try {
+                    fs.unlinkSync(csvPath);
+                    console.log(`Deleted insufficient CSV file: ${csvPath}`);
+                } catch (err) {
+                    console.log(`Could not delete insufficient CSV file: ${csvPath}`);
+                }
+                console.log(`Attempting to re-download data for ${symbol}...`);
+                const downloadSuccess = await downloadMissingCSVData(symbol);
+                if (downloadSuccess) {
+                    return await readLocalCSVData(symbol, query, true);
+                }
+            }
             return null;
         }
 
@@ -200,6 +242,10 @@ async function readLocalCSVData(symbol: string, query: StringRecord): Promise<Hi
         const fromDate = query.from ? moment(query.from) : null;
         const toDate = query.till ? moment(query.till) : null;
 
+        // Count total rows before date filtering
+        let totalCsvRows = 0;
+        let filteredByDateCount = 0;
+
         for (let i = 1; i < lines.length; i++) {
             const columns = lines[i].split(',');
 
@@ -210,9 +256,17 @@ async function readLocalCSVData(symbol: string, query: StringRecord): Promise<Hi
             const datePart = dateStr.split(' ')[0]; // Take only the date part
             const date = moment(datePart);
 
+            totalCsvRows++;
+
             // Filter by date range if specified
-            if (fromDate && date.isBefore(fromDate)) continue;
-            if (toDate && date.isAfter(toDate)) continue;
+            if (fromDate && date.isBefore(fromDate)) {
+                filteredByDateCount++;
+                continue;
+            }
+            if (toDate && date.isAfter(toDate)) {
+                filteredByDateCount++;
+                continue;
+            }
 
             // Parse values with full precision - read as strings first to preserve exact values
         const openStr = openIndex !== -1 && columns[openIndex] ? columns[openIndex].trim() : '';
@@ -244,7 +298,33 @@ async function readLocalCSVData(symbol: string, query: StringRecord): Promise<Hi
         // Sort by date ascending
         historicalData.sort((a, b) => moment(a.date).diff(moment(b.date)));
 
-        console.log(`Successfully read ${historicalData.length} records from ${csvPath}`);
+        console.log(`Successfully read ${historicalData.length} records from ${csvPath} (total CSV rows: ${totalCsvRows}, filtered by date: ${filteredByDateCount})`);
+
+        // If CSV has no data records, check if it's a date range issue or empty file
+        if (historicalData.length === 0 && !retried) {
+            // If we had data but all was filtered by date range, don't re-download
+            if (totalCsvRows > 0 && filteredByDateCount === totalCsvRows) {
+                console.log(`⚠️  All ${totalCsvRows} records in ${csvPath} were filtered out by date range [${query.from || 'start'} to ${query.till || 'end'}]. Not re-downloading.`);
+                return historicalData;
+            }
+
+            // Otherwise, file is truly empty/corrupt - try to re-download
+            console.log(`CSV file ${csvPath} has 0 valid records (total rows: ${totalCsvRows}), attempting to re-download...`);
+            // Delete the empty/corrupt file
+            try {
+                fs.unlinkSync(csvPath);
+                console.log(`Deleted empty CSV file: ${csvPath}`);
+            } catch (err) {
+                console.log(`Could not delete empty CSV file: ${csvPath}`);
+            }
+            // Try to download fresh data
+            const downloadSuccess = await downloadMissingCSVData(symbol);
+            if (downloadSuccess) {
+                // Re-read the newly downloaded file (one retry only)
+                return await readLocalCSVData(symbol, query, true);
+            }
+        }
+
         return historicalData;
 
     } catch (error) {
