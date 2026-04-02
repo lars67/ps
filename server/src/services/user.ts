@@ -15,9 +15,14 @@ export async function list(
 }
 
 export async function add(User: User): Promise<User | null> {
-  const newUser = new UserModel(User);
-  const added = await newUser.save();
-  return added;
+  try {
+    const newUser = new UserModel(User);
+    const added = await newUser.save();
+    return added;
+  } catch (err) {
+    console.log('[user.add] Error:', err);
+    return null;
+  }
 }
 
 export async function update(
