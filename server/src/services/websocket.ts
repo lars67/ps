@@ -12,6 +12,7 @@ import { guestAccessAllowed } from "../controllers/guestAccessAlowed";
 import * as http from "http";
 import * as process from "process";
 import {User} from "@/types/user";
+import { cleanupUserSubscriptions } from "./portfolio/positions";
 
 
 const expiresIn = "10h";
@@ -165,6 +166,8 @@ export const initWS = (
       logger.log(`  connection closed`);
       const position = clients.findIndex((client) => client.socket === socket);
       position >= 0 && clients.splice(position, 1);
+      // Cleanup portfolio position subscriptions for this user
+      cleanupUserSubscriptions(modif);
     });
   });
 
@@ -208,6 +211,8 @@ export const initWS = (
       logger.log(`  connection closed`);
       const position = guests.findIndex((client) => client.socket === socket);
       position >= 0 && guests.splice(position, 1);
+      // Cleanup portfolio position subscriptions for this guest
+      cleanupUserSubscriptions(modif);
     });
   });
   //  console.log(`Login server running on port ${loginPort}`);

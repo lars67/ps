@@ -44,6 +44,41 @@ import { isGBXQuoted } from "../../services/app/companies";
 import profiler from "../../utils/profiler";
 const subscribers: Record<string, SubscribeMsgs> = {}; //userModif-> SubscribeMsgs
 
+// Track previous subscription count for debugging
+let prevSubscriptionCount = 0;
+
+function logSubscriptionCount(context: string) {
+  let totalCount = 0;
+  for (const userModif in subscribers) {
+    totalCount += Object.keys(subscribers[userModif]).length;
+  }
+  if (totalCount !== prevSubscriptionCount) {
+    console.log(`\n[SUBSCRIPTION DEBUG] ${context}: Active subscriptions: ${totalCount} (was: ${prevSubscriptionCount})`);
+    prevSubscriptionCount = totalCount;
+  }
+}
+
+// Cleanup all subscriptions for a user when their socket disconnects
+export function cleanupUserSubscriptions(userModif: string) {
+  if (!subscribers[userModif]) {
+    return;
+  }
+  
+  console.log(`[SUBSCRIPTION DEBUG] Cleaning up subscriptions for user: ${userModif}`);
+  
+  Object.keys(subscribers[userModif]).forEach((subscribeId) => {
+    const sub = subscribers[userModif][subscribeId];
+    sub.sseService.stop();
+    eventEmitter.removeListener(sub.sseService.getEventName(), sub.registeredHandler);
+    if (sub.tradeHandler) {
+      eventEmitter.removeListener("trade.change", sub.tradeHandler);
+    }
+  });
+  
+  delete subscribers[userModif];
+  logSubscriptionCount('socket_disconnect');
+}
+
 type QuoteData2 = {
   symbol: string;
   currency: string;
@@ -190,6 +225,7 @@ export async function positions(
         eventEmitter.removeListener("trade.change", sub.tradeHandler);
       }
       delete subscribers[userModif][subscribeId];
+      logSubscriptionCount('unsubscribe');
       return { msg: `portfolio.positions unsubscribed` };
     } else {
       return { error: `subscribeId=${subscribeId} is unknown` };
@@ -570,7 +606,10 @@ export async function positions(
       const investedFullSymbol = Number(
         portfolioPositions[symbol].investedFullSymbol,
       );
-      if (isFirst) {
+      // Treat as first-time initialization if marketValue was never set
+      // (can happen when a symbol's first quote arrives after the initial isFirst pass)
+      const isFirstForSymbol = isFirst || portfolioPositions[symbol].marketValue === undefined;
+      if (isFirstForSymbol) {
         console.log(
           symbol,
           "volume,investedFull, fees",
@@ -744,22 +783,23 @@ export async function positions(
       0,
     );
 
-    // Weights calculation - only skip when totalsMode is "none"
-    if (totalsMode !== "none") {
-      //weights add to portfolioPositions
-      Object.keys(portfolioPositions).forEach((symbol) => {
-        let change = changes.find((c) => c.symbol === symbol);
-        if (!change) {
-          change = { symbol } as PortfolioPositionFull;
-          changes.push(change);
-        }
+    // Ensure all portfolio symbols are in changes (regardless of totalsMode)
+    // This covers symbols that didn't receive a quote yet (late-arriving or new symbols)
+    Object.keys(portfolioPositions).forEach((symbol) => {
+      let change = changes.find((c) => c.symbol === symbol);
+      if (!change) {
+        change = { symbol } as PortfolioPositionFull;
+        changes.push(change);
+      }
+      // Weights calculation - only when totalsMode is not "none"
+      if (totalsMode !== "none") {
         (change as PortfolioPositionFull).weight =
           Math.round(
             (10000 * Number(portfolioPositions[symbol].marketValue)) /
               marketValue,
           ) / 100;
-      });
-    }
+      }
+    });
     //console.log('changes', changes)
     switch (closed) {
       case "no":
@@ -986,6 +1026,7 @@ export async function positions(
     handler: registeredHandler,
     registeredHandler,
   };
+  logSubscriptionCount('subscribe');
 
   eventEmitter.on(eventName, registeredHandler);
 
