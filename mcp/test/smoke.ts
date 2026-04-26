@@ -190,12 +190,20 @@ try {
     trade3Id = getField(t, '_id') as string;
   }
 
-  // ── 9. PORTFOLIOS.TRADES ──────────────────────────────────────────────────
+  // ── 9. TRADES.LIST ────────────────────────────────────────────────────────
+  section('trades.list — filter by portfolioId');
+  {
+    const trades = await client.send('trades.list', { filter: { portfolioId } });
+    ok('returns array', Array.isArray(trades));
+    ok('has trades', (trades as unknown[]).length >= 3);
+    console.log(`     ${(trades as unknown[]).length} trade(s) returned`);
+  }
+
+  // ── 9b. PORTFOLIOS.TRADES ─────────────────────────────────────────────────
   section('portfolio.trades');
   {
     const trades = await client.send('portfolio.trades', { _id: portfolioId });
     ok('returns array', Array.isArray(trades));
-    ok('has trades', (trades as unknown[]).length >= 3);
     console.log(`     ${(trades as unknown[]).length} trade(s) returned`);
   }
 

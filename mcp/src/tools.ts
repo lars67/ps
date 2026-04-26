@@ -251,6 +251,25 @@ export const tools: ToolDef[] = [
   // ─── TRADES ────────────────────────────────────────────────────────────────
 
   {
+    name: 'trades_list',
+    description:
+      'List trades using a filter object. Works like any collection list — ' +
+      'pass any trade fields to filter by, e.g. {"portfolioId": "..."} or {"symbol": "AAPL"}. ' +
+      'Returns all matching trade documents.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filter: {
+          type: 'object',
+          description: 'Filter object with trade fields, e.g. {"portfolioId": "...", "symbol": "AAPL"}. Pass {} for all trades.',
+        },
+      },
+    },
+    handler: async (client, args) =>
+      client.send('trades.list', { filter: args.filter ?? {} }),
+  },
+
+  {
     name: 'trades_add',
     description:
       'Add a buy or sell trade. ' +
