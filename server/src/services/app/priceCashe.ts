@@ -492,15 +492,15 @@ export const getRate = (
       }
     }
 
-    // If still no rate found, return 0 to indicate failure without crashing process
+    // If still no rate found, return null to indicate failure
     console.error(`CRITICAL: No rate found for ${currency}${balanceCurrency} or ${balanceCurrency}${currency} within ${SEARCH_DAY} days!`);
-    return 0;
+    return null;
   }
 
-  const r = rate1 ? rate1 : (rate2 ? 1 / rate2 : 0);
-  if (r === 0) {
+  const r = rate1 ? rate1 : (rate2 ? 1 / rate2 : null);
+  if (!r) {
       console.error(`CRITICAL: Rate calculation failed for ${currency}/${balanceCurrency} on ${date}`);
-      return 0;
+      return null;
   }
   //console.log(`RATES '${currency}${balanceCurrency}' '${date}'`, rate1, rate2, '=>', r)
   return Number(r.toFixed(4));

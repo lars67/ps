@@ -2,6 +2,7 @@ import {StringRecord} from "../types/other";
 import moment from "moment";
 import * as fs from 'fs';
 import * as path from 'path';
+import { formatYMD } from "../constants";
 import { spawn } from 'child_process';
 
 export type  HistoricalDataInput =
@@ -40,43 +41,63 @@ export const toQueryString = (query: StringRecord) =>
         .map(([key, val]) => `${key}=${encodeURI(val)}`)
         .join('&');
 
+const parseProxyData = (data: any[], symbol: string): HistoricalData[] => {
+    let prevValue: HistoricalDataInput;
+    return (Array.isArray(data) ? data : []).map((item: HistoricalDataInput) => {
+        const closeValue = item.close || item['adj close'] || (symbol && item[symbol]) || (prevValue && (prevValue.close || prevValue['adj close'] || (symbol && prevValue[symbol])));
+        const preparedItem = {
+            date: item.date,
+            dateUnix: moment(item.date, 'YYYY-MM-DD').toDate(),
+            open: parseFloat(item.open || ''),
+            high: parseFloat(item.high || ''),
+            low: parseFloat(item.low || ''),
+            close: parseFloat(closeValue || ''),
+            volume: parseFloat(item.volume || '0')
+        };
+        if (item['adj close'] || item.close || (symbol && item[symbol])) {
+            prevValue = item;
+        }
+        return preparedItem;
+    });
+};
+
 export const fetchHistory =  async function(query:StringRecord):Promise<HistoricalData[]> {
     try {
         const symbol = query.symbol;
+        const nowStr = moment().format(formatYMD);
 
         // First, try to read from local CSV files (high precision data)
         const localData = await readLocalCSVData(symbol, query);
         if (localData && localData.length > 0) {
-            console.log(`✅ Using high-precision local CSV data for ${symbol} (${localData.length} records)`);
+            const lastCsvDate = localData[localData.length - 1].date;
+            // If CSV is up to date, use it as-is
+            if (lastCsvDate >= nowStr) {
+                console.log(`✅ Using high-precision local CSV data for ${symbol} (${localData.length} records)`);
+                return localData;
+            }
+            // CSV is stale — fetch the gap from the proxy and merge
+            const gapFrom = moment(lastCsvDate).add(1, 'day').format(formatYMD);
+            console.log(`⚠️  Local CSV for ${symbol} ends at ${lastCsvDate}, fetching gap from ${gapFrom} via proxy`);
+            try {
+                const gapResponse = await fetch(getDataUrl('historical', toQueryString({ ...query, from: gapFrom })));
+                const gapData = await gapResponse.json();
+                const gapParsed = parseProxyData(gapData, symbol);
+                if (gapParsed.length > 0) {
+                    console.log(`✅ Merged ${gapParsed.length} new records from proxy for ${symbol}`);
+                    return [...localData, ...gapParsed];
+                }
+            } catch (gapErr) {
+                console.warn(`Could not fetch gap data for ${symbol}:`, gapErr);
+            }
             return localData;
         }
 
         // If local data not available, fall back to external API (lower precision)
         console.log(`⚠️  Local CSV data not available for ${symbol}, falling back to external API`);
 
-        // console.log(getDataUrl('historical', toQueryString(query)));
         const response = await fetch(getDataUrl('historical', toQueryString(query)) );
-         const data = await response.json();
-         // console.log('DATA FROM PROXY', data);
-        let prevValue: HistoricalDataInput;
-        const targetData = (Array.isArray(data) ? data : []).map((item:HistoricalDataInput) => {
-            const closeValue = item.close || item['adj close'] || (symbol && item[symbol]) || (prevValue && (prevValue.close || prevValue['adj close'] || (symbol && prevValue[symbol])));
-            const preparedItem = {
-                date: item.date,
-                dateUnix: moment(item.date, 'YYYY-MM-DD').toDate(), //unix(),utoDate(),
-                open: parseFloat(item.open || ''),
-                high: parseFloat(item.high|| ''),
-                low: parseFloat(item.low || ''),
-                close: parseFloat(closeValue || ''),
-                volume: parseFloat(item.volume || '0')
-            };
-            if (item['adj close'] || item.close || (symbol && item[symbol])) {
-                prevValue = item;
-            }
-            return preparedItem;
-        });
-
-        return targetData;
+        const data = await response.json();
+        return parseProxyData(data, symbol);
     } catch (err) {
         console.log('Error', query, err);
         return [];

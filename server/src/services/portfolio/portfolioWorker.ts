@@ -249,6 +249,8 @@ class WorkerPortfolioCalculator {
       let perfomanceNominal = 0;
       let initialNavForPerf = 0;
       let baseIndexValue = 100000;
+      // Tracks the last successfully priced value per symbol — used when price/rate is unavailable
+      const lastKnownHoldingValues: Record<string, number> = {};
 
       // Process Initial State (Trades Before Start Date)
       // Use trade.rate (the stored FX rate at execution time) so we don't need to load
@@ -382,6 +384,7 @@ class WorkerPortfolioCalculator {
             Object.keys(currentHoldings).forEach(symbol => {
               if (currentHoldings[symbol]?.volume === 0) {
                 delete currentHoldings[symbol];
+                delete lastKnownHoldingValues[symbol];
               }
             });
           }
@@ -396,16 +399,12 @@ class WorkerPortfolioCalculator {
             if (price != null && rate != null) {
               const holdingValue = price * rate * holding.volume;
               currentDayInv += holdingValue;
+              lastKnownHoldingValues[symbol] = holdingValue;
+            } else if (lastKnownHoldingValues[symbol] != null) {
+              console.warn(`Missing price/rate for ${symbol} on ${currentDayString}. Using last known value.`);
+              currentDayInv += lastKnownHoldingValues[symbol];
             } else {
-              console.warn(`Could not get price/rate for ${symbol} on ${currentDayString}. Using last known value for NAV calculation.`);
-              const prevDayStr = loopMoment.clone().subtract(1, 'day').format(formatYMD);
-              const lastPrice = getDateSymbolPrice(prevDayStr, symbol);
-              const lastRate = getRate(holding.currency, portfolio.currency, prevDayStr);
-               if (lastPrice != null && lastRate != null) {
-                currentDayInv += lastPrice * lastRate * holding.volume;
-               } else {
-                 console.error(`CRITICAL: Could not find any price/rate for ${symbol} on or before ${currentDayString}. Excluding from value.`);
-               }
+              console.error(`No price/rate found for ${symbol} on ${currentDayString} and no prior value available. Excluding from NAV.`);
             }
           }
           dayInvestedValue = currentDayInv;
