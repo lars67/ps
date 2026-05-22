@@ -252,6 +252,16 @@ export const getMemberAccessAlowedCommands = () => {
         }
       }
     });
+    Object.keys(customCommands).forEach((g) => {
+      // @ts-ignore
+      const { description } = customCommands[g];
+      if (description) {
+        Object.keys(description).forEach((c) => {
+          if (description[c].access === 'member' || description[c].access === 'public')
+            memberAllowedCommands.push(`${g}.${c}`.toLowerCase());
+        });
+      }
+    });
     console.log('memberAllowedCommands >>>', memberAllowedCommands)
 
   }

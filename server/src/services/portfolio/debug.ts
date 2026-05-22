@@ -325,7 +325,7 @@ export async function debug(
           }
         }
         const currentNAV = currentCash + totalMarketValueBase;
-        const usdToBaseRate = getRate('USD', portfolioInstance.currency, currentDayString);
+        const usdToBaseRate = getRate('USD', portfolioInstance.currency, currentDayString) ?? 0;
         const navInUsd = usdToBaseRate > 0 ? currentNAV / usdToBaseRate : currentNAV;
         let accMarketValue = totalMarketValue;
         let accMarketValueBase = totalMarketValueBase;
@@ -598,7 +598,7 @@ export async function debug(
                 }
             }
             const currentNAV = currentCash + totalMarketValueBase;
-            const usdToBaseRate = getRate('USD', portfolioInstance.currency, currentDayString);
+            const usdToBaseRate = getRate('USD', portfolioInstance.currency, currentDayString) ?? 0;
             const navInUsd = usdToBaseRate > 0 ? currentNAV / usdToBaseRate : currentNAV;
             let accCash = currentCash;
             let accCashBase = currentCash;

@@ -42,14 +42,14 @@ export async function prices(
     const r1 = getRate('GBP','USD', '2022-02-21');
     const r2 = getRate('DKK','USD', '2022-02-25');
     const r3 = getRate('USD','DKK', '2022-02-25');
-    const getRateResult: object = {GBPUSD_20220221:r1 , DKKUSD_20220225: r2, USDDKK_20220225:r3, CHECK:r3*r2}
+    const getRateResult: object = {GBPUSD_20220221:r1 , DKKUSD_20220225: r2, USDDKK_20220225:r3, CHECK:r3!*r2!}
 
 
     const p1 = priceToBaseCurrency(100.0, '2022-02-21','GBP', 'USD' )
     const p2 = priceToBaseCurrency(100.0, '2022-02-25','DKK', 'USD' )
     const p3 = priceToBaseCurrency(100.0, '2022-02-25','USD', 'DKK' )
     const priceToBaseCurrencyResult={GBPUSD100:p1,DKKUSD100:p2, USDDKK100:p3,
-        CHECK:[ r1*100-(p1 || 0), r2*100-(p2 ||0),r3*100-(p3 ||0)] }
+        CHECK:[ r1!*100-(p1 || 0), r2!*100-(p2 ||0),r3!*100-(p3 ||0)] }
     return { fakeTrades, startDate, uniqueSymbols, uniqueCurrencies, prices, getRateResult, priceToBaseCurrencyResult}
 }
 

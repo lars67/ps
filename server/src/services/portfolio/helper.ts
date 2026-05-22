@@ -224,7 +224,7 @@ export async function fixRate(
       const tCur = trade.currency;
       const t = trade.tradeTime.split("T").shift();
       console.log("fixRate", t, r, getRate(c, pCur, t || "2020-01-01"));
-      return s * getRate(c, pCur, t || "2020-01-01"); //TO DO FIX
+      return s * (getRate(c, pCur, t || "2020-01-01") ?? 1); //TO DO FIX
     }, 1);
     console.log(
       "TTT",
