@@ -1020,15 +1020,22 @@ export async function positions(
     }
   };
 
+  let currentHandler: ((data: object) => void) = registeredHandler;
+  let subscriptionResolved = false;
+
+  const actualHandler = (data: object) => {
+    currentHandler(data);
+  };
+
   subscribers[userModif][msgId] = {
     sseService,
     tradeHandler: subscriberOnTrades,
     handler: registeredHandler,
-    registeredHandler,
+    registeredHandler: actualHandler,
   };
   logSubscriptionCount('subscribe');
 
-  eventEmitter.on(eventName, registeredHandler);
+  eventEmitter.on(eventName, actualHandler);
 
   profiler.endTimer("positions.main", userModif, msgId, {
     success: true,
@@ -1042,32 +1049,41 @@ export async function positions(
     // Set up a promise that resolves when initial quotes arrive or timeout
     return new Promise((resolve) => {
       const timeout = setTimeout(() => {
-        // If no quotes within timeout, return with processed data (may be incomplete)
-        isFirst = true;
-        processQuoteData([]);
-        const initialPositions = calcChanges([], includeAttribution, totalsMode, true);
-        resolve({ msg: "subscribed", eventName, positions: initialPositions });
-      }, 2000); // Wait up to 2 seconds for initial quotes
+        // If no quotes within timeout, send positions with empty quote data (fallback)
+        if (!subscriptionResolved) {
+          subscriptionResolved = true;
+          isFirst = true;
+          processQuoteData([]);
+          const initialPositions = calcChanges([], includeAttribution, totalsMode, true);
+          // Send positions directly as array (frontend expects array in data field)
+          sendResponse(initialPositions);
+          resolve(undefined);
+        }
+      }, 5000); // Wait up to 5 seconds for initial quotes (increased from 2s to handle slow networks and many symbols)
 
-      // Modify the handler to resolve the promise on first quote data
-      const originalHandler = subscribers[userModif][msgId].handler;
-      subscribers[userModif][msgId].handler = (data: object) => {
+      // Create first-quote handler that resolves the promise
+      const firstQuoteHandler = (data: object) => {
+        // Note: This handler is assigned to currentHandler below
         const actualChanges = (data as QuoteData[]).filter((d: QuoteData) =>
           d.lastTradeTime
             ? Object.keys(d).length > 2
             : Object.keys(d).length >= 2,
         );
 
-        if (actualChanges.length > 0) {
+        // Resolve on first quote data arrival (don't wait for all symbols)
+        if (actualChanges.length > 0 && !subscriptionResolved) {
+          subscriptionResolved = true;
           clearTimeout(timeout);
+
           // Process the initial quotes
           isFirst = true;
           processQuoteData(actualChanges);
           const initialPositions = calcChanges([], includeAttribution, totalsMode, true);
-          resolve({ msg: "subscribed", eventName, positions: initialPositions });
+          // Send initial positions data as array (frontend expects array in data field)
+          sendResponse(initialPositions);
 
           // Switch to streaming handler for subsequent updates
-          subscribers[userModif][msgId].handler = (data: object) => {
+          currentHandler = (data: object) => {
             const streamingChanges = (data as QuoteData[]).filter((d: QuoteData) =>
               d.lastTradeTime
                 ? Object.keys(d).length > 2
@@ -1076,17 +1092,15 @@ export async function positions(
             if (streamingChanges.length === 0) {
               return;
             }
-            // For streaming updates, use minimal totals and no attribution
-            const streamingTotalsMode = "minimal";
-            const streamingIncludeAttribution = false;
-            const changes = calcChanges(streamingChanges, streamingIncludeAttribution, streamingTotalsMode, false);
-            changes && sendResponse(changes);
+            // For streaming updates, send only the changed positions
+            const streamingChanges_filtered = calcChanges(streamingChanges, false, "minimal", false);
+            streamingChanges_filtered && sendResponse(streamingChanges_filtered);
           };
-        } else {
-          // No actual changes, call original handler if needed
-          originalHandler(data);
+          resolve(undefined);
         }
       };
+
+      currentHandler = firstQuoteHandler;
     });
   }
 
