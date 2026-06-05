@@ -2,6 +2,10 @@ import { UserData } from "@/services/websocket";
 import { PortfolioModel } from "../../models/portfolio";
 import { TradeModel } from "../../models/trade";
 
+// Health check endpoint for monitoring systems.
+// Used by institutional monitor to detect service availability and performance metrics.
+// Accessible without authentication on guest port (3334) for automated checks.
+
 const description = {
   ping: {
     label: "Ping (Health Check)",
@@ -10,6 +14,7 @@ const description = {
   },
 };
 
+// Response structure for ping command - includes performance metrics for scaling decisions
 interface PingResponse {
   pong: boolean;
   timestamp: string;

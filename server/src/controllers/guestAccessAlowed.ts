@@ -1,8 +1,10 @@
+// Public commands accessible on guest port (3334) without authentication.
+// Added: ping for health checks (monitoring system, load balancers)
 export const guestAccessAllowed = (socket: any, msg: any) => {
   const allowed = [
     "login",
     "signup",
-    "ping",
+    "ping",  // Health check - required for institutional monitoring
     "portfolios.list",
     "portfolios.positions",
     "portfolios.attribution",

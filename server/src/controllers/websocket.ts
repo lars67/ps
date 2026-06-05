@@ -6,6 +6,7 @@ import * as users from "../services/user";
 import * as symbols from "../services/custom/symbols";
 import * as logs from "../services/custom/logs";
 import * as tools from "../services/custom/tools";
+// Import ping as default (function) not module - for direct WebSocket dispatch
 import pingHandler from "../services/custom/ping";
 
 import * as portfolios from "../services/portfolio";
