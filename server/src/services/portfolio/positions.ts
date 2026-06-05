@@ -1058,6 +1058,20 @@ export async function positions(
     eventName: requestType === "1" ? "subscribed" : "snapshot"
   });
 
+  // For snapshot requests (requestType "0"), return positions immediately
+  if (requestType === "0") {
+    isFirst = true;
+    processQuoteData([]);
+    const snapshotPositions = calcChanges([], includeAttribution, totalsMode, true);
+    profiler.endTimer("positions.main", userModif, msgId, {
+      success: true,
+      totalDuration: Date.now() - startTime,
+      resultType: "snapshot",
+      positionsCount: snapshotPositions?.length || 0
+    });
+    return snapshotPositions;
+  }
+
   // For subscribe requests, wait for initial quotes to provide comprehensive data like snapshot mode
   if (requestType === "1") {
     // Set up a promise that resolves when initial quotes arrive or timeout
