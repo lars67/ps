@@ -1,5 +1,98 @@
 # PS2 Commands Overview
 
+## `ping` (Health Check)
+
+This command performs a heartbeat check on the PS2 server, returning its current status and performance metrics. It's designed for monitoring systems to verify that the application is responsive and healthy.
+
+### Use Cases:
+- **Monitoring**: Watchdog scripts to verify application health
+- **Load Balancing**: Determine server capacity before routing requests
+- **Scaling Decisions**: Track memory usage trends to know when to upscale
+- **Diagnostics**: Quick health check without loading data
+
+### Parameters:
+None required. Send as a simple command.
+
+### Response:
+
+```json
+{
+  "pong": true,
+  "timestamp": "2026-06-05T12:34:56.789Z",
+  "uptime_seconds": 3600,
+  "performance": {
+    "memory": {
+      "heap_used_mb": 320,
+      "heap_total_mb": 512,
+      "rss_mb": 540,
+      "external_mb": 2
+    },
+    "database": {
+      "connected": true,
+      "latency_ms": 45
+    },
+    "system": {
+      "active_handles": 127,
+      "active_requests": 3
+    }
+  },
+  "capacity": {
+    "memory_usage_percent": 62,
+    "recommendation": "INFO: Memory usage >60%, plan upgrade within 2 weeks"
+  },
+  "timestamp_ms": 1717592096789
+}
+```
+
+### Response Fields:
+
+*   **`pong`** (boolean)
+    *   **Description**: Always `true` if server is responding. If `false` or missing, the server is not healthy.
+
+*   **`timestamp`** (string, ISO 8601)
+    *   **Description**: Server time when the response was generated.
+
+*   **`uptime_seconds`** (number)
+    *   **Description**: Seconds the server has been running.
+
+*   **`performance.memory`** (object)
+    *   **`heap_used_mb`**: JavaScript heap memory in use (MB)
+    *   **`heap_total_mb`**: Total allocated heap memory (MB)
+    *   **`rss_mb`**: Resident set size - total process memory (MB)
+    *   **`external_mb`**: External memory (C++ objects, buffers)
+
+*   **`performance.database`** (object)
+    *   **`connected`** (boolean): MongoDB connection status
+    *   **`latency_ms`** (number, optional): Time to ping database (only if connected)
+
+*   **`performance.system`** (object)
+    *   **`active_handles`**: Number of active event loop handles (connections, timers, etc.)
+    *   **`active_requests`**: Number of active I/O operations
+
+*   **`capacity.memory_usage_percent`** (number)
+    *   **Description**: Heap memory usage as percentage of total. Scale thresholds:
+        *   0-60%: Healthy
+        *   60-75%: Monitor (plan upgrade within 2 weeks)
+        *   75-85%: Warning (high memory, monitor closely)
+        *   \>85%: Critical (consider immediate vertical scaling)
+
+*   **`capacity.recommendation`** (string, optional)
+    *   **Description**: Scaling or action recommendation based on current metrics.
+
+### Example Request:
+
+```json
+{
+  "command": "ping"
+}
+```
+
+### Example Usage in Monitoring:
+
+The `/home/lars/projects/monitor` system automatically sends ping commands to check PS2 health every 5 minutes. When the server is unhealthy, it attempts to restart and sends a Telegram alert with the metrics.
+
+---
+
 ## `currencies.list`
 
 This command retrieves a list of available currencies, allowing you to filter the results.

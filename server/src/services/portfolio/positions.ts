@@ -330,6 +330,12 @@ export async function positions(
   let totalRealized = 0;
 
   const subscriberOnTrades = async (ev: TradeOp) => {
+    // Check if subscription still exists (socket may have disconnected)
+    if (!subscribers[userModif] || !subscribers[userModif][msgId]) {
+      console.log("subscriberOnTrades: subscription no longer exists, cleaning up");
+      return;
+    }
+
     console.log("subscriberOnTrades get event==========", ev,msgId, realId, portfolio);
     const allTrades = await TradeModel.find({
       portfolioId: realId,
@@ -370,6 +376,12 @@ export async function positions(
         }
       });
     console.log("resubscribe if need ", symbols);
+
+    // Re-check subscription exists before accessing
+    if (!subscribers[userModif] || !subscribers[userModif][msgId]) {
+      return;
+    }
+
     subscribers[userModif][msgId].sseService.start(symbols.join(","), true);
     logger.log(`[SSEService.start ${userModif}|${msgId}] ${symbols.join(",")} ${subscribers[userModif][msgId].sseService.getEventName()}`)
     rates = { [portfolio.currency]: 1.0 } as Record<string, number>;
@@ -496,13 +508,15 @@ export async function positions(
     });
     if (requestType === "0") {
       console.log("stop!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", rates);
-      logger.log(`[SSEService.stop for requestType=0 ${userModif}|${msgId} ${subscribers[userModif][msgId]? 'defined' : 'undefined'}]`)
+      logger.log(`[SSEService.stop for requestType=0 ${userModif}|${msgId} ${subscribers[userModif]?.[msgId]? 'defined' : 'undefined'}]`)
 
-      subscribers[userModif][msgId].sseService.stop();
-      eventEmitter.removeListener(
-        subscribers[userModif][msgId].sseService.getEventName(),
-        subscribers[userModif][msgId].handler,
-      );
+      if (subscribers[userModif]?.[msgId]) {
+        subscribers[userModif][msgId].sseService.stop();
+        eventEmitter.removeListener(
+          subscribers[userModif][msgId].sseService.getEventName(),
+          subscribers[userModif][msgId].handler,
+        );
+      }
     }
     //console.log("isFirst--------------------->", isFirst);
     const q2Rates = prepareQuoteData2(

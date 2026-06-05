@@ -2,6 +2,7 @@ export const guestAccessAllowed = (socket: any, msg: any) => {
   const allowed = [
     "login",
     "signup",
+    "ping",
     "portfolios.list",
     "portfolios.positions",
     "portfolios.attribution",

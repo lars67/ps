@@ -6,6 +6,7 @@ import * as users from "../services/user";
 import * as symbols from "../services/custom/symbols";
 import * as logs from "../services/custom/logs";
 import * as tools from "../services/custom/tools";
+import pingHandler from "../services/custom/ping";
 
 import * as portfolios from "../services/portfolio";
 import { attribution as attributionHandler } from "../services/portfolio/attribution";
@@ -19,6 +20,7 @@ import {guestAccessAllowed} from "@/controllers/guestAccessAlowed";
 //const  { logs, symbols } = customServises;
 
 const handlers: { [key: string]: any } = {
+  ping: pingHandler,
   portfolios,
   "portfolios.attribution": attributionHandler,
   trades,
