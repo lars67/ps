@@ -73,6 +73,21 @@ export function cleanupUserSubscriptions(userModif: string) {
     if (sub.tradeHandler) {
       eventEmitter.removeListener("trade.change", sub.tradeHandler);
     }
+
+    // Clear subscription data to help GC free memory
+    if (sub.data) {
+      sub.data.portfolioPositions = {} as any;
+      sub.data.rates = {};
+      sub.data.fees = {} as any;
+      sub.data.cashes = {};
+      sub.data.currencyInvested = {};
+      sub.data.regionInvested = {};
+      sub.data.subRegionInvested = {};
+      sub.data.countryInvested = {};
+      sub.data.sectorInvested = {};
+      sub.data.industryInvested = {};
+      sub.data.portfoliosInvested = {};
+    }
   });
 
   delete subscribers[userModif];
@@ -229,6 +244,22 @@ export async function positions(
       if (sub.tradeHandler) {
         eventEmitter.removeListener("trade.change", sub.tradeHandler);
       }
+
+      // Clear subscription data to help GC free memory
+      if (sub.data) {
+        sub.data.portfolioPositions = {} as any;
+        sub.data.rates = {};
+        sub.data.fees = {} as any;
+        sub.data.cashes = {};
+        sub.data.currencyInvested = {};
+        sub.data.regionInvested = {};
+        sub.data.subRegionInvested = {};
+        sub.data.countryInvested = {};
+        sub.data.sectorInvested = {};
+        sub.data.industryInvested = {};
+        sub.data.portfoliosInvested = {};
+      }
+
       delete subscribers[userModif][subscribeId];
       logSubscriptionCount('unsubscribe');
 
@@ -302,43 +333,41 @@ export async function positions(
   sseServiceNumber++;
   const eventName = `SSE_QUOTES_${sseServiceNumber}`;
 
-  let rates: Record<string, number> = {};
-  let fees: Record<string, { fee: number; feeSym: number }>;
-  let cashes: Record<string, number> = {};
-  let portfolioPositions: Record<string, Partial<PortfolioPositionFull>>;
-  let currencyInvested: Record<
-    string,
-    { invested: number; investedSymbol: number; fee: number; feeSymbol: number }
-  > = {};
-  let regionInvested: Record<
-    string,
-    { invested: number; investedSymbol: number; fee: number; feeSymbol: number }
-  > = {};
-  let subRegionInvested: Record<
-    string,
-    { invested: number; investedSymbol: number; fee: number; feeSymbol: number }
-  > = {};
-  let countryInvested: Record<
-    string,
-    { invested: number; investedSymbol: number; fee: number; feeSymbol: number }
-  > = {};
-  let sectorInvested: Record<
-    string,
-    { invested: number; investedSymbol: number; fee: number; feeSymbol: number }
-  > = {};
-  let industryInvested: Record<
-    string,
-    { invested: number; investedSymbol: number; fee: number; feeSymbol: number }
-  > = {};
-  let portfoliosInvested: Record<
-    string,
-    { invested: number; investedSymbol: number; fee: number; feeSymbol: number }
-  > = {};
-  let currr;
-  let isFirst: boolean = true;
-  let investedPortfolio = 0; //full portfolio invested
+  // Portfolio data stored per-subscription to avoid closure capture
+  // This object will be attached to the subscription and freed when subscription is deleted
+  const portfolioData = {
+    rates: {} as Record<string, number>,
+    fees: {} as Record<string, { fee: number; feeSym: number }>,
+    cashes: {} as Record<string, number>,
+    portfolioPositions: {} as Record<string, Partial<PortfolioPositionFull>>,
+    currencyInvested: {} as Record<string, any>,
+    regionInvested: {} as Record<string, any>,
+    subRegionInvested: {} as Record<string, any>,
+    countryInvested: {} as Record<string, any>,
+    sectorInvested: {} as Record<string, any>,
+    industryInvested: {} as Record<string, any>,
+    portfoliosInvested: {} as Record<string, any>,
+    isFirst: true,
+    investedPortfolio: 0,
+    totalRealized: 0,
+  };
 
-  let totalRealized = 0;
+  // Local references for calculations - these reference the shared data object
+  let rates = portfolioData.rates;
+  let fees = portfolioData.fees;
+  let cashes = portfolioData.cashes;
+  let portfolioPositions = portfolioData.portfolioPositions;
+  let currencyInvested = portfolioData.currencyInvested;
+  let regionInvested = portfolioData.regionInvested;
+  let subRegionInvested = portfolioData.subRegionInvested;
+  let countryInvested = portfolioData.countryInvested;
+  let sectorInvested = portfolioData.sectorInvested;
+  let industryInvested = portfolioData.industryInvested;
+  let portfoliosInvested = portfolioData.portfoliosInvested;
+  let currr;
+  let isFirst: boolean = portfolioData.isFirst;
+  let investedPortfolio = portfolioData.investedPortfolio;
+  let totalRealized = portfolioData.totalRealized;
 
   const subscriberOnTrades = async (ev: TradeOp) => {
     // Check if subscription still exists (socket may have disconnected)
@@ -1050,9 +1079,26 @@ export async function positions(
       } else if (Date.now() - (socket as UserWebSocket).waitNum > 30000) {
         // Clean up dead subscription
         if (subscribers[userModif]?.[msgId]) {
+          const sub = subscribers[userModif][msgId];
           logger.log(`[SSEService cleanup in closed state ${userModif}|${msgId} ${sseService.getEventName()}]`);
           sseService.stop();
           eventEmitter.removeListener(sseService.getEventName(), registeredHandler);
+
+          // Clear subscription data to help GC free memory
+          if (sub.data) {
+            sub.data.portfolioPositions = {} as any;
+            sub.data.rates = {};
+            sub.data.fees = {} as any;
+            sub.data.cashes = {};
+            sub.data.currencyInvested = {};
+            sub.data.regionInvested = {};
+            sub.data.subRegionInvested = {};
+            sub.data.countryInvested = {};
+            sub.data.sectorInvested = {};
+            sub.data.industryInvested = {};
+            sub.data.portfoliosInvested = {};
+          }
+
           delete subscribers[userModif][msgId];
           logSubscriptionCount('socket_cleanup');
         }
@@ -1069,6 +1115,7 @@ export async function positions(
     tradeHandler: subscriberOnTrades,
     handler: registeredHandler,
     registeredHandler,
+    data: portfolioData,
   };
   logSubscriptionCount('subscribe');
 
