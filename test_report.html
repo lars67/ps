@@ -33,10 +33,18 @@
 
         function openModal(modalId) {
             const modal = document.getElementById(modalId);
-            // Update portfolio ID in modal if it contains the placeholder
+            // Update portfolio ID and format JSON in modal
             const jsonOutputs = modal.querySelectorAll('.json-output');
             jsonOutputs.forEach(output => {
-                output.textContent = output.textContent.replace(/698d6666ed306741f1dcc723|69dbf8672a9c23ba6ab4fb4b/g, dynamicId);
+                let text = output.textContent.replace(/698d6666ed306741f1dcc723|69dbf8672a9c23ba6ab4fb4b/g, dynamicId);
+                // Try to parse and pretty-print JSON
+                try {
+                    const json = JSON.parse(text);
+                    text = JSON.stringify(json, null, 2);
+                } catch(e) {
+                    // Not valid JSON, keep as is
+                }
+                output.textContent = text;
             });
             modal.style.display = "block";
         }
