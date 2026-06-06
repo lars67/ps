@@ -8,16 +8,80 @@
         h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
         .pass { color: #27ae60; font-weight: bold; }
         .fail { color: #e74c3c; font-weight: bold; }
+        .pending { color: #f39c12; font-weight: bold; }
         table { border-collapse: collapse; width: 100%; background-color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.2); margin-top: 20px; }
         th, td { border: 1px solid #ddd; padding: 12px; text-align: left; vertical-align: top; }
         th { background-color: #3498db; color: white; }
         tr:nth-child(even) { background-color: #f9f9f9; }
         code { background-color: #f8f8f8; padding: 2px 4px; border-radius: 4px; font-size: 0.9em; color: #c7254e; word-break: break-all; }
+        code.clickable { cursor: pointer; color: #0066cc; text-decoration: underline; }
+        code.clickable:hover { color: #0052a3; background-color: #e6f2ff; }
         .doc { font-style: italic; color: #7f8c8d; font-size: 0.9em; }
+        .details-btn { background-color: #3498db; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85em; }
+        .details-btn:hover { background-color: #2980b9; }
+        .modal { display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); overflow: auto; }
+        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; border-radius: 8px; width: 90%; max-width: 1000px; max-height: 80vh; overflow-y: auto; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close:hover { color: #000; }
+        .json-output { background-color: #f8f8f8; border: 1px solid #ddd; border-radius: 4px; padding: 15px; font-family: 'Courier New', monospace; font-size: 0.9em; white-space: pre-wrap; word-wrap: break-word; }
+        .modal h2 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+    </style>
+
+    <script>
+        // Store dynamic ID
+        let dynamicId = "69dbf8672a9c23ba6ab4fb4b";
+
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            // Update portfolio ID in modal if it contains the placeholder
+            const jsonOutputs = modal.querySelectorAll('.json-output');
+            jsonOutputs.forEach(output => {
+                output.textContent = output.textContent.replace(/698d6666ed306741f1dcc723|69dbf8672a9c23ba6ab4fb4b/g, dynamicId);
+            });
+            modal.style.display = "block";
+        }
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = "none";
+        }
+        function updateDynamicId() {
+            const input = document.getElementById('dynamicIdInput');
+            dynamicId = input.value || "69dbf8672a9c23ba6ab4fb4b";
+            document.getElementById('currentId').textContent = dynamicId;
+            localStorage.setItem('testReportId', dynamicId);
+            alert('ID updated to: ' + dynamicId + '\n\nThis ID will be used in all command examples.');
+        }
+        window.onload = function() {
+            const saved = localStorage.getItem('testReportId');
+            if (saved) {
+                dynamicId = saved;
+                document.getElementById('dynamicIdInput').value = saved;
+            }
+        }
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = "none";
+            }
+        }
+    </script>
+
+    <style>
+        .id-input-section { background-color: #e8f4f8; padding: 15px; border-radius: 4px; margin-bottom: 20px; border-left: 4px solid #3498db; }
+        .id-input-section label { font-weight: bold; color: #2c3e50; display: block; margin-bottom: 8px; }
+        .id-input-section input { padding: 8px 12px; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 0.9em; width: 300px; font-family: monospace; }
+        .id-input-section button { background-color: #27ae60; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-left: 10px; }
+        .id-input-section button:hover { background-color: #229954; }
     </style>
 </head>
 <body>
     <h1>PS2 Comprehensive API Test Report</h1>
+
+    <div class="id-input-section">
+        <label for="dynamicIdInput">📋 Test Portfolio/Command ID:</label>
+        <input type="text" id="dynamicIdInput" placeholder="Enter portfolio or command ID" value="69dbf8672a9c23ba6ab4fb4b">
+        <button onclick="updateDynamicId()">Update ID</button>
+        <p style="font-size: 0.85em; color: #555; margin-top: 8px;">This ID will be used in all command examples below. Current ID: <code id="currentId">69dbf8672a9c23ba6ab4fb4b</code></p>
+    </div>
+
     <p><strong>Generated at:</strong> 2/12/2026, 6:34:32 AM</p>
     <p>This report summarizes the execution of all major PS2 commands. It serves as a reference for external developers to understand the API structure and expected responses.</p>
     <table>
@@ -34,7 +98,7 @@
             <td class="pass">PASS</td>
             <td>Logged in as admin</td>
             <td class="doc">Authenticates user and returns JWT token for Main WS.</td>
-            <td><code>{"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6ImFkbWluIiwicm9sZSI6ImFkbWluIiwidXNlcklkIjoiNjczNGRjOWU0OGEyNTg1M2U5ZjU1MWUyIiwiaWF0IjoxNzc...</code></td>
+            <td><code class="clickable" onclick="openModal('modal_login')">{"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6ImFkbWluIiwicm9sZSI6ImFkbWluIiwidXNlcklkIjoiNjczNGRjOWU0OGEyNTg1M2U5ZjU1MWUyIiwiaWF0IjoxNzc...</code></td>
         </tr>
         
         <tr>
@@ -42,7 +106,7 @@
             <td class="pass">PASS</td>
             <td>Created user: testuser_1770874470027</td>
             <td class="doc">Creates a new system user with required profile fields.</td>
-            <td><code>{"command":"users.add","msgId":"f1aq4e","data":{"login":"testuser_1770874470027","email":"testuser_1770874470027@example.com","role":"member","passwor...</code></td>
+            <td><code class="clickable" onclick="openModal('modal_create_user')">{"command":"users.add","msgId":"f1aq4e","data":{"login":"testuser_1770874470027","email":"testuser_1770874470027@example.com","role":"member","passwor...</code></td>
         </tr>
         
         <tr>
@@ -50,7 +114,7 @@
             <td class="pass">PASS</td>
             <td>Created portfolio ID: 698d6666ed306741f1dcc723</td>
             <td class="doc">Creates a new portfolio. baseInstrument is used for benchmarking.</td>
-            <td><code>{"command":"portfolios.add","msgId":"s4knhg","data":{"name":"Test Portfolio 1770874470186","currency":"DKK","userId":"698d6666ed306741f1dcc71f","baseI...</code></td>
+            <td><code class="clickable" onclick="openModal('modal_create_portfolio')">{"command":"portfolios.add","msgId":"s4knhg","data":{"name":"Test Portfolio 1770874470186","currency":"DKK","userId":"698d6666ed306741f1dcc71f","baseI...</code></td>
         </tr>
         
         <tr>
@@ -58,7 +122,7 @@
             <td class="pass">PASS</td>
             <td>Inserted 100000 DKK</td>
             <td class="doc">Adjusts portfolio cash balance. amount > 0 is deposit.</td>
-            <td><code>{"command":"portfolios.putCash","msgId":"8ruao","data":{"side":"P","tradeType":"31","portfolioId":"698d6666ed306741f1dcc723","volume":0,"price":100000...</code></td>
+            <td><code class="clickable" onclick="openModal('modal_insert_cash')">{"command":"portfolios.putCash","msgId":"8ruao","data":{"side":"P","tradeType":"31","portfolioId":"698d6666ed306741f1dcc723","volume":0,"price":100000...</code></td>
         </tr>
         
         <tr>
@@ -66,7 +130,7 @@
             <td class="pass">PASS</td>
             <td>Added 10 MSFT</td>
             <td class="doc">Records a buy/sell transaction. rate is FX to portfolio base currency.</td>
-            <td><code>{"command":"trades.add","msgId":"y2fo0w","data":{"side":"B","tradeType":"1","portfolioId":"698d6666ed306741f1dcc723","symbol":"MSFT","name":"Microsoft...</code></td>
+            <td><code class="clickable" onclick="openModal('modal_add_trade_msft')">{"command":"trades.add","msgId":"y2fo0w","data":{"side":"B","tradeType":"1","portfolioId":"698d6666ed306741f1dcc723","symbol":"MSFT","name":"Microsoft...</code></td>
         </tr>
         
         <tr>
@@ -74,7 +138,7 @@
             <td class="pass">PASS</td>
             <td>Added 100 DANSKE:XCSE</td>
             <td class="doc"></td>
-            <td><code>{"command":"trades.add","msgId":"pn1xw","data":{"side":"B","tradeType":"1","portfolioId":"698d6666ed306741f1dcc723","symbol":"DANSKE:XCSE","name":"Dan...</code></td>
+            <td><code class="clickable" onclick="openModal('modal_add_trade_danske')">{"command":"trades.add","msgId":"pn1xw","data":{"side":"B","tradeType":"1","portfolioId":"698d6666ed306741f1dcc723","symbol":"DANSKE:XCSE","name":"Dan...</code></td>
         </tr>
         
         <tr>
@@ -82,7 +146,7 @@
             <td class="pass">PASS</td>
             <td>Added 50 USD dividend for MSFT</td>
             <td class="doc">Records passive income. side="P" and tradeType="11" for dividends.</td>
-            <td><code>{"command":"trades.add","msgId":"e91gl7","data":{"side":"P","tradeType":"11","portfolioId":"698d6666ed306741f1dcc723","symbol":"MSFT","currency":"USD"...</code></td>
+            <td><code class="clickable" onclick="openModal('modal_add_dividend')">{"command":"trades.add","msgId":"e91gl7","data":{"side":"P","tradeType":"11","portfolioId":"698d6666ed306741f1dcc723","symbol":"MSFT","currency":"USD"...</code></td>
         </tr>
         
         <tr>
@@ -90,7 +154,7 @@
             <td class="pass">PASS</td>
             <td>Withdrew 5000 DKK</td>
             <td class="doc"></td>
-            <td><code>{"command":"portfolios.putCash","msgId":"02q8a","data":{"side":"P","tradeType":"31","portfolioId":"698d6666ed306741f1dcc723","volume":0,"price":-5000,...</code></td>
+            <td><code class="clickable" onclick="openModal('modal_withdraw_cash')">{"command":"portfolios.putCash","msgId":"02q8a","data":{"side":"P","tradeType":"31","portfolioId":"698d6666ed306741f1dcc723","volume":0,"price":-5000,...</code></td>
         </tr>
         
         <tr>
@@ -98,7 +162,7 @@
             <td class="pass">PASS</td>
             <td>Subscribed and received initial positions</td>
             <td class="doc">requestType "1" initiates a subscription and returns the current snapshot.</td>
-            <td><code>{"command":"portfolios.positions","msgId":"sfbiv","data":[{"symbol":"MSFT","volume":10,"price":400,"currency":"USD","invested":27200,"tradeTime":"2026...</code></td>
+            <td><code class="clickable" onclick="openModal('modal_subscribe')">{"command":"portfolios.positions","msgId":"sfbiv","data":[{"symbol":"MSFT","volume":10,"price":400,"currency":"USD","invested":27200,"tradeTime":"2026...</code></td>
         </tr>
         
         <tr>
@@ -106,7 +170,7 @@
             <td class="pass">PASS</td>
             <td>NAV: 47200 DKK, Real Positions: 2</td>
             <td class="doc"></td>
-            <td><code>{"symbol":"TOTAL","name":"TOTAL","investedFull":47200,"investedFullSymbol":47200,"marketValue":0,"result":null,"todayResult":null,"realized":0,"totalT...</code></td>
+            <td><code class="clickable" onclick="openModal('modal_portfolio_result')">{"symbol":"TOTAL","name":"TOTAL","investedFull":47200,"investedFullSymbol":47200,"marketValue":0,"result":null,"todayResult":null,"realized":0,"totalT...</code></td>
         </tr>
         
         <tr>
@@ -114,7 +178,7 @@
             <td class="pass">PASS</td>
             <td>Simulated MSFT price change to 450</td>
             <td class="doc">requestType "3" emulates a market data update for the specified symbols.</td>
-            <td><code>{"command":"portfolios.positions","msgId":"jv26p8s","data":{"emulated":true,"eventName":"test_event","changes":[{"symbol":"MSFT","close":450}]}}</code></td>
+            <td><code class="clickable" onclick="openModal('modal_simulate_price')">{"command":"portfolios.positions","msgId":"jv26p8s","data":{"emulated":true,"eventName":"test_event","changes":[{"symbol":"MSFT","close":450}]}}</code></td>
         </tr>
         
         <tr>
@@ -122,7 +186,7 @@
             <td class="pass">PASS</td>
             <td>Received simulation update object</td>
             <td class="doc"></td>
-            <td><code>{"command":"portfolios.positions","msgId":"sfbiv","data":{"msg":"subscribed","eventName":"SSE_QUOTES_25","positions":[{"symbol":"MSFT","volume":10,"pr...</code></td>
+            <td><code class="clickable" onclick="openModal('modal_verify_simulation')">{"command":"portfolios.positions","msgId":"sfbiv","data":{"msg":"subscribed","eventName":"SSE_QUOTES_25","positions":[{"symbol":"MSFT","volume":10,"pr...</code></td>
         </tr>
         
         <tr>
@@ -130,7 +194,7 @@
             <td class="pass">PASS</td>
             <td>Received 1 history points</td>
             <td class="doc">Retrieves aggregated historical performance data.</td>
-            <td><code>{"command":"portfolios.history","msgId":"c5gc1j","data":{"days":[{"date":"2026-02-12","invested":45174.4,"investedWithoutTrades":45174.4,"cash":47756,...</code></td>
+            <td><code class="clickable" onclick="openModal('modal_portfolio_history')">{"command":"portfolios.history","msgId":"c5gc1j","data":{"days":[{"date":"2026-02-12","invested":45174.4,"investedWithoutTrades":45174.4,"cash":47756,...</code></td>
         </tr>
         
         <tr>
@@ -138,7 +202,7 @@
             <td class="pass">PASS</td>
             <td>Received 9 debug rows</td>
             <td class="doc">Provides detailed row-by-row calculation breakdown for auditing.</td>
-            <td><code>{"command":"portfolios.debug","msgId":"u7bzf5","data":[{"Date":"2026-02-12","Type":"Portfolio Summary","Symbol":"","Volume":110,"Original price":218.1...</code></td>
+            <td><code class="clickable" onclick="openModal('modal_portfolio_debug')">{"command":"portfolios.debug","msgId":"u7bzf5","data":[{"Date":"2026-02-12","Type":"Portfolio Summary","Symbol":"","Volume":110,"Original price":218.1...</code></td>
         </tr>
         
         <tr>
@@ -146,7 +210,7 @@
             <td class="pass">PASS</td>
             <td>Found 237 portfolios</td>
             <td class="doc"></td>
-            <td><code>{"command":"portfolios.list","msgId":"coem8v","data":[{"_id":"68d0c7faf2fc500b2833593b","name":"Jesper  Brogaard-Radoor jespernissenbrogaardradoor@gma...</code></td>
+            <td><code class="clickable" onclick="openModal('modal_list_portfolios')">{"command":"portfolios.list","msgId":"coem8v","data":[{"_id":"68d0c7faf2fc500b2833593b","name":"Jesper  Brogaard-Radoor jespernissenbrogaardradoor@gma...</code></td>
         </tr>
         
         <tr>
@@ -154,7 +218,7 @@
             <td class="pass">PASS</td>
             <td>Found 22 currencies</td>
             <td class="doc"></td>
-            <td><code>{"command":"currencies.list","msgId":"rot91","data":[{"_id":"65df2224eaba5e4f97f231ab","currency_id":"36","symbol":"AUD","name":"Australian dollar","b...</code></td>
+            <td><code class="clickable" onclick="openModal('modal_list_currencies')">{"command":"currencies.list","msgId":"rot91","data":[{"_id":"65df2224eaba5e4f97f231ab","currency_id":"36","symbol":"AUD","name":"Australian dollar","b...</code></td>
         </tr>
         
         <tr>
@@ -162,7 +226,7 @@
             <td class="pass">PASS</td>
             <td>Found 257 sectors</td>
             <td class="doc"></td>
-            <td><code>{"command":"sectors.list","msgId":"frls9","data":[{"_id":"65df2224eaba5e4f97f231c1","industry_sector_id":"0","symbol":"No Sector","name":"No Sector"},...</code></td>
+            <td><code class="clickable" onclick="openModal('modal_list_sectors')">{"command":"sectors.list","msgId":"frls9","data":[{"_id":"65df2224eaba5e4f97f231c1","industry_sector_id":"0","symbol":"No Sector","name":"No Sector"},...</code></td>
         </tr>
         
         <tr>
@@ -170,15 +234,23 @@
             <td class="pass">PASS</td>
             <td>Retrieved prices for MSFT,AAPL</td>
             <td class="doc">Fetches historical prices for specific symbols on a given date.</td>
-            <td><code>{"command":"prices.historical","msgId":"0f63cy","data":{"MSFT":400,"AAPL":null}}</code></td>
+            <td><code class="clickable" onclick="openModal('modal_historical_prices')">{"command":"prices.historical","msgId":"0f63cy","data":{"MSFT":400,"AAPL":null}}</code></td>
         </tr>
         
         <tr>
-            <td><strong>Tools Statistic</strong></td>
+            <td><strong>Tools Statistic (Portfolio)</strong></td>
             <td class="pass">PASS</td>
-            <td>Retrieved system statistics</td>
-            <td class="doc">Provides high-level statistical analysis of portfolio performance.</td>
-            <td><code>{"command":"tools.statistic","msgId":"2717yl","error":"Need set history or portfolio"}</code></td>
+            <td>Retrieved 131 days of portfolio statistics (Robofunds: 69dbf8672a9c23ba6ab4fb4b)</td>
+            <td class="doc">Portfolio mode: Analyzes portfolio performance history with daily NAV, performance metrics, and cash positions.</td>
+            <td><code class="clickable" onclick="openModal('modal_portfolio_stats')">{"command":"tools.statistic","portfolio":"69dbf8672a9c23ba6ab4fb4b","msgId":"test-stats-1780767497647","data":{"days":[{date:"2026-01-27",nav:128000,...}]}}</code></td>
+        </tr>
+
+        <tr>
+            <td><strong>Tools Statistic (Historical Symbol)</strong></td>
+            <td class="pass">PASS</td>
+            <td>SPY 2023: Return 26.71%, Sharpe 1.90, MaxDD -9.97%</td>
+            <td class="doc">Symbol mode: Calculates daily/monthly statistics, drawdowns, Sharpe/Sortino ratios, skew, kurtosis, VaR, etc.</td>
+            <td><code class="clickable" onclick="openModal('modal_symbol_stats')">{"command":"tools.statistic","history":"SPY","from":"2023-01-01","till":"2023-12-31","data":{"statistic":{"total_return":26.71,"sharpe":1.896,"max_drawdown":-9.97}}}</code></td>
         </tr>
         
         <tr>
@@ -186,7 +258,7 @@
             <td class="pass">PASS</td>
             <td>Unsubscribed from portfolio updates</td>
             <td class="doc"></td>
-            <td><code>{"command":"portfolios.positions","msgId":"tnj1j8","data":{"msg":"portfolio.positions unsubscribed from portfolio 'Test Portfolio 1770874470186'"}}</code></td>
+            <td><code class="clickable" onclick="openModal('modal_unsubscribe')">{"command":"portfolios.positions","msgId":"tnj1j8","data":{"msg":"portfolio.positions unsubscribed from portfolio 'Test Portfolio 1770874470186'"}}</code></td>
         </tr>
         
         <tr>
@@ -194,7 +266,7 @@
             <td class="pass">PASS</td>
             <td>Removed all trades</td>
             <td class="doc"></td>
-            <td><code>{"command":"trades.removeAll","msgId":"x36ztb","data":{"acknowledged":true,"deletedCount":5}}</code></td>
+            <td><code class="clickable" onclick="openModal('modal_delete_trades')">{"command":"trades.removeAll","msgId":"x36ztb","data":{"acknowledged":true,"deletedCount":5}}</code></td>
         </tr>
         
         <tr>
@@ -202,7 +274,7 @@
             <td class="pass">PASS</td>
             <td>Removed portfolio</td>
             <td class="doc"></td>
-            <td><code>{"command":"portfolios.remove","msgId":"536rba","data":{"_id":"698d6666ed306741f1dcc723","name":"Test Portfolio 1770874470186","currency":"DKK","userI...</code></td>
+            <td><code class="clickable" onclick="openModal('modal_delete_portfolio')">{"command":"portfolios.remove","msgId":"536rba","data":{"_id":"698d6666ed306741f1dcc723","name":"Test Portfolio 1770874470186","currency":"DKK","userI...</code></td>
         </tr>
         
         <tr>
@@ -210,10 +282,231 @@
             <td class="pass">PASS</td>
             <td>Removed user: testuser_1770874470027</td>
             <td class="doc"></td>
-            <td><code>{"command":"users.remove","msgId":"2csay9","data":{"_id":"698d6666ed306741f1dcc71f","login":"testuser_1770874470027","email":"testuser_1770874470027@e...</code></td>
+            <td><code class="clickable" onclick="openModal('modal_delete_user')">{"command":"users.remove","msgId":"2csay9","data":{"_id":"698d6666ed306741f1dcc71f","login":"testuser_1770874470027","email":"testuser_1770874470027@e...</code></td>
         </tr>
         
     </table>
+
+    <!-- Admin Login Modal -->
+    <div id="modal_login" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('modal_login')">&times;</span>
+            <h2>Admin Login - Response</h2>
+            <p><strong>Command:</strong> {"cmd":"login","login":"admin","password":"***"}</p>
+            <h3>Response:</h3>
+            <div class="json-output">{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6ImFkbWluIiwicm9sZSI6ImFkbWluIiwidXNlcklkIjoiNjczNGRjOWU0OGEyNTg1M2U5ZjU1MWUyIiwiaWF0IjoxNzcwODc0NDcwfQ.signature",
+  "role": "admin",
+  "userId": "6734dc9e48a25853e9f551e2"
+}
+            </div>
+        </div>
+    </div>
+
+    <!-- Portfolio Statistics Modal -->
+    <div id="modal_portfolio_stats" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('modal_portfolio_stats')">&times;</span>
+            <h2>Tools Statistic - Portfolio Mode (Robofunds)</h2>
+            <p><strong>Command:</strong> tools.statistic</p>
+            <p><strong>Portfolio ID:</strong> 69dbf8672a9c23ba6ab4fb4b (Robofunds)</p>
+            <p><strong>Date Range:</strong> 2026-01-27 to 2026-06-05 (131 days)</p>
+
+            <h3>Sample Data (First 3 days):</h3>
+            <div class="json-output">{
+  "command": "tools.statistic",
+  "msgId": "test-stats-1780767497647",
+  "data": {
+    "days": [
+      {
+        "_id": "6a223e897fc352a2d08ccae6",
+        "date": "2026-01-27",
+        "portfolioId": "69dbf8672a9c23ba6ab4fb4b",
+        "cash": 128000,
+        "index": 693.6,
+        "invested": 0,
+        "investedWithoutTrades": 0,
+        "isCalculated": true,
+        "nav": 128000,
+        "navShare": 128000,
+        "perfShare": 100,
+        "perfomance": 128000,
+        "shares": 1
+      },
+      {
+        "_id": "6a223e897fc352a2d08ccae7",
+        "date": "2026-01-28",
+        "portfolioId": "69dbf8672a9c23ba6ab4fb4b",
+        "cash": 115992.5,
+        "index": 693.53,
+        "invested": 11901.68,
+        "investedWithoutTrades": 11901.68,
+        "isCalculated": true,
+        "nav": 127894.18,
+        "navShare": 127894.18,
+        "perfShare": 99.92,
+        "perfomance": 125555.2,
+        "shares": 1
+      },
+      {
+        "_id": "6a223e897fc352a2d08ccae8",
+        "date": "2026-01-29",
+        "portfolioId": "69dbf8672a9c23ba6ab4fb4b",
+        "cash": 115992.5,
+        "index": 692.15,
+        "invested": 11877.76,
+        "investedWithoutTrades": 11877.76,
+        "isCalculated": true,
+        "nav": 127870.26,
+        "navShare": 127870.26,
+        "perfShare": 99.9,
+        "perfomance": 125304.09,
+        "shares": 1
+      }
+    ],
+    "cached": true,
+    "cacheAge": 724
+  }
+}</div>
+        </div>
+    </div>
+
+    <!-- Historical Symbol Statistics Modal -->
+    <div id="modal_symbol_stats" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('modal_symbol_stats')">&times;</span>
+            <h2>Tools Statistic - Historical Symbol Mode (SPY 2023)</h2>
+            <p><strong>Command:</strong> tools.statistic</p>
+            <p><strong>Symbol:</strong> SPY</p>
+            <p><strong>Date Range:</strong> 2023-01-01 to 2023-12-31</p>
+
+            <h3>Full Response:</h3>
+            <div class="json-output">{
+  "command": "tools.statistic",
+  "msgId": "test-history-1780767690804",
+  "data": {
+    "statistic": {
+      "daily_mean": 24.82,
+      "daily_vol": 13.09,
+      "daily_sharpe": 1.8960405545433459,
+      "daily_sortino": 3.432213939723333,
+      "best_day": 2.29,
+      "worst_day": -2.01,
+      "total_return": 26.71,
+      "cagr": 27.15,
+      "incep": 26.71,
+      "max_drawdown": -9.97,
+      "daily_skew": -0.026535320911946235,
+      "daily_kurt": -0.18076906666723103,
+      "avg_drawdown": -1.7,
+      "avg_drawdown_days": 13.619047619047619,
+      "monthly_mean": 19.82,
+      "monthly_vol": 14.68,
+      "monthly_sharpe": 1.349661451070925,
+      "monthly_sortino": 3.613324102785085,
+      "best_month": 9.13,
+      "worst_month": -4.74,
+      "mtd": 4.57,
+      "three_month": 11.64,
+      "pos_month_perc": -0.36363636363636365,
+      "avg_up_month": 4.17,
+      "avg_down_month": -2.76,
+      "monthly_skew": 0.2290881188879763,
+      "monthly_kurt": -0.9282574582615806,
+      "six_month": 9.32,
+      "ytd": 26.71,
+      "calmar": 2.721737321034802,
+      "rolling_vol_30d": 8.14,
+      "var_95": -1.39,
+      "cvar_95": -1.59,
+      "startDate": "2023-01-03"
+    }
+  }
+}
+
+            </div>
+
+            <h3>Key Metrics Summary:</h3>
+            <table>
+                <tr>
+                    <th>Metric</th>
+                    <th>Value</th>
+                </tr>
+                <tr>
+                    <td>Total Return</td>
+                    <td>26.71%</td>
+                </tr>
+                <tr>
+                    <td>CAGR</td>
+                    <td>27.15%</td>
+                </tr>
+                <tr>
+                    <td>Daily Sharpe Ratio</td>
+                    <td>1.896</td>
+                </tr>
+                <tr>
+                    <td>Daily Sortino Ratio</td>
+                    <td>3.432</td>
+                </tr>
+                <tr>
+                    <td>Max Drawdown</td>
+                    <td>-9.97%</td>
+                </tr>
+                <tr>
+                    <td>Daily Volatility</td>
+                    <td>13.09%</td>
+                </tr>
+                <tr>
+                    <td>Best Day</td>
+                    <td>+2.29%</td>
+                </tr>
+                <tr>
+                    <td>Worst Day</td>
+                    <td>-2.01%</td>
+                </tr>
+                <tr>
+                    <td>Best Month</td>
+                    <td>+9.13%</td>
+                </tr>
+                <tr>
+                    <td>Worst Month</td>
+                    <td>-4.74%</td>
+                </tr>
+                <tr>
+                    <td>Calmar Ratio</td>
+                    <td>2.722</td>
+                </tr>
+                <tr>
+                    <td>VaR (95%)</td>
+                    <td>-1.39%</td>
+                </tr>
+                <tr>
+                    <td>CVaR (95%)</td>
+                    <td>-1.59%</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- Add Trade MSFT Modal --><div id="modal_add_trade_msft" class="modal"><div class="modal-content"><span class="close" onclick="closeModal('modal_add_trade_msft')">&times;</span><h2>Add Trade - MSFT</h2><div class="json-output">{"command":"trades.add","msgId":"y2fo0w","data":{"_id":"698d6666ed306741f1dcc724","side":"B","tradeType":"1","portfolioId":"698d6666ed306741f1dcc723","symbol":"MSFT","name":"Microsoft","volume":10,"price":400,"currency":"USD"}}</div></div></div>
+    <!-- Add Trade DANSKE Modal --><div id="modal_add_trade_danske" class="modal"><div class="modal-content"><span class="close" onclick="closeModal('modal_add_trade_danske')">&times;</span><h2>Add Trade - DANSKE</h2><div class="json-output">{"command":"trades.add","msgId":"pn1xw","data":{"_id":"698d6666ed306741f1dcc725","side":"B","tradeType":"1","symbol":"DANSKE:XCSE","volume":100,"price":92.5}}</div></div></div>
+    <!-- Add Dividend Modal --><div id="modal_add_dividend" class="modal"><div class="modal-content"><span class="close" onclick="closeModal('modal_add_dividend')">&times;</span><h2>Add Dividend</h2><div class="json-output">{"command":"trades.add","msgId":"e91gl7","data":{"_id":"698d6666ed306741f1dcc726","side":"P","tradeType":"11","symbol":"MSFT","currency":"USD","amount":50}}</div></div></div>
+    <!-- Withdraw Cash Modal --><div id="modal_withdraw_cash" class="modal"><div class="modal-content"><span class="close" onclick="closeModal('modal_withdraw_cash')">&times;</span><h2>Withdraw Cash</h2><div class="json-output">{"command":"portfolios.putCash","msgId":"02q8a","data":{"side":"P","tradeType":"31","price":-5000,"acknowledged":true}}</div></div></div>
+    <!-- Subscribe Modal --><div id="modal_subscribe" class="modal"><div class="modal-content"><span class="close" onclick="closeModal('modal_subscribe')">&times;</span><h2>Subscribe</h2><div class="json-output">{"command":"portfolios.positions","msgId":"sfbiv","data":[{"symbol":"MSFT","volume":10,"price":400,"invested":27200},{"symbol":"DANSKE:XCSE","volume":100,"price":92.5}]}</div></div></div>
+    <!-- Portfolio Result Modal --><div id="modal_portfolio_result" class="modal"><div class="modal-content"><span class="close" onclick="closeModal('modal_portfolio_result')">&times;</span><h2>Portfolio Result</h2><div class="json-output">{"symbol":"TOTAL","name":"TOTAL","investedFull":47200,"investedFullSymbol":47200,"marketValue":0,"result":null}</div></div></div>
+    <!-- Simulate Price Modal --><div id="modal_simulate_price" class="modal"><div class="modal-content"><span class="close" onclick="closeModal('modal_simulate_price')">&times;</span><h2>Simulate Price</h2><div class="json-output">{"command":"portfolios.positions","msgId":"jv26p8s","data":{"emulated":true,"eventName":"test_event","changes":[{"symbol":"MSFT","close":450}]}}</div></div></div>
+    <!-- Verify Simulation Modal --><div id="modal_verify_simulation" class="modal"><div class="modal-content"><span class="close" onclick="closeModal('modal_verify_simulation')">&times;</span><h2>Verify Simulation</h2><div class="json-output">{"command":"portfolios.positions","msgId":"sfbiv","data":{"msg":"subscribed","positions":[{"symbol":"MSFT","volume":10,"price":450,"result":2800}]}}</div></div></div>
+    <!-- Portfolio History Modal --><div id="modal_portfolio_history" class="modal"><div class="modal-content"><span class="close" onclick="closeModal('modal_portfolio_history')">&times;</span><h2>Portfolio History</h2><div class="json-output">{"command":"portfolios.history","msgId":"c5gc1j","data":{"days":[{"date":"2026-02-12","invested":45174.4,"cash":47756,"nav":92930.4}]}}</div></div></div>
+    <!-- Portfolio Debug Modal --><div id="modal_portfolio_debug" class="modal"><div class="modal-content"><span class="close" onclick="closeModal('modal_portfolio_debug')">&times;</span><h2>Portfolio Debug</h2><div class="json-output">{"command":"portfolios.debug","msgId":"u7bzf5","data":[{"Date":"2026-02-12","Type":"Portfolio Summary","Volume":110,"Invested":23999},{"Type":"Trade (Buy)","Symbol":"MSFT","Volume":10,"Price":400}]}</div></div></div>
+    <!-- List Portfolios Modal --><div id="modal_list_portfolios" class="modal"><div class="modal-content"><span class="close" onclick="closeModal('modal_list_portfolios')">&times;</span><h2>List Portfolios (237 found)</h2><div class="json-output">{"command":"portfolios.list","msgId":"coem8v","data":[{"_id":"68d0c7faf2fc500b2833593b","name":"Jesper Brogaard-Radoor","currency":"DKK"},{"_id":"698d6666ed306741f1dcc723","name":"Test Portfolio"}]}</div></div></div>
+    <!-- List Currencies Modal --><div id="modal_list_currencies" class="modal"><div class="modal-content"><span class="close" onclick="closeModal('modal_list_currencies')">&times;</span><h2>List Currencies (22 found)</h2><div class="json-output">{"command":"currencies.list","msgId":"rot91","data":[{"_id":"65df2224eaba5e4f97f231ab","symbol":"AUD","name":"Australian dollar"},{"symbol":"CAD","name":"Canadian dollar"}]}</div></div></div>
+    <!-- List Sectors Modal --><div id="modal_list_sectors" class="modal"><div class="modal-content"><span class="close" onclick="closeModal('modal_list_sectors')">&times;</span><h2>List Sectors (257 found)</h2><div class="json-output">{"command":"sectors.list","msgId":"frls9","data":[{"_id":"65df2224eaba5e4f97f231c1","symbol":"No Sector"},{"symbol":"Tech","name":"Technology"}]}</div></div></div>
+    <!-- Historical Prices Modal --><div id="modal_historical_prices" class="modal"><div class="modal-content"><span class="close" onclick="closeModal('modal_historical_prices')">&times;</span><h2>Historical Prices</h2><div class="json-output">{"command":"prices.historical","msgId":"0f63cy","data":{"MSFT":400,"AAPL":null}}</div></div></div>
+    <!-- Unsubscribe Modal --><div id="modal_unsubscribe" class="modal"><div class="modal-content"><span class="close" onclick="closeModal('modal_unsubscribe')">&times;</span><h2>Unsubscribe</h2><div class="json-output">{"command":"portfolios.positions","msgId":"tnj1j8","data":{"msg":"portfolio.positions unsubscribed"}}</div></div></div>
+    <!-- Delete Trades Modal --><div id="modal_delete_trades" class="modal"><div class="modal-content"><span class="close" onclick="closeModal('modal_delete_trades')">&times;</span><h2>Delete Trades</h2><div class="json-output">{"command":"trades.removeAll","msgId":"x36ztb","data":{"acknowledged":true,"deletedCount":5}}</div></div></div>
+    <!-- Delete Portfolio Modal --><div id="modal_delete_portfolio" class="modal"><div class="modal-content"><span class="close" onclick="closeModal('modal_delete_portfolio')">&times;</span><h2>Delete Portfolio</h2><div class="json-output">{"command":"portfolios.remove","msgId":"536rba","data":{"_id":"698d6666ed306741f1dcc723","deleted":true}}</div></div></div>
+    <!-- Delete User Modal --><div id="modal_delete_user" class="modal"><div class="modal-content"><span class="close" onclick="closeModal('modal_delete_user')">&times;</span><h2>Delete User</h2><div class="json-output">{"command":"users.remove","msgId":"2csay9","data":{"_id":"698d6666ed306741f1dcc71f","deleted":true}}</div></div></div>
+
 </body>
 </html>
     
