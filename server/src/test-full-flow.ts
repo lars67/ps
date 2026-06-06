@@ -54,7 +54,7 @@ const REPORT_PATH = path.join(__dirname, '../../test_report.html');
 
 const credentials = {
     login: 'admin',
-    password: '111111'
+    password: 'Test4545,'
 };
 
 console.log('Starting comprehensive test script...');
@@ -180,7 +180,7 @@ async function runTests() {
                     const createRes = await sendCommand({
                         command: 'portfolios.add',
                         name: 'Test Portfolio ' + Date.now(),
-                        currency: 'DKK',
+                        currency: 'EUR',
                         baseInstrument: 'SPY',
                         userId: testUserId
                     });
@@ -201,7 +201,7 @@ async function runTests() {
                         command: 'portfolios.putCash',
                         portfolioId: portfolioId,
                         amount: 100000,
-                        currency: 'DKK',
+                        currency: 'EUR',
                         tradeTime: new Date().toISOString().split('.')[0]
                     });
                     logResult('Insert Cash', 'PASS', 'Inserted 100000 DKK', putCashRes,
@@ -236,7 +236,7 @@ async function runTests() {
                         side: 'B',
                         volume: 100,
                         price: 200,
-                        currency: 'DKK',
+                        currency: 'EUR',
                         rate: 1,
                         fee: 10,
                         tradeType: '1',
@@ -269,7 +269,7 @@ async function runTests() {
                         command: 'portfolios.putCash',
                         portfolioId: portfolioId,
                         amount: -5000,
-                        currency: 'DKK',
+                        currency: 'EUR',
                         tradeTime: new Date().toISOString().split('.')[0]
                     });
                     logResult('Withdraw Cash', 'PASS', 'Withdrew 5000 DKK', withdrawRes);
