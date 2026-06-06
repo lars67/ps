@@ -63,9 +63,9 @@ export function cleanupUserSubscriptions(userModif: string) {
   if (!subscribers[userModif]) {
     return;
   }
-  
+
   console.log(`[SUBSCRIPTION DEBUG] Cleaning up subscriptions for user: ${userModif}`);
-  
+
   Object.keys(subscribers[userModif]).forEach((subscribeId) => {
     const sub = subscribers[userModif][subscribeId];
     sub.sseService.stop();
@@ -74,9 +74,14 @@ export function cleanupUserSubscriptions(userModif: string) {
       eventEmitter.removeListener("trade.change", sub.tradeHandler);
     }
   });
-  
+
   delete subscribers[userModif];
   logSubscriptionCount('socket_disconnect');
+
+  // Hint to garbage collector that we've freed memory
+  if ((global as any).gc) {
+    setImmediate(() => (global as any).gc());
+  }
 }
 
 type QuoteData2 = {
@@ -226,6 +231,12 @@ export async function positions(
       }
       delete subscribers[userModif][subscribeId];
       logSubscriptionCount('unsubscribe');
+
+      // Hint to garbage collector after cleanup
+      if ((global as any).gc && Object.keys(subscribers[userModif]).length === 0) {
+        setImmediate(() => (global as any).gc());
+      }
+
       return { msg: `portfolio.positions unsubscribed` };
     } else {
       return { error: `subscribeId=${subscribeId} is unknown` };
@@ -994,7 +1005,10 @@ export async function positions(
     return changes;
   };
 
-  let isSubscriptionInitial = true;
+  // Store subscription state separately to avoid closure capture of large objects
+  const subscriptionState = {
+    isInitial: true,
+  };
 
   const registeredHandler = (data: object) => {
     const actualChanges = (data as QuoteData[]).filter((d: QuoteData) =>
@@ -1005,51 +1019,60 @@ export async function positions(
     if (actualChanges.length === 0) {
       return;
     }
-    const streamingTotalsMode = isSubscriptionInitial ? totalsMode : "minimal";
-    const streamingIncludeAttribution = isSubscriptionInitial ? includeAttribution : false;
-    const changes = calcChanges(actualChanges, streamingIncludeAttribution, streamingTotalsMode, isSubscriptionInitial);
-    console.log(
-      moment().format("HH:mm:ss SSS"),
-      "subscriber SSE-> ",
-      userModif,
-      msgId,
-      "===>",
-      changes?.length,
-    );
-    changes && sendResponse(changes);
 
-    isSubscriptionInitial = false;
+    // Check if subscription still exists (socket may have disconnected)
+    if (!subscribers[userModif] || !subscribers[userModif][msgId]) {
+      return;
+    }
 
+    const streamingTotalsMode = subscriptionState.isInitial ? totalsMode : "minimal";
+    const streamingIncludeAttribution = subscriptionState.isInitial ? includeAttribution : false;
+    const changes = calcChanges(actualChanges, streamingIncludeAttribution, streamingTotalsMode, subscriptionState.isInitial);
+
+    if (changes && changes.length > 0) {
+      console.log(
+        moment().format("HH:mm:ss SSS"),
+        "subscriber SSE-> ",
+        userModif,
+        msgId,
+        "===>",
+        changes.length,
+      );
+      sendResponse(changes);
+    }
+
+    subscriptionState.isInitial = false;
+
+    // Check socket state and cleanup if necessary
     if (socket.readyState === WebSocket.CLOSED) {
       if (!(socket as UserWebSocket).waitNum) {
         (socket as UserWebSocket).waitNum = Date.now();
       } else if (Date.now() - (socket as UserWebSocket).waitNum > 30000) {
-        logger.log(`[SSEService  in closed state ${userModif}|${msgId} ${sseService.getEventName()}`)
-        console.log("STOPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP SSE", sseService.getEventName());
-        sseService.stop();
-        eventEmitter.removeListener(sseService.getEventName(), registeredHandler);
+        // Clean up dead subscription
+        if (subscribers[userModif]?.[msgId]) {
+          logger.log(`[SSEService cleanup in closed state ${userModif}|${msgId} ${sseService.getEventName()}]`);
+          sseService.stop();
+          eventEmitter.removeListener(sseService.getEventName(), registeredHandler);
+          delete subscribers[userModif][msgId];
+          logSubscriptionCount('socket_cleanup');
+        }
       }
     } else if (socket.readyState === WebSocket.OPEN) {
       (socket as UserWebSocket).waitNum = 0;
     }
   };
 
-  let currentHandler: ((data: object) => void) = registeredHandler;
   let subscriptionResolved = false;
-
-  const actualHandler = (data: object) => {
-    currentHandler(data);
-  };
 
   subscribers[userModif][msgId] = {
     sseService,
     tradeHandler: subscriberOnTrades,
     handler: registeredHandler,
-    registeredHandler: actualHandler,
+    registeredHandler,
   };
   logSubscriptionCount('subscribe');
 
-  eventEmitter.on(eventName, actualHandler);
+  eventEmitter.on(eventName, registeredHandler);
 
   profiler.endTimer("positions.main", userModif, msgId, {
     success: true,
@@ -1063,73 +1086,12 @@ export async function positions(
     isFirst = true;
     processQuoteData([]);
     const snapshotPositions = calcChanges([], includeAttribution, totalsMode, true);
-    profiler.endTimer("positions.main", userModif, msgId, {
-      success: true,
-      totalDuration: Date.now() - startTime,
-      resultType: "snapshot",
-      positionsCount: snapshotPositions?.length || 0
-    });
     return snapshotPositions;
   }
 
-  // For subscribe requests, wait for initial quotes to provide comprehensive data like snapshot mode
+  // For subscribe requests, return immediately - the registeredHandler will send updates via sendResponse
   if (requestType === "1") {
-    // Set up a promise that resolves when initial quotes arrive or timeout
-    return new Promise((resolve) => {
-      const timeout = setTimeout(() => {
-        // If no quotes within timeout, send positions with empty quote data (fallback)
-        if (!subscriptionResolved) {
-          subscriptionResolved = true;
-          isFirst = true;
-          processQuoteData([]);
-          const initialPositions = calcChanges([], includeAttribution, totalsMode, true);
-          // Send positions directly as array (frontend expects array in data field)
-          sendResponse(initialPositions);
-          resolve(undefined);
-        }
-      }, 5000); // Wait up to 5 seconds for initial quotes (increased from 2s to handle slow networks and many symbols)
-
-      // Create first-quote handler that resolves the promise
-      const firstQuoteHandler = (data: object) => {
-        // Note: This handler is assigned to currentHandler below
-        const actualChanges = (data as QuoteData[]).filter((d: QuoteData) =>
-          d.lastTradeTime
-            ? Object.keys(d).length > 2
-            : Object.keys(d).length >= 2,
-        );
-
-        // Resolve on first quote data arrival (don't wait for all symbols)
-        if (actualChanges.length > 0 && !subscriptionResolved) {
-          subscriptionResolved = true;
-          clearTimeout(timeout);
-
-          // Process the initial quotes
-          isFirst = true;
-          processQuoteData(actualChanges);
-          const initialPositions = calcChanges([], includeAttribution, totalsMode, true);
-          // Send initial positions data as array (frontend expects array in data field)
-          sendResponse(initialPositions);
-
-          // Switch to streaming handler for subsequent updates
-          currentHandler = (data: object) => {
-            const streamingChanges = (data as QuoteData[]).filter((d: QuoteData) =>
-              d.lastTradeTime
-                ? Object.keys(d).length > 2
-                : Object.keys(d).length >= 2,
-            );
-            if (streamingChanges.length === 0) {
-              return;
-            }
-            // For streaming updates, send only the changed positions
-            const streamingChanges_filtered = calcChanges(streamingChanges, false, "minimal", false);
-            streamingChanges_filtered && sendResponse(streamingChanges_filtered);
-          };
-          resolve(undefined);
-        }
-      };
-
-      currentHandler = firstQuoteHandler;
-    });
+    return { msg: "subscribed", eventName };
   }
 
   return { msg: "snapshot" };
