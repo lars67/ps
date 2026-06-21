@@ -79,6 +79,14 @@ export async function add(
   if (!trade.userId) {
     trade.userId = userData.userId;
   }
+  // INVARIANT (todo #87): a trade may only belong to the portfolio's owner. This makes it
+  // physically impossible for a portfolio to contain another user's trades, so a user can
+  // never be presented holdings that are not theirs — regardless of who initiates the write
+  // (including admin/service connections). Legitimate backend pushes must therefore stamp the
+  // owner's userId; a stray write defaulting to the caller's id is rejected here.
+  if (String(trade.userId) !== String(portfolio.userId)) {
+    return { error: `Trade userId ${trade.userId} does not own portfolio ${realId} (owner ${portfolio.userId})` } as ErrorType;
+  }
   if (!trade.tradeTime) {
     trade.tradeTime = new Date().toISOString();
   } else if (!isISODate(trade.tradeTime)) {
