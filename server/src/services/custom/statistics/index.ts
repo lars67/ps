@@ -24,7 +24,7 @@ const symbolData: DataPoint[] = data.split("\n").map((row) => {
 
 const resultFields: Record<
   string,
-  number | string | undefined // Revert type back
+  number | string | undefined
 > = {
   daily_mean: undefined,
   daily_vol: undefined,
@@ -35,14 +35,12 @@ const resultFields: Record<
   total_return: undefined,
   cagr: undefined,
   incep: undefined,
-  // drawdown: undefined, // Unused placeholder
   max_drawdown: undefined,
-  // drawdown_details: undefined, // Unused placeholder
   daily_skew: undefined,
   daily_kurt: undefined,
-  // monthly_returns: undefined, // Unused placeholder
   avg_drawdown: undefined,
   avg_drawdown_days: undefined,
+  max_drawdown_days: undefined,
   monthly_mean: undefined,
   monthly_vol: undefined,
   monthly_sharpe: undefined,
@@ -57,7 +55,6 @@ const resultFields: Record<
   monthly_skew: undefined,
   monthly_kurt: undefined,
   six_month: undefined,
-  // yearly_returns: undefined, // Unused placeholder
   ytd: undefined,
   one_year: undefined,
   yearly_mean: undefined,
@@ -74,10 +71,24 @@ const resultFields: Record<
   five_year: undefined,
   ten_year: undefined,
   calmar: undefined,
-  // New fields
   rolling_vol_30d: undefined,
   var_95: undefined,
   cvar_95: undefined,
+  // Single-series additions
+  ulcer_index: undefined,
+  martin_ratio: undefined,
+  gain_to_pain: undefined,
+  pos_day_perc: undefined,
+  avg_monthly_return: undefined,
+  winning_months_perc: undefined,
+  // Benchmark-relative (portfolio mode only)
+  beta: undefined,
+  alpha: undefined,
+  correlation: undefined,
+  tracking_error: undefined,
+  information_ratio: undefined,
+  up_capture: undefined,
+  down_capture: undefined,
 };
 
 function cloneData(ar: DataPoint[]): DataPoint[] {
@@ -95,7 +106,8 @@ function fmtn(number: number | undefined): string {
 function statistics(
   data: DataPoint[],
   rf: number | DataPoint[],
-): Record<string, number | string | undefined> { // Revert return type annotation
+  benchmark?: DataPoint[],
+): Record<string, number | string | undefined> {
   const result = { ...resultFields };
   const daily_prices = [...data];
   const monthly_prices = [...utils.resample(cloneData(data), "M")];
@@ -184,6 +196,34 @@ function statistics(
   }
 
   result.calmar = result.cagr / Math.abs(result.max_drawdown as number);
+
+  // --- Single-series additions (computed from daily data already in hand) ---
+  result.ulcer_index = utils.calc_ulcer_index(dp);
+  if (result.ulcer_index) {
+    result.martin_ratio = (result.cagr as number) / (result.ulcer_index as number);
+  }
+  result.max_drawdown_days = utils.calc_max_drawdown_days(dp);
+  result.gain_to_pain = utils.calc_gain_to_pain(r);
+  result.pos_day_perc = utils.positive(r).length / r.length;
+
+  if (monthly_prices.length >= 2) {
+    const mr2 = utils.to_returns(monthly_prices);
+    result.avg_monthly_return = utils.mean(mr2);
+    result.winning_months_perc = utils.positive(mr2).length / mr2.length;
+  }
+
+  // --- Benchmark-relative (only when benchmark series is provided) ---
+  if (benchmark && benchmark.length > 1) {
+    const bReturns = utils.to_returns(benchmark);
+    const beta = utils.calc_beta(r, bReturns);
+    result.beta = beta;
+    result.alpha = utils.calc_alpha(r, bReturns, beta);
+    result.correlation = utils.calc_correlation(r, bReturns);
+    result.tracking_error = utils.calc_tracking_error(r, bReturns);
+    result.information_ratio = utils.calc_information_ratio(r, bReturns);
+    result.up_capture = utils.calc_up_capture(r, bReturns);
+    result.down_capture = utils.calc_down_capture(r, bReturns);
+  }
 
   if (r.length < 4) {
     return formatFld(result);
@@ -285,9 +325,6 @@ function statistics(
   result.five_year = utils.calc_cagr(utils.getIntervalFrom(dp, "years", -5));
   result.ten_year = utils.calc_cagr(utils.getIntervalFrom(dp, "years", -10));
 
-  // --- New Statistics calculation block moved earlier ---
-
-  console.log('------------------- RAW RESULTS --------------------',result); // Updated log message
   return formatFld(result);
 }
 
@@ -321,10 +358,17 @@ const percentFields = [
   "avg_down_month",
   "win_year_perc",
   "twelve_month_win_perc",
-  // New fields to format as percentage
   "rolling_vol_30d",
   "var_95",
   "cvar_95",
+  // Single-series additions
+  "ulcer_index",
+  "pos_day_perc",
+  "avg_monthly_return",
+  "winning_months_perc",
+  // Benchmark-relative
+  "alpha",
+  "tracking_error",
 ];
 function formatFld(
   result: Record<string, number | string | undefined>,

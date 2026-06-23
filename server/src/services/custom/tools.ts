@@ -99,18 +99,39 @@ export async function statistic(
       if (!instance) {
         return { error: `Portfolio with _id=${realId} is not exists` };
       }
+      // Use a no-op sendResponse so the intermediate history payload is not
+      // sent to the client under this msgId before the statistic is ready.
+      let capturedDays: DayType[] = [];
+      const captureResponse = (data: any) => {
+        if (data?.days) capturedDays = data.days;
+      };
+
       const h = await historyService(
         { _id: realId, detail: "0", sample: "1", precision: 2 },
-        sendResponse,
-        msgId,
+        captureResponse,
+        `__stat_internal_${msgId}`,
         userModif,
         userData,
-      );
-      const prices = (h as { days: DayType[] }).days
-        .map((p) => [moment(p.date, formatYMD), Number(p.invested)])
-        .filter((p) => p[1]) as DataPoint[];
-      const statistic = statistics.statistics(prices, 0);
-      return { statistic };
+      ) as any;
+
+      let rawDays: DayType[];
+      if (h?.done) {
+        rawDays = capturedDays;
+      } else if (h?.update) {
+        rawDays = [...capturedDays, ...(h.days || [])];
+      } else {
+        rawDays = h?.days || [];
+      }
+
+      const days = rawDays.filter((p) => p.navShare && p.index);
+      const prices = days.map(
+        (p) => [moment(p.date, formatYMD), Number(p.navShare)],
+      ) as DataPoint[];
+      const benchmarkPrices = days.map(
+        (p) => [moment(p.date, formatYMD), Number(p.index)],
+      ) as DataPoint[];
+      const statistic = statistics.statistics(prices, 0, benchmarkPrices);
+      return { statistic, benchmark: instance.baseInstrument };
     }
   } catch (err) {
     return errorMsgs.failed("tools.statistic");

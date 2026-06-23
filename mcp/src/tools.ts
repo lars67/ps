@@ -408,9 +408,17 @@ export const tools: ToolDef[] = [
   {
     name: 'tools_statistic',
     description:
-      'Calculate performance statistics (volatility, Sharpe ratio, max drawdown, CAGR, etc.) ' +
-      'for a portfolio or a historical price series. ' +
-      'Provide either "portfolio" (name or _id) or "history" (symbol) — not both.',
+      'Calculate a full set of financial statistics for a portfolio or a historical price series. ' +
+      'Provide either "portfolio" (name or _id) or "history" (symbol) — not both. ' +
+      'Returns: returns (total, CAGR, YTD, 1/3/5/10y, MTD, 3m, 6m), ' +
+      'daily stats (mean, vol, Sharpe, Sortino, skew, kurt, best/worst day, pos_day_perc, rolling_vol_30d), ' +
+      'monthly stats (mean, vol, Sharpe, avg_monthly_return, winning_months_perc, best/worst month), ' +
+      'drawdown (max_drawdown, avg_drawdown, max_drawdown_days, calmar, ulcer_index, martin_ratio), ' +
+      'risk (VaR 95%, CVaR 95%, gain_to_pain). ' +
+      'In portfolio mode the portfolio\'s baseInstrument (default SPY) is used as benchmark and ' +
+      'additional benchmark-relative metrics are returned: ' +
+      'beta, alpha (annualised Jensen\'s Alpha), correlation, tracking_error, information_ratio, ' +
+      'up_capture, down_capture. The "benchmark" field in the response names the instrument used.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -421,13 +429,13 @@ export const tools: ToolDef[] = [
         history: {
           type: 'string',
           description:
-            'Symbol for a historical price series analysis, e.g. SPY (use this OR portfolio)',
+            'Symbol for a historical price series, e.g. STIIAM.CO, AAPL:XNAS (use this OR portfolio)',
         },
         from: {
           type: 'string',
           description: 'Start date YYYY-MM-DD (required when using history)',
         },
-        till: { type: 'string', description: 'End date YYYY-MM-DD' },
+        till: { type: 'string', description: 'End date YYYY-MM-DD (defaults to today)' },
       },
     },
     handler: async (client, args) => client.send('tools.statistic', args),

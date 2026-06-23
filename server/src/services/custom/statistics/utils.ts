@@ -296,6 +296,119 @@ function comp(returns: DataPoint[]): number {
   return returns.reduce((acc, val) => acc * (1 + val[1]), 1) - 1;
 }
 
+// --- Benchmark-relative helpers (pReturns and bReturns must be date-aligned) ---
+
+function _raw(data: DataPoint[]): number[] {
+    return data.map(([, v]) => v);
+}
+
+function calc_beta(pReturns: DataPoint[], bReturns: DataPoint[]): number {
+    const p = _raw(pReturns), b = _raw(bReturns);
+    const n = Math.min(p.length, b.length);
+    if (n < 2) return 0;
+    const mp = p.slice(0, n).reduce((a, v) => a + v, 0) / n;
+    const mb = b.slice(0, n).reduce((a, v) => a + v, 0) / n;
+    let cov = 0, varB = 0;
+    for (let i = 0; i < n; i++) {
+        cov  += (p[i] - mp) * (b[i] - mb);
+        varB += (b[i] - mb) ** 2;
+    }
+    return varB === 0 ? 0 : cov / varB;
+}
+
+function calc_alpha(pReturns: DataPoint[], bReturns: DataPoint[], beta: number, nperiods = 252): number {
+    const p = _raw(pReturns), b = _raw(bReturns);
+    const n = Math.min(p.length, b.length);
+    if (n < 2) return 0;
+    const mp = p.slice(0, n).reduce((a, v) => a + v, 0) / n;
+    const mb = b.slice(0, n).reduce((a, v) => a + v, 0) / n;
+    return (mp - beta * mb) * nperiods;
+}
+
+function calc_correlation(pReturns: DataPoint[], bReturns: DataPoint[]): number {
+    const p = _raw(pReturns), b = _raw(bReturns);
+    const n = Math.min(p.length, b.length);
+    if (n < 2) return 0;
+    const mp = p.slice(0, n).reduce((a, v) => a + v, 0) / n;
+    const mb = b.slice(0, n).reduce((a, v) => a + v, 0) / n;
+    let cov = 0, vp = 0, vb = 0;
+    for (let i = 0; i < n; i++) {
+        cov += (p[i] - mp) * (b[i] - mb);
+        vp  += (p[i] - mp) ** 2;
+        vb  += (b[i] - mb) ** 2;
+    }
+    const denom = Math.sqrt(vp * vb);
+    return denom === 0 ? 0 : cov / denom;
+}
+
+function calc_tracking_error(pReturns: DataPoint[], bReturns: DataPoint[], nperiods = 252): number {
+    const p = _raw(pReturns), b = _raw(bReturns);
+    const n = Math.min(p.length, b.length);
+    if (n < 2) return 0;
+    const active = p.slice(0, n).map((v, i) => v - b[i]);
+    const ma = active.reduce((a, v) => a + v, 0) / n;
+    const variance = active.reduce((a, v) => a + (v - ma) ** 2, 0) / (n - 1);
+    return Math.sqrt(variance * nperiods);
+}
+
+function calc_information_ratio(pReturns: DataPoint[], bReturns: DataPoint[], nperiods = 252): number {
+    const p = _raw(pReturns), b = _raw(bReturns);
+    const n = Math.min(p.length, b.length);
+    if (n < 2) return 0;
+    const active = p.slice(0, n).map((v, i) => v - b[i]);
+    const ma = active.reduce((a, v) => a + v, 0) / n;
+    const variance = active.reduce((a, v) => a + (v - ma) ** 2, 0) / (n - 1);
+    const te = Math.sqrt(variance * nperiods);
+    return te === 0 ? 0 : (ma * nperiods) / te;
+}
+
+function calc_up_capture(pReturns: DataPoint[], bReturns: DataPoint[]): number {
+    const p = _raw(pReturns), b = _raw(bReturns);
+    const n = Math.min(p.length, b.length);
+    const upP: number[] = [], upB: number[] = [];
+    for (let i = 0; i < n; i++) {
+        if (b[i] > 0) { upP.push(p[i]); upB.push(b[i]); }
+    }
+    if (upB.length === 0) return 0;
+    const mp = upP.reduce((a, v) => a + v, 0) / upP.length;
+    const mb = upB.reduce((a, v) => a + v, 0) / upB.length;
+    return mb === 0 ? 0 : mp / mb;
+}
+
+function calc_down_capture(pReturns: DataPoint[], bReturns: DataPoint[]): number {
+    const p = _raw(pReturns), b = _raw(bReturns);
+    const n = Math.min(p.length, b.length);
+    const dnP: number[] = [], dnB: number[] = [];
+    for (let i = 0; i < n; i++) {
+        if (b[i] < 0) { dnP.push(p[i]); dnB.push(b[i]); }
+    }
+    if (dnB.length === 0) return 0;
+    const mp = dnP.reduce((a, v) => a + v, 0) / dnP.length;
+    const mb = dnB.reduce((a, v) => a + v, 0) / dnB.length;
+    return mb === 0 ? 0 : mp / mb;
+}
+
+// --- Single-series additions ---
+
+function calc_ulcer_index(prices: DataPoint[]): number {
+    const dd = to_drawdown_series([...prices]);
+    const sumSq = dd.reduce((a, [, d]) => a + d * d, 0);
+    return Math.sqrt(sumSq / dd.length);
+}
+
+function calc_gain_to_pain(returns: DataPoint[]): number {
+    const gains  = returns.filter(([, v]) => v > 0).reduce((a, [, v]) => a + v, 0);
+    const losses = returns.filter(([, v]) => v < 0).reduce((a, [, v]) => a + Math.abs(v), 0);
+    return losses === 0 ? Infinity : gains / losses;
+}
+
+function calc_max_drawdown_days(prices: DataPoint[]): number {
+    const dd = to_drawdown_series([...prices]);
+    const details = drawdown_details([...dd]);
+    if (!details.length) return 0;
+    return Math.max(...details.map(d => d.days));
+}
+
 export default {
     resample,
     to_returns,
@@ -317,9 +430,18 @@ export default {
     getIntervalFrom,
     drawdown_details,
     year_frac,
-    // New functions
     calculate_rolling_std,
     calculate_percentile,
     calculate_average_below_threshold,
-    comp
+    comp,
+    calc_beta,
+    calc_alpha,
+    calc_correlation,
+    calc_tracking_error,
+    calc_information_ratio,
+    calc_up_capture,
+    calc_down_capture,
+    calc_ulcer_index,
+    calc_gain_to_pain,
+    calc_max_drawdown_days,
 };

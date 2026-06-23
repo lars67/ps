@@ -789,16 +789,27 @@ const HTMLViewer = ({closeDrawer}:{closeDrawer:()=> void}) => {
     </ol>
 
     <h2 id="tools">Tools</h2>
-    <p>PS2Dox provides various tools to assist users in their operations.</p>
+    <p>Tools provide analytical utilities that operate on price series or portfolio history.</p>
 
-    <h3>Data Analysis</h3>
-    <p>Performs statistical analysis on specified datasets.</p>
-    <p><strong>Command:</strong></p>
+    <h3>tools.statistic</h3>
+    <p>Computes a comprehensive set of financial statistics for a time series. Use either a price symbol (<code>history</code>) or a portfolio (<code>portfolio</code>) as the data source — one must be provided.</p>
+    <p>In portfolio mode the portfolio's benchmark instrument (<code>baseInstrument</code>, default <code>SPY</code>) is used automatically, and benchmark-relative metrics (Beta, Alpha, Correlation, etc.) are included in the response.</p>
+
+    <p><strong>Example — symbol:</strong></p>
     <pre><code>{
-  "command": "tools.analyzeData",
-  "dataset": "portfolio_returns",
-  "method": "regression"
+  "command": "tools.statistic",
+  "history": "STIIAM.CO",
+  "from": "2024-01-01",
+  "msgId": "stat-1"
 }</code></pre>
+
+    <p><strong>Example — portfolio:</strong></p>
+    <pre><code>{
+  "command": "tools.statistic",
+  "portfolio": "portfolio_id_or_name",
+  "msgId": "stat-2"
+}</code></pre>
+
     <p><strong>Parameters:</strong></p>
     <table>
         <thead>
@@ -810,114 +821,99 @@ const HTMLViewer = ({closeDrawer}:{closeDrawer:()=> void}) => {
         </thead>
         <tbody>
             <tr>
-                <td>dataset</td>
-                <td>Name of the dataset to analyze</td>
-                <td>Yes</td>
+                <td>history</td>
+                <td>Price symbol to analyse (e.g. <code>STIIAM.CO</code>, <code>AAPL:XNAS</code>). Use this or <code>portfolio</code>.</td>
+                <td>One of</td>
             </tr>
             <tr>
-                <td>method</td>
-                <td>Analysis method to apply</td>
-                <td>Yes</td>
+                <td>portfolio</td>
+                <td>Portfolio ID or name. Use this or <code>history</code>.</td>
+                <td>One of</td>
+            </tr>
+            <tr>
+                <td>from</td>
+                <td>Start date in YYYY-MM-DD format. Required when using <code>history</code>.</td>
+                <td>Conditional</td>
+            </tr>
+            <tr>
+                <td>till</td>
+                <td>End date in YYYY-MM-DD format. Defaults to today.</td>
+                <td>No</td>
             </tr>
         </tbody>
     </table>
-    <p><strong>Output:</strong> Returns the results of the analysis, which vary based on the chosen method.</p>
 
-    <h3>Report Generation</h3>
-    <p>Creates detailed reports based on portfolio data.</p>
-    <p><strong>Command:</strong></p>
-    <pre><code>{
-  "command": "tools.generateReport",
-  "type": "monthly_performance",
-  "portfolioId": "portfolio_id"
-}</code></pre>
-    <p><strong>Parameters:</strong></p>
-    <table>
-        <thead>
-            <tr>
-                <th>Parameter</th>
-                <th>Description</th>
-                <th>Required</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>type</td>
-                <td>Type of report to generate</td>
-                <td>Yes</td>
-            </tr>
-            <tr>
-                <td>portfolioId</td>
-                <td>ID of the portfolio for the report</td>
-                <td>Yes</td>
-            </tr>
-        </tbody>
-    </table>
-    <p><strong>Output:</strong> Returns a detailed report object or a link to download the report.</p>
+    <p><strong>Output fields</strong> (all percentage values expressed as <code>xx.xx</code>, e.g. <code>17.39</code> = 17.39%):</p>
 
-    <h3>Risk Assessment</h3>
-    <p>Evaluates the risk associated with a portfolio.</p>
-    <p><strong>Command:</strong></p>
-    <pre><code>{
-  "command": "tools.assessRisk",
-  "portfolioId": "portfolio_id",
-  "method": "var"
-}</code></pre>
-    <p><strong>Parameters:</strong></p>
+    <p><em>Returns</em></p>
     <table>
-        <thead>
-            <tr>
-                <th>Parameter</th>
-                <th>Description</th>
-                <th>Required</th>
-            </tr>
-        </thead>
+        <thead><tr><th>Field</th><th>Description</th></tr></thead>
         <tbody>
-            <tr>
-                <td>portfolioId</td>
-                <td>ID of the portfolio to assess</td>
-                <td>Yes</td>
-            </tr>
-            <tr>
-                <td>method</td>
-                <td>Risk assessment method to use</td>
-                <td>Yes</td>
-            </tr>
+            <tr><td>total_return</td><td>Total return over the period</td></tr>
+            <tr><td>cagr</td><td>Compound annual growth rate</td></tr>
+            <tr><td>incep</td><td>Return since inception</td></tr>
+            <tr><td>startDate</td><td>First date found in the series</td></tr>
+            <tr><td>ytd</td><td>Year-to-date return</td></tr>
+            <tr><td>one_year / three_year / five_year / ten_year</td><td>Trailing period returns / CAGRs</td></tr>
+            <tr><td>mtd / three_month / six_month</td><td>Month-to-date and trailing period returns</td></tr>
         </tbody>
     </table>
-    <p><strong>Output:</strong> Returns a risk assessment report with various risk metrics.</p>
 
-    <h3>API Integration</h3>
-    <p>Sets up integration with external APIs.</p>
-    <p><strong>Command:</strong></p>
-    <pre><code>{
-  "command": "tools.integrateAPI",
-  "externalService": "marketDataProvider",
-  "apiKey": "your_api_key"
-}</code></pre>
-    <p><strong>Parameters:</strong></p>
+    <p><em>Daily</em></p>
     <table>
-        <thead>
-            <tr>
-                <th>Parameter</th>
-                <th>Description</th>
-                <th>Required</th>
-            </tr>
-        </thead>
+        <thead><tr><th>Field</th><th>Description</th></tr></thead>
         <tbody>
-            <tr>
-                <td>externalService</td>
-                <td>Name of the external service to integrate</td>
-                <td>Yes</td>
-            </tr>
-            <tr>
-                <td>apiKey</td>
-                <td>API key for the external service</td>
-                <td>Yes</td>
-            </tr>
+            <tr><td>daily_mean / daily_vol</td><td>Annualised mean and volatility</td></tr>
+            <tr><td>daily_sharpe / daily_sortino</td><td>Annualised Sharpe and Sortino (rf = 0)</td></tr>
+            <tr><td>daily_skew / daily_kurt</td><td>Skewness and excess kurtosis</td></tr>
+            <tr><td>best_day / worst_day</td><td>Best and worst single-day return</td></tr>
+            <tr><td>pos_day_perc</td><td>Percentage of positive trading days</td></tr>
+            <tr><td>rolling_vol_30d</td><td>Latest 30-day rolling annualised volatility</td></tr>
         </tbody>
     </table>
-    <p><strong>Output:</strong> Returns a confirmation object with integration status and details.</p>
+
+    <p><em>Monthly</em></p>
+    <table>
+        <thead><tr><th>Field</th><th>Description</th></tr></thead>
+        <tbody>
+            <tr><td>monthly_mean / monthly_vol</td><td>Annualised mean and volatility</td></tr>
+            <tr><td>monthly_sharpe / monthly_sortino</td><td>Monthly Sharpe and Sortino</td></tr>
+            <tr><td>avg_monthly_return</td><td>Simple (non-annualised) average monthly return</td></tr>
+            <tr><td>best_month / worst_month</td><td>Best and worst single-month return</td></tr>
+            <tr><td>winning_months_perc</td><td>Percentage of months with positive return</td></tr>
+            <tr><td>avg_up_month / avg_down_month</td><td>Average return of up and down months</td></tr>
+        </tbody>
+    </table>
+
+    <p><em>Drawdown &amp; Risk</em></p>
+    <table>
+        <thead><tr><th>Field</th><th>Description</th></tr></thead>
+        <tbody>
+            <tr><td>max_drawdown</td><td>Maximum peak-to-trough drawdown</td></tr>
+            <tr><td>avg_drawdown / avg_drawdown_days</td><td>Average drawdown depth and duration</td></tr>
+            <tr><td>max_drawdown_days</td><td>Duration of the longest drawdown period (days)</td></tr>
+            <tr><td>calmar</td><td>CAGR / |max drawdown|</td></tr>
+            <tr><td>ulcer_index</td><td>Depth + duration of drawdowns combined</td></tr>
+            <tr><td>martin_ratio</td><td>CAGR / Ulcer Index</td></tr>
+            <tr><td>gain_to_pain</td><td>Sum of positive returns / sum of absolute negative returns</td></tr>
+            <tr><td>var_95 / cvar_95</td><td>Value at Risk and Conditional VaR at 95% confidence</td></tr>
+        </tbody>
+    </table>
+
+    <p><em>Benchmark-relative (portfolio mode only)</em></p>
+    <table>
+        <thead><tr><th>Field</th><th>Description</th></tr></thead>
+        <tbody>
+            <tr><td>beta</td><td>Portfolio return per 1% benchmark move</td></tr>
+            <tr><td>alpha</td><td>Annualised Jensen's Alpha — excess return above what beta predicts</td></tr>
+            <tr><td>correlation</td><td>Pearson correlation with benchmark (-1 to 1)</td></tr>
+            <tr><td>tracking_error</td><td>Annualised std of active returns (portfolio minus benchmark)</td></tr>
+            <tr><td>information_ratio</td><td>Annualised active return divided by tracking error</td></tr>
+            <tr><td>up_capture</td><td>Portfolio / benchmark mean return on up-benchmark days</td></tr>
+            <tr><td>down_capture</td><td>Portfolio / benchmark mean return on down-benchmark days</td></tr>
+        </tbody>
+    </table>
+    <p>A <code>down_capture</code> below 1.0 and <code>up_capture</code> above 1.0 is the ideal pattern.</p>
 
     <h2 id="trades">Trades</h2>
     <p>The Trades module manages all aspects of trading operations in PS2Dox. This includes placing new orders, modifying existing orders, canceling orders, retrieving trade history, and calculating trade performance.</p>
