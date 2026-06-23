@@ -214,11 +214,25 @@ export class PortfolioHistoryService {
       // In practice, you'd compare against a portfolio list
       const cutoffDate = new Date(Date.now() - (maxAgeHours * 60 * 60 * 1000));
 
-      const portfoliosWithOldData = await PortfolioHistoryModel.distinct('portfolioId', {
+      const portfoliosWithOldData: string[] = await PortfolioHistoryModel.distinct('portfolioId', {
         lastUpdated: { $lt: cutoffDate }
       });
 
-      return portfoliosWithOldData;
+      // Only recompute history for portfolios that still exist, keyed by their
+      // real _id. This filters out orphan histories (deleted portfolios) and
+      // legacy name-keyed series, which otherwise get re-selected every night
+      // and re-corrupt / re-create themselves (root cause of todo #93).
+      const { PortfolioModel } = require('../../models/portfolio');
+      const { Types } = require('mongoose');
+      const objectIds = portfoliosWithOldData
+        .filter(id => Types.ObjectId.isValid(id))
+        .map(id => new Types.ObjectId(id));
+      const existing = await PortfolioModel.find(
+        { _id: { $in: objectIds } }, { _id: 1 }
+      ).lean();
+      const existingIds = new Set(existing.map((p: any) => p._id.toString()));
+
+      return portfoliosWithOldData.filter(id => existingIds.has(id));
     } catch (error) {
       console.error('Error getting portfolios needing update:', error);
       throw error;

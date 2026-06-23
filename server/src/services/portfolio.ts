@@ -27,6 +27,7 @@ import {
   putSpecialTrade,
 } from "../services/portfolio/helper";
 import { TradeModel } from "../models/trade";
+import { PortfolioHistoryModel } from "../models/portfolioHistory";
 import { getPortfolioTrades } from "../utils/portfolio";
 import { UserData } from "@/services/websocket";
 import { generateAccountID } from "../utils/idGenerator";
@@ -136,6 +137,12 @@ export async function remove({
         portfolioId: realId.toString(),
       });
       console.log("result2", result2);
+      // Cascade: remove cached NAV history too, otherwise it is orphaned
+      // and the nightly history cron keeps re-selecting a dead portfolioId.
+      const result3 = await PortfolioHistoryModel.deleteMany({
+        portfolioId: realId.toString(),
+      });
+      console.log("result3", result3);
       return result;
     } else {
       return errorMsgs.notExists(realId);
