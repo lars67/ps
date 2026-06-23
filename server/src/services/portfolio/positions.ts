@@ -564,7 +564,14 @@ export async function positions(
           fxData = data.find(d => d.symbol === `${portfolio.currency}${fxCur}:FX`);
           inv = true;
         }
-        const fxPrice = fxData ? (fxData.latestPrice ?? fxData.close) : undefined;
+        // FX rate source: live price, then close, then the average spread
+        // (bid/ask mid) when no close is available.
+        let fxPrice = fxData ? (fxData.latestPrice ?? fxData.close) : undefined;
+        if (fxPrice == null && fxData &&
+            fxData.iexBidPrice != null && fxData.iexAskPrice != null &&
+            fxData.iexBidPrice > 0 && fxData.iexAskPrice > 0) {
+          fxPrice = 0.5 * (fxData.iexBidPrice + fxData.iexAskPrice);
+        }
         if (fxPrice != null) {
           rates[cur] = inv ? 1.0 / fxPrice : fxPrice;
           missingRates.delete(cur);
