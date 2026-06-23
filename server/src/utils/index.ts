@@ -276,6 +276,50 @@ export function isCurrency(symbol:string) {
   return symbol.indexOf(':FX') > 0
 }
 
+// London-listed stocks are quoted by our price source (Yahoo) in pence (1/100 GBP),
+// even though the currency is labelled GBP. Any price for these symbols must be
+// divided by 100 to convert pence -> GBP. The London listing is the discriminator.
+// Authoritative symbol -> currency map, populated from Aktia.Symbols via
+// companies.preloadSymbolCurrencies(). Used to decide pence scaling without a
+// per-call DB hit. Keyed by upper-cased Symbol-Mic (e.g. "RBOT:XLON").
+const symbolCurrencyMap: Record<string, string> = {};
+
+export function setSymbolCurrencies(entries: Record<string, string>) {
+  for (const [sym, cur] of Object.entries(entries)) {
+    if (sym) symbolCurrencyMap[sym.toUpperCase()] = (cur || '').toUpperCase();
+  }
+}
+
+export function getKnownSymbolCurrency(symbol?: string): string | undefined {
+  if (!symbol) return undefined;
+  return symbolCurrencyMap[symbol.toUpperCase()] || undefined;
+}
+
+// London-listed instruments are NOT uniformly pence-quoted. Only GBP-labelled
+// London lines arrive from the feed in pence (the GBX convention) and must be
+// divided by 100. USD/EUR/SEK/... London listings (e.g. RBOT, IOB cross-listings)
+// arrive in major units and must be left alone. The discriminator is the
+// instrument's currency (Aktia.Symbols.Currency), not the exchange suffix.
+//
+// `currency` may be passed explicitly when known at the call site; otherwise we
+// fall back to the preloaded currency map. Unknown currency defaults to pence to
+// preserve historical behaviour for legacy GBP holdings not yet in the map.
+export function isPenceQuoted(symbol?: string, currency?: string) {
+  if (!symbol) return false;
+  const s = symbol.toUpperCase();
+  if (!(s.endsWith(':XLON') || s.endsWith(':LSE'))) return false;
+  const cur = (currency || symbolCurrencyMap[s] || '').toUpperCase();
+  if (!cur) return true;
+  return cur === 'GBP';
+}
+
+// GBX (pence) is not a real FX currency — Yahoo carries no GBX rate. For any
+// currency-conversion / FX-rate purpose, GBX must be treated as GBP. The pence->GBP
+// scale difference is handled at the price level (see isPenceQuoted), never here.
+export function fxCurrency(cur: string) {
+  return cur === 'GBX' ? 'GBP' : cur;
+}
+
 
 export function removeDuplicatesByProperty<T, K extends keyof T>(array: T[], property: K): T[] {
   const uniqueValues = new Set<T[K]>();

@@ -1,4 +1,5 @@
 import { loadCompany, loadInstruments } from "../../utils/fetchData";
+import { setSymbolCurrencies } from "../../utils/index";
 import { MongoClient } from 'mongodb';
 
 interface CompanyCnownProperties {
@@ -70,6 +71,50 @@ export const getSymbolCurrency = async (
     }
   }
   return symbolsCurrencies[symbol]
+};
+
+// Symbols whose authoritative currency has already been resolved from Aktia.Symbols
+// (value '' means "looked up, not found" so we don't re-query every calc).
+const dbCurrencyResolved: Record<string, boolean> = {};
+
+// Preload authoritative currencies from Aktia.Symbols (by Symbol-Mic) into the
+// shared currency map used by isPenceQuoted(). One batched query per set of
+// not-yet-resolved symbols. This is what lets the synchronous pence-scaling check
+// distinguish GBP (pence-quoted) London lines from USD/EUR/SEK/... London lines.
+export const preloadSymbolCurrencies = async (symbols: string[]): Promise<void> => {
+  const need = Array.from(
+    new Set(
+      symbols
+        .map((s) => s && s.toUpperCase())
+        .filter((s): s is string => !!s && !s.endsWith(":FX") && !dbCurrencyResolved[s]),
+    ),
+  );
+  if (need.length === 0 || !process.env.MONGODB_URI) return;
+
+  const client = new MongoClient(process.env.MONGODB_URI);
+  try {
+    await client.connect();
+    const collection = client.db("Aktia").collection("Symbols");
+    const docs = await collection
+      .find(
+        { "Symbol-Mic": { $in: need } },
+        { projection: { "Symbol-Mic": 1, Currency: 1 } },
+      )
+      .toArray();
+
+    const found: Record<string, string> = {};
+    for (const d of docs) {
+      const mic = (d["Symbol-Mic"] as string)?.toUpperCase();
+      if (mic && d.Currency) found[mic] = String(d.Currency).toUpperCase();
+    }
+    if (Object.keys(found).length > 0) setSymbolCurrencies(found);
+    // Mark every requested symbol resolved (incl. not-found) to avoid re-querying.
+    for (const s of need) dbCurrencyResolved[s] = true;
+  } catch (err) {
+    console.log("Error in preloadSymbolCurrencies:", err);
+  } finally {
+    await client.close();
+  }
 };
 
 export const getGICS = async (
@@ -198,19 +243,4 @@ export const getGICSAr = async (
     }),
     {},
   );
-};
-
-// Check if a symbol is quoted in GBX (London Stock Exchange stocks with GBP currency)
-export const isGBXQuoted = async (symbol: string): Promise<boolean> => {
-  const currency = await getSymbolCurrency(symbol);
-  if (currency !== 'GBP') {
-    return false;
-  }
-
-  // Get country/region info
-  const countries = await getSymbolsCountries([symbol]);
-  const region = countries[symbol];
-
-  // LSE stocks are typically from GB/UK region
-  return region === 'GB' || region === 'UK' || region === 'United Kingdom';
 };

@@ -6,7 +6,7 @@ import { CommandDescription } from "../types/custom";
 import eventEmitter, { sendEvent } from "./app/eventEmiter";
 import { PortfolioModel } from "../models/portfolio";
 import { isTradeType } from "../utils/dictionary";
-import {getRealId, isCurrency, isErrorType, isISODate, validateRequired} from "../utils";
+import {fxCurrency, getRealId, isCurrency, isErrorType, isISODate, validateRequired} from "../utils";
 import { CurrencyModel } from "../models/currency";
 import {ErrorType} from "../types/other";
 import {errorMsgs} from "../constants";
@@ -58,6 +58,14 @@ export async function add(
   if (isFX && !trade.currency){
     trade.currency= trade.symbol.substring(3,6);
   }
+  // Normalize GBX (pence) -> GBP (pounds) at the write boundary so the DB only ever stores
+  // GBP. London prices arrive in pence; convert price/fee to pounds and relabel. The market
+  // feed (Yahoo) still sends pence and is scaled separately via isPenceQuoted.
+  if (trade.currency === 'GBX') {
+    if (typeof trade.price === 'number') trade.price = trade.price / 100;
+    if (typeof trade.fee === 'number') trade.fee = trade.fee / 100;
+    trade.currency = 'GBP';
+  }
   console.log('TRADE------------', trade.symbol, trade.currency);
   trade.portfolioId= realId;
     let err_required = validateRequired<Trade>(validationsAddRequired, trade)
@@ -98,7 +106,9 @@ export async function add(
 
   if (!trade.rate) {
 
-    const rateSymbol = isFX ? trade.symbol : `${trade.currency}${portfolioCurrency}:FX`
+    // GBX (pence) has no FX rate of its own — it uses the GBP rate. Map before building the
+    // FX symbol so the rate resolves; the pence->GBP scale is handled at the price level.
+    const rateSymbol = isFX ? trade.symbol : `${fxCurrency(trade.currency)}${fxCurrency(portfolioCurrency)}:FX`
     let rate = getDateSymbolPrice(trade.tradeTime, rateSymbol);
     console.log('aaaaaaaaaaaa2', trade.tradeTime, rateSymbol, rate,trade.currency,
         portfolioCurrency)

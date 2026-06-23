@@ -3,13 +3,14 @@ import moment from "moment";
 import { fetchHistory, loadCompany } from "../../utils/fetchData";
 
 import { StringRecord } from "../../types/other";
-import { isGBXQuoted } from "./companies";
 
 import { Trade } from "../../types/trade";
 import {
   extractUniqueFields,
   findMaxByField,
   findMinByField,
+  fxCurrency,
+  isPenceQuoted,
   removeDuplicatesByProperty,
 } from "../../utils";
 import { formatYMD } from "../../constants";
@@ -278,18 +279,19 @@ export function getDateSymbolPrice(dateInput: string, symbolInput: string) {
   return price;
 }
 
-// Get price scaled for position calculations (converts GBX to GBP)
-export function getDateSymbolPriceScaled(dateInput: string, symbolInput: string) {
+// Get price scaled for position calculations (converts pence -> GBP for
+// GBP-quoted London-listed stocks only). `currency` may be passed when known;
+// otherwise isPenceQuoted falls back to the preloaded Aktia.Symbols currency map.
+export function getDateSymbolPriceScaled(
+  dateInput: string,
+  symbolInput: string,
+  currency?: string,
+) {
   const price = getDateSymbolPrice(dateInput, symbolInput);
 
-  // Apply GBX scaling for LSE stocks (all GBP-denominated stocks from LSE are quoted in pence)
-  if (price && !symbolInput.endsWith(':FX')) {
-    // Simple synchronous check - assume GBP currency means GBX pricing for LSE stocks
-    // This is a simplification based on the user's statement that all LSE stocks are in pence
-    // In a production system, you might want more sophisticated detection
-    if (price > 100) { // Rough heuristic for GBX prices
-      return price / 100;
-    }
+  // Only GBP-labelled London lines arrive in pence; convert those to GBP.
+  if (price && isPenceQuoted(symbolInput, currency)) {
+    return price / 100;
   }
 
   return price;
@@ -317,11 +319,15 @@ export function getDatesSymbols(
 }
 
 export async function checkPriceCurrency(
-  currency: string,
-  balanceCurrency: string,
+  currencyInput: string,
+  balanceCurrencyInput: string,
   startDateInput: string,
   forceRefresh = false,
 ) {
+  // GBX (pence) has no FX rate of its own; it shares GBP. Map before building FX pairs
+  // so we never try to fetch a nonexistent GBX pair. Pence->GBP scaling is at the price level.
+  const currency = fxCurrency(currencyInput);
+  const balanceCurrency = fxCurrency(balanceCurrencyInput);
   const startDateInputM = moment(
     startDateInput.split("T").shift() as string,
     formatYMD,
@@ -433,9 +439,12 @@ export async function checkPortfolioPricesCurrencies(
 export const priceToBaseCurrency = (
   price: number,
   date: string,
-  currency: string,
-  balanceCurrency: string,
+  currencyInput: string,
+  balanceCurrencyInput: string,
 ) => {
+  // GBX shares the GBP FX rate (no GBX pair exists); pence->GBP scaling is at the price level.
+  const currency = fxCurrency(currencyInput);
+  const balanceCurrency = fxCurrency(balanceCurrencyInput);
   if (currency === balanceCurrency) {
     return price;
   }
@@ -460,10 +469,13 @@ export const priceToBaseCurrency = (
 };
 
 export const getRate = (
-  currency: string,
-  balanceCurrency: string,
+  currencyInput: string,
+  balanceCurrencyInput: string,
   date: string,
 ) => {
+  // GBX shares the GBP FX rate (no GBX pair exists); pence->GBP scaling is at the price level.
+  const currency = fxCurrency(currencyInput);
+  const balanceCurrency = fxCurrency(balanceCurrencyInput);
   if (currency === balanceCurrency) {
     return 1;
   }
