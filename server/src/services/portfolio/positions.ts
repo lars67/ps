@@ -10,8 +10,10 @@ import {
   divideArray,
   extractUniqueFields,
   findMaxByField,
+  fxCurrency,
   getModelInstanceByIDorName,
   isCurrency,
+  isPenceQuoted,
   isValidDateFormat,
   toNum,
 } from "../../utils";
@@ -23,6 +25,7 @@ import {
   getGICS,
   getSymbolCountry,
   getSymbolsCountries,
+  preloadSymbolCurrencies,
 } from "../../services/app/companies";
 import { actualizeTrades, getPortfolioTrades } from "../../utils/portfolio";
 import { SubscribeMsgs } from "../../types/other";
@@ -40,8 +43,8 @@ import {
   mapKeyToName,
 } from "../../services/portfolio/helper";
 import logger from "../../utils/logger";
-import { isGBXQuoted } from "../../services/app/companies";
 import profiler from "../../utils/profiler";
+import { getDateSymbolPrice, getRate } from "../../services/app/priceCashe";
 const subscribers: Record<string, SubscribeMsgs> = {}; //userModif-> SubscribeMsgs
 
 // Track previous subscription count for debugging
@@ -73,6 +76,10 @@ export function cleanupUserSubscriptions(userModif: string) {
     if (sub.tradeHandler) {
       eventEmitter.removeListener("trade.change", sub.tradeHandler);
     }
+    if (sub.initialTimer) {
+      clearTimeout(sub.initialTimer);
+      sub.initialTimer = null;
+    }
 
     // Clear subscription data to help GC free memory
     if (sub.data) {
@@ -103,12 +110,14 @@ type QuoteData2 = {
   symbol: string;
   currency: string;
   marketPrice: number;
-  marketRate: number;
-  marketValue: number;
+  // null when the symbol's FX rate to the portfolio base currency is unknown —
+  // we emit null rather than a silently-wrong x1 figure. See processQuoteData.
+  marketRate: number | null;
+  marketValue: number | null;
   marketValueSymbol: number;
   marketClose: number;
   bprice: number;
-  result: number;
+  result: number | null;
   resultSymbol: number;
   avgPremium: number;
   todayResult: number;
@@ -243,6 +252,10 @@ export async function positions(
       eventEmitter.removeListener(sub.sseService.getEventName(), sub.registeredHandler);
       if (sub.tradeHandler) {
         eventEmitter.removeListener("trade.change", sub.tradeHandler);
+      }
+      if (sub.initialTimer) {
+        clearTimeout(sub.initialTimer);
+        sub.initialTimer = null;
       }
 
       // Clear subscription data to help GC free memory
@@ -403,14 +416,14 @@ export async function positions(
       ...extractUniqueFields(positions.positions, "currency")
         .map(
           (c: string) =>
-            c !== portfolio.currency && `${c}${portfolio.currency}:FX`,
+            fxCurrency(c) !== portfolio.currency && `${fxCurrency(c)}${portfolio.currency}:FX`,
         )
         .filter(Boolean),
     ];
     positions.uniqueCurrencies
-      .filter((u) => u !== portfolio.currency)
+      .filter((u) => fxCurrency(u) !== portfolio.currency)
       .forEach((u) => {
-        const r = `${portfolio.currency}${u}:FX`;
+        const r = `${portfolio.currency}${fxCurrency(u)}:FX`;
         if (!symbols.includes(r)) {
           symbols.push(r);
         }
@@ -477,13 +490,13 @@ export async function positions(
       "symbol",
     ),
     ...extractUniqueFields(positions.positions, "currency")
-      .filter((c) => c !== portfolio.currency)
-      .map((c: string) => `${c}${portfolio.currency}:FX`),
+      .filter((c) => fxCurrency(c) !== portfolio.currency)
+      .map((c: string) => `${fxCurrency(c)}${portfolio.currency}:FX`),
   ];
   positions.uniqueCurrencies
-    .filter((u) => u !== portfolio.currency)
+    .filter((u) => fxCurrency(u) !== portfolio.currency)
     .forEach((u) => {
-      const r = `${portfolio.currency}${u}:FX`;
+      const r = `${portfolio.currency}${fxCurrency(u)}:FX`;
       if (!symbols.includes(r)) {
         symbols.push(r);
       }
@@ -496,6 +509,10 @@ export async function positions(
     eventEmitter.removeListener(existing.sseService.getEventName(), existing.registeredHandler);
     if (existing.tradeHandler) {
       eventEmitter.removeListener("trade.change", existing.tradeHandler);
+    }
+    if (existing.initialTimer) {
+      clearTimeout(existing.initialTimer);
+      existing.initialTimer = null;
     }
     delete subscribers[userModif][msgId];
     console.log(`Cleaned up stale subscription for ${userModif}|${msgId}`);
@@ -527,37 +544,39 @@ export async function positions(
     );
     // Reduced verbose logging for quote processing
     logger.log(`[QUOTE_PROCESSING] Processing ${data.length} quotes: ${currencyData.length} FX, ${symbolData.length} symbols`);
-    
+
+    // Currencies whose FX rate to the portfolio base currency we don't actually
+    // know (no FX quote arrived). For these, base-currency outputs (result,
+    // marketValue, marketRate) are nulled instead of faked with a 1:1 rate.
+    const missingRates = new Set<string>();
+
     positions.uniqueCurrencies.forEach(cur=> {
-      if (cur === portfolio.currency) {
+      // GBX (pence) carries no FX rate of its own — it uses the GBP rate. The pence->GBP
+      // scale is applied to prices (isPenceQuoted), not here. rates stays keyed by the
+      // original currency so downstream rates[cur] lookups keep working for GBX positions.
+      const fxCur = fxCurrency(cur);
+      if (fxCur === portfolio.currency) {
         rates[cur] = 1
       } else {
-        let fxData = data.find(d => d.symbol === `${cur}${portfolio.currency}:FX`);
+        let fxData = data.find(d => d.symbol === `${fxCur}${portfolio.currency}:FX`);
         let inv = false;
         if (!fxData) {
-          fxData = data.find(d => d.symbol === `${portfolio.currency}${cur}:FX`);
+          fxData = data.find(d => d.symbol === `${portfolio.currency}${fxCur}:FX`);
           inv = true;
         }
         const fxPrice = fxData ? (fxData.latestPrice ?? fxData.close) : undefined;
-        rates[cur] = fxPrice != null ? (inv ? 1.0 / fxPrice : fxPrice) : 1;
-        // Only log significant rate changes or errors
-        if (!fxData) {
-          logger.error(`[FX_RATE] Missing FX data for ${cur} vs ${portfolio.currency}`);
+        if (fxPrice != null) {
+          rates[cur] = inv ? 1.0 / fxPrice : fxPrice;
+          missingRates.delete(cur);
+        } else {
+          // Keep a neutral 1 so any legacy arithmetic stays finite, but flag the
+          // currency so base-currency results are nulled rather than faked.
+          rates[cur] = 1;
+          missingRates.add(cur);
+          logger.error(`[FX_RATE] Missing FX data for ${cur} (fx ${fxCur}) vs ${portfolio.currency}`);
         }
       }
     });
-    if (requestType === "0") {
-      console.log("stop!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", rates);
-      logger.log(`[SSEService.stop for requestType=0 ${userModif}|${msgId} ${subscribers[userModif]?.[msgId]? 'defined' : 'undefined'}]`)
-
-      if (subscribers[userModif]?.[msgId]) {
-        subscribers[userModif][msgId].sseService.stop();
-        eventEmitter.removeListener(
-          subscribers[userModif][msgId].sseService.getEventName(),
-          subscribers[userModif][msgId].handler,
-        );
-      }
-    }
     //console.log("isFirst--------------------->", isFirst);
     const q2Rates = prepareQuoteData2(
       currencyData,
@@ -582,9 +601,11 @@ export async function positions(
         if (!rates[cur] && newRate) {
           newRates[cur] = newRate;
           rates[cur] = newRate;
+          missingRates.delete(cur);
         } else if (newRate && newRate !== rates[cur]) {
           newRates[cur] = newRate;
           rates[cur] = newRate;
+          missingRates.delete(cur);
         }
       }
     });
@@ -620,11 +641,12 @@ export async function positions(
             investedFull,
             fees[symbol].fee,
           );
+          const rateMissing = missingRates.has(cur);
           investedPortfolio += investedFull;
           portfolioPositions[symbol] = {
             ...portfolioPositions[symbol],
-            marketRate: rates[cur] || 1,
-            marketValue: (rates[cur] || 1) * marketPrice * volume,
+            marketRate: rateMissing ? null : (rates[cur] || 1),
+            marketValue: rateMissing ? null : (rates[cur] || 1) * marketPrice * volume,
             marketValueSymbol: marketPrice * volume,
             avgPremium: volume !== 0 ? (investedFull + fees[symbol].fee) / volume : 0,
             avgPremiumSymbol: volume !== 0 ? (investedFullSymbol + fees[symbol].feeSym) / volume : 0,
@@ -637,7 +659,8 @@ export async function positions(
 
           const change = portfolioPositions[symbol] as QuoteChange;
           change.resultSymbol = ((change.marketValueSymbol || 0) - Number(pos.investedFullSymbol) - fees[symbol].feeSym);
-          change.result = change.resultSymbol * (rates[cur] || 1);
+          // Without a known FX rate we can't express result in the base currency.
+          change.result = rateMissing ? null : change.resultSymbol * (rates[cur] || 1);
           change.todayResult = 0; // No quote data, so no today result
           change.todayResultPercent = 0;
 
@@ -654,6 +677,7 @@ export async function positions(
         return;
       }
       const cur = portfolioPositions[symbol].currency as string;
+      const rateMissing = missingRates.has(cur);
       const volume = Number(portfolioPositions[symbol].volume);
       const invested = Number(portfolioPositions[symbol].invested);
       const investedFull = Number(portfolioPositions[symbol].investedFull);
@@ -675,8 +699,8 @@ export async function positions(
         portfolioPositions[symbol] = {
           ...portfolioPositions[symbol],
 
-          marketRate: rates[cur],
-          marketValue: rates[cur] * marketPrice * volume,
+          marketRate: rateMissing ? null : rates[cur],
+          marketValue: rateMissing ? null : rates[cur] * marketPrice * volume,
           marketValueSymbol: marketPrice * volume,
           //  avgPremium: volume !== 0 ? (invested + (portfolioPositions[symbol].fee || 0) ) / volume : 0,
           avgPremium:
@@ -702,7 +726,7 @@ export async function positions(
             Number(portfolioPositions[symbol].marketValueSymbol)) -
           Number(portfolioPositions[symbol].investedFullSymbol) -
           fees[symbol].feeSym;
-        change.result = change.resultSymbol * rates[cur];
+        change.result = rateMissing ? null : change.resultSymbol * rates[cur];
         //         console.log(symbol, cur, rates[cur], change.resultSymbol, change.result);
         const mPrice = Number(
           p?.marketPrice || portfolioPositions[symbol].marketPrice,
@@ -710,7 +734,7 @@ export async function positions(
         let cPrice = Number(
           p?.bprice || portfolioPositions[symbol].bprice,
         );
-        if (cur === 'GBX') cPrice /= 100;
+        if (isPenceQuoted(symbol, cur)) cPrice /= 100;
         change.todayResult = (mPrice - cPrice) * volume * rates[cur];
         change.todayResultPercent =
           Math.round((10000 * (mPrice - cPrice)) / cPrice) / 100;
@@ -734,7 +758,7 @@ export async function positions(
           }
         });
         if (change.marketRate || change.marketPrice) {
-          change.marketValue =
+          change.marketValue = rateMissing ? null :
             (change.marketRate || rates[cur]) *
             (change.marketPrice ||
               Number(portfolioPositions[symbol].marketPrice)) *
@@ -747,7 +771,7 @@ export async function positions(
             portfolioPositions[symbol],
           );
 
-          change.result =
+          change.result = rateMissing ? null :
             (change.marketValue ||
               Number(portfolioPositions[symbol].marketValue)) -
             Number(portfolioPositions[symbol].investedFull) -
@@ -758,7 +782,7 @@ export async function positions(
           let cPrice = Number(
             p?.bprice || portfolioPositions[symbol].bprice,
           );
-          if (cur === 'GBX') cPrice /= 100;
+          if (isPenceQuoted(symbol, cur)) cPrice /= 100;
           change.todayResult = (mPrice - cPrice) * volume * rates[cur];
           change.todayResultPercent =
             Math.round((10000 * (mPrice - cPrice)) / cPrice) / 100;
@@ -842,7 +866,13 @@ export async function positions(
     Object.keys(portfolioPositions).forEach((symbol) => {
       let change = changes.find((c) => c.symbol === symbol);
       if (!change) {
-        change = { symbol } as PortfolioPositionFull;
+        // Emit the full position record (volume, currency, invested, ...) rather than
+        // a bare {symbol} shell, so a holding that never received a quote still carries
+        // its known fields instead of arriving empty.
+        change = {
+          ...(portfolioPositions[symbol] as PortfolioPositionFull),
+          symbol,
+        };
         changes.push(change);
       }
       // Weights calculation - only when totalsMode is not "none"
@@ -1039,6 +1069,156 @@ export async function positions(
     isInitial: true,
   };
 
+  // For one-shot snapshot requests (requestType "0") we reuse the exact same warmup
+  // path as subscriptions, but instead of streaming via sendResponse we resolve this
+  // with the single completed snapshot and tear the subscription down. Null for "1".
+  let resolveOneShot: ((snap: object | undefined) => void) | null = null;
+
+  // --- Cold-snapshot completeness ---
+  // The data proxy delivers quotes over a stream; on a cold connection the first
+  // event(s) often carry only a subset of the requested symbols. We must NOT emit
+  // the initial snapshot from a partial first event (that produced "empty shell"
+  // holdings with no marketPrice/volume). Instead we accumulate quotes across the
+  // early events and emit a single, complete initial snapshot once every held
+  // symbol has a priced quote — or, as a fallback, after a short timeout (filling
+  // any still-missing symbol from the last-known cached close).
+  const INITIAL_SNAPSHOT_TIMEOUT_MS = 3000;
+  const accumulatedQuotes: Record<string, QuoteData> = {};
+  // Symbols that must be priced before the snapshot is considered complete: the
+  // actual non-zero holdings (closed/zero-volume rows are filtered out anyway).
+  const requiredSymbols = Object.keys(portfolioPositions).filter(
+    (s) => Number(portfolioPositions[s].volume) !== 0,
+  );
+  const quoteHasPrice = (q?: QuoteData) =>
+    !!q &&
+    (q.latestPrice != null ||
+      q.close != null ||
+      q.iexBidPrice != null ||
+      q.iexAskPrice != null);
+  const haveAllRequiredQuotes = () =>
+    requiredSymbols.every((s) => quoteHasPrice(accumulatedQuotes[s]));
+
+  const emitInitialSnapshot = (timedOut: boolean = false) => {
+    if (!subscriptionState.isInitial) {
+      return;
+    }
+    const sub = subscribers[userModif]?.[msgId];
+    if (!sub) {
+      return; // subscription torn down before we could emit
+    }
+    if (sub.initialTimer) {
+      clearTimeout(sub.initialTimer);
+      sub.initialTimer = null;
+    }
+    subscriptionState.isInitial = false;
+
+    if (timedOut) {
+      // Fall back to the last-known cached close for any holding the stream never
+      // priced, so it still carries marketPrice/marketValue rather than an empty shell.
+      const today = moment().format(formatYMD);
+      requiredSymbols.forEach((s) => {
+        if (!quoteHasPrice(accumulatedQuotes[s])) {
+          const cachedPrice = getDateSymbolPrice(today, s);
+          if (cachedPrice != null) {
+            accumulatedQuotes[s] = {
+              ...(accumulatedQuotes[s] || ({ symbol: s } as QuoteData)),
+              symbol: s,
+              currency: portfolioPositions[s].currency as string,
+              close: cachedPrice,
+              latestPrice: cachedPrice,
+            } as QuoteData;
+          }
+        }
+      });
+      const priced = requiredSymbols.filter((s) => quoteHasPrice(accumulatedQuotes[s])).length;
+      logger.warn(
+        `[positions] initial snapshot timeout ${userModif}|${msgId}: ${priced}/${requiredSymbols.length} holdings priced`,
+      );
+    }
+
+    // Holdings can reach "all priced" (or time out) before the FX pair quotes arrive.
+    // Without the FX rate, result can't be expressed in the base currency, so fill any
+    // still-missing holding-currency rate from the cache before computing the snapshot.
+    {
+      const fxDay = moment().format(formatYMD);
+      const baseCur = portfolio.currency as string;
+      const seenFx = new Set<string>();
+      requiredSymbols.forEach((s) => {
+        const cur = portfolioPositions[s].currency as string;
+        if (!cur) return;
+        const fxCur = fxCurrency(cur);
+        if (fxCur === baseCur || seenFx.has(fxCur)) return;
+        seenFx.add(fxCur);
+        const pair = `${fxCur}${baseCur}:FX`;
+        const invPair = `${baseCur}${fxCur}:FX`;
+        if (
+          quoteHasPrice(accumulatedQuotes[pair]) ||
+          quoteHasPrice(accumulatedQuotes[invPair])
+        ) {
+          return;
+        }
+        const rate = getRate(fxCur, baseCur, fxDay);
+        if (rate != null) {
+          accumulatedQuotes[pair] = {
+            symbol: pair,
+            currency: fxCur,
+            latestPrice: rate,
+            close: rate,
+          } as QuoteData;
+        }
+      });
+    }
+
+    // Build a single complete snapshot from every quote gathered during warmup,
+    // exactly as if the proxy had delivered them all in one message.
+    isFirst = true;
+    const snapshot = calcChanges(
+      Object.values(accumulatedQuotes),
+      includeAttribution,
+      totalsMode,
+      true,
+    );
+
+    // One-shot snapshot (requestType "0"): return it to the caller and tear the
+    // subscription down — there is no ongoing stream for "0".
+    if (resolveOneShot) {
+      const resolve = resolveOneShot;
+      resolveOneShot = null;
+      const sub2 = subscribers[userModif]?.[msgId];
+      if (sub2) {
+        sub2.sseService.stop();
+        eventEmitter.removeListener(eventName, registeredHandler);
+        eventEmitter.removeListener("trade.change", subscriberOnTrades);
+        delete subscribers[userModif][msgId];
+        logSubscriptionCount("snapshot_complete");
+      }
+      console.log(
+        moment().format("HH:mm:ss SSS"),
+        "snapshot (requestType 0)-> ",
+        userModif,
+        msgId,
+        "===>",
+        snapshot?.length,
+        timedOut ? "(timeout)" : "(complete)",
+      );
+      resolve(snapshot);
+      return;
+    }
+
+    if (snapshot && snapshot.length > 0) {
+      console.log(
+        moment().format("HH:mm:ss SSS"),
+        "subscriber SSE initial-> ",
+        userModif,
+        msgId,
+        "===>",
+        snapshot.length,
+        timedOut ? "(timeout)" : "(complete)",
+      );
+      sendResponse(snapshot);
+    }
+  };
+
   const registeredHandler = (data: object) => {
     const actualChanges = (data as QuoteData[]).filter((d: QuoteData) =>
       d.lastTradeTime
@@ -1054,9 +1234,24 @@ export async function positions(
       return;
     }
 
-    const streamingTotalsMode = subscriptionState.isInitial ? totalsMode : "minimal";
-    const streamingIncludeAttribution = subscriptionState.isInitial ? includeAttribution : false;
-    const changes = calcChanges(actualChanges, streamingIncludeAttribution, streamingTotalsMode, subscriptionState.isInitial);
+    // Warmup phase: accumulate quotes (merging partials per symbol) and only emit
+    // the initial snapshot once every holding is priced. Don't send anything yet.
+    if (subscriptionState.isInitial) {
+      actualChanges.forEach((q) => {
+        if (q && q.symbol) {
+          accumulatedQuotes[q.symbol] = {
+            ...accumulatedQuotes[q.symbol],
+            ...q,
+          };
+        }
+      });
+      if (haveAllRequiredQuotes()) {
+        emitInitialSnapshot(false);
+      }
+      return;
+    }
+
+    const changes = calcChanges(actualChanges, false, "minimal", false);
 
     if (changes && changes.length > 0) {
       console.log(
@@ -1069,8 +1264,6 @@ export async function positions(
       );
       sendResponse(changes);
     }
-
-    subscriptionState.isInitial = false;
 
     // Check socket state and cleanup if necessary
     if (socket.readyState === WebSocket.CLOSED) {
@@ -1121,6 +1314,15 @@ export async function positions(
 
   eventEmitter.on(eventName, registeredHandler);
 
+  // Bound the warmup: if not all holdings get priced quickly (e.g. an illiquid or
+  // delisted symbol the stream never quotes), emit the best-available snapshot
+  // anyway rather than leaving the client without data.
+  if (requestType === "1") {
+    subscribers[userModif][msgId].initialTimer = setTimeout(() => {
+      emitInitialSnapshot(true);
+    }, INITIAL_SNAPSHOT_TIMEOUT_MS);
+  }
+
   profiler.endTimer("positions.main", userModif, msgId, {
     success: true,
     totalDuration: Date.now() - startTime,
@@ -1128,11 +1330,37 @@ export async function positions(
     eventName: requestType === "1" ? "subscribed" : "snapshot"
   });
 
-  // For snapshot requests (requestType "0"), return positions immediately
+  // Snapshot requests (requestType "0") reuse the subscription warmup: wait for the
+  // live quotes (or the same timeout fallback that fills from cache), then return the
+  // one completed snapshot and tear down. This is the path that yields correct
+  // base-currency results instead of an unpriced x1 shell.
   if (requestType === "0") {
-    isFirst = true;
-    processQuoteData([]);
-    const snapshotPositions = calcChanges([], includeAttribution, totalsMode, true);
+    subscribers[userModif][msgId].initialTimer = setTimeout(() => {
+      emitInitialSnapshot(true);
+    }, INITIAL_SNAPSHOT_TIMEOUT_MS);
+    const snapshotPositions = await new Promise<object | undefined>((resolve) => {
+      let done = false;
+      // Idempotent: emitInitialSnapshot and the safety net below may both race here.
+      resolveOneShot = (snap) => {
+        if (done) return;
+        done = true;
+        resolve(snap);
+      };
+      // Hard safety net: never leave the request hung even if the subscription is torn
+      // down (e.g. socket close clears the warmup timer) before a snapshot is emitted.
+      setTimeout(() => {
+        if (!done) {
+          resolveOneShot = null;
+          done = true;
+          resolve(undefined);
+        }
+      }, INITIAL_SNAPSHOT_TIMEOUT_MS + 2000);
+      // Nothing to price (cash-only / fully closed portfolio): emit immediately so we
+      // don't sit through the warmup timeout for a portfolio with no holdings to quote.
+      if (requiredSymbols.length === 0) {
+        emitInitialSnapshot(false);
+      }
+    });
     return snapshotPositions;
   }
 
@@ -1214,6 +1442,8 @@ async function getPositions(
 
   profiler.startTimer("getPositions.symbolCountries", "system", "getPositions");
   const symbolCountries = await getSymbolsCountries(uniqueSymbols);
+  // Preload authoritative currencies so isPenceQuoted() only scales GBP London lines.
+  await preloadSymbolCurrencies(uniqueSymbols);
   profiler.endTimer("getPositions.symbolCountries", "system", "getPositions", { symbolsCount: uniqueSymbols.length });
   
   // Always fetch GICS data for now - it's needed for sector/industry totals
@@ -1344,8 +1574,9 @@ async function getPositions(
         const gicsData = gicsCache.get(symbol) || { sector: '', industry: '' };
         const { sector, industry } = gicsData;
         const dir = trade.side === "B" ? 1 : -1; //calculate invested
-        const isGBX = trade.currency === 'GBX';
-        const priceAdj = isGBX ? trade.price / 100 : trade.price;
+        // Trades entered in pence (GBX) are converted to GBP; GBP-labelled trades are
+        // already in pounds. The currency label — not the exchange — carries the scale.
+        const priceAdj = trade.currency === 'GBX' ? trade.price / 100 : trade.price;
         const priceN = toNum({ n: priceAdj });
         const fs = trade.fee;
         const f = fs * trade.rate;
@@ -1587,10 +1818,9 @@ function prepareQuoteData2(
         // country/a2/region/subRegion come from MongoDB via oldPortfolio — do not overwrite with SSE data
       }
 
-      // Apply GBX scaling for LSE stocks (all GBP-denominated stocks from LSE are quoted in pence)
+      // London-listed stocks come from the price source in pence; convert pence -> GBP.
       let finalMarketPrice = marketPrice;
-      if (marketPrice && currency === 'GBP') {
-        // All UK stocks with GBP currency are quoted in GBX (pence), divide by 100 to get GBP
+      if (marketPrice && isPenceQuoted(symbol)) {
         finalMarketPrice = marketPrice / 100;
       }
 

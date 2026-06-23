@@ -29,5 +29,7 @@ export type SubscribeObj = {
   sseService: SSEService;
   tradeHandler?: (ev: any) => void;
   data?: SubscriptionData;
+  // Pending timer that emits the initial (cold) snapshot if not all quotes arrive in time.
+  initialTimer?: ReturnType<typeof setTimeout> | null;
 };
 export type SubscribeMsgs = Record<string, SubscribeObj>
