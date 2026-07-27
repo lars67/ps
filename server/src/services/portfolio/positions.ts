@@ -575,13 +575,16 @@ export async function positions(
         if (fxPrice != null) {
           rates[cur] = inv ? 1.0 / fxPrice : fxPrice;
           missingRates.delete(cur);
-        } else {
-          // Keep a neutral 1 so any legacy arithmetic stays finite, but flag the
-          // currency so base-currency results are nulled rather than faked.
+        } else if (!(cur in rates)) {
+          // Never resolved in an earlier batch either — genuinely missing. Keep a
+          // neutral 1 so any legacy arithmetic stays finite, but flag the currency
+          // so base-currency results are nulled rather than faked.
           rates[cur] = 1;
           missingRates.add(cur);
           logger.error(`[FX_RATE] Missing FX data for ${cur} (fx ${fxCur}) vs ${portfolio.currency}`);
         }
+        // else: this batch is a delta that simply didn't repeat the FX quote —
+        // keep the rate resolved in a previous batch instead of clobbering it.
       }
     });
     //console.log("isFirst--------------------->", isFirst);
