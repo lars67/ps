@@ -12,6 +12,21 @@ type ObjectWithKnownCompanyProps = CompanyCnownProperties &
   Record<string, unknown>;
 
 const companies: Record<string, ObjectWithKnownCompanyProps> = {};
+
+// getGICS() below cached sector/industry forever (no expiry), so once a symbol was
+// looked up it kept serving whatever Sector/Industry Aktia.Symbols had at that moment
+// for the entire life of this long-running process — even after Aktia.Symbols was
+// corrected (e.g. the monthly TradingView re-import). Root cause of Sync2's Sector
+// Allocation chart showing 0% Information Technology despite holding INTC:XNAS, whose
+// live Aktia.Symbols.Sector is "Electronic technology": the cached value was stale.
+const GICS_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h — matches how often Aktia.Symbols realistically changes
+const gicsCachedAt: Record<string, number> = {};
+
+function isGicsCacheFresh(symbol: string): boolean {
+  const cachedAt = gicsCachedAt[symbol];
+  return !!cachedAt && Date.now() - cachedAt < GICS_CACHE_TTL_MS;
+}
+
 export const getCompanyField = async (
   symbol: string,
   field: string = "companyName",
@@ -120,8 +135,9 @@ export const preloadSymbolCurrencies = async (symbols: string[]): Promise<void> 
 export const getGICS = async (
   symbol: string,
 ): Promise<{ sector: string; industry: string }> => {
-  // Check cache first
-  if (companies[symbol] && companies[symbol].sector !== undefined && companies[symbol].industry !== undefined) {
+  // Check cache first — only trust it while still fresh (see GICS_CACHE_TTL_MS above).
+  if (companies[symbol] && companies[symbol].sector !== undefined && companies[symbol].industry !== undefined
+      && isGicsCacheFresh(symbol)) {
     return {
       sector: companies[symbol].sector || "",
       industry: companies[symbol].industry || "",
@@ -162,6 +178,7 @@ export const getGICS = async (
         sector: doc.Sector || "",
         industry: doc.Industry || "",
       };
+      gicsCachedAt[symbol] = Date.now();
       return {
         sector: companies[symbol].sector || "",
         industry: companies[symbol].industry || "",
@@ -169,6 +186,7 @@ export const getGICS = async (
     }
     // If not found in DB, cache an empty result to avoid repeated lookups for this symbol
     companies[symbol] = { ...companies[symbol], symbol, name: companies[symbol]?.name || "", sector: "", industry: "" };
+    gicsCachedAt[symbol] = Date.now();
     return {
       sector: "",
       industry: "",
@@ -220,11 +238,11 @@ export const getSymbolCountry = async (symbol: string): Promise<string> => {
 export const getGICSAr = async (
   symbolsAr: string[],
 ): Promise<Record<string, { sector: string; industry: string }>> => {
-  const reqSymbols = symbolsAr.filter((s) => !companies[s]);
+  const reqSymbols = symbolsAr.filter((s) => !companies[s] || !isGicsCacheFresh(s));
   if (reqSymbols.length > 0) {
     try {
-      // Call the modified getGICS for each symbol not in cache
-      // This will populate the cache
+      // Call the modified getGICS for each symbol not in cache, or whose cache entry
+      // has expired (see GICS_CACHE_TTL_MS) — this will (re)populate the cache
       for (let symbol of reqSymbols) {
         await getGICS(symbol);
       }
