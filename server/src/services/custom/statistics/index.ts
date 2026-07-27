@@ -89,6 +89,12 @@ const resultFields: Record<
   information_ratio: undefined,
   up_capture: undefined,
   down_capture: undefined,
+  // Diagnostics: count of series points <= 0. Present only when > 0; when
+  // set, every stat whose window touches those points is left undefined.
+  non_positive_days: undefined,
+  // Money-weighted annual return; filled in by tools.statistic (portfolio
+  // mode only) from actual funding flows, not from the price series.
+  irr: undefined,
 };
 
 function cloneData(ar: DataPoint[]): DataPoint[] {
@@ -129,36 +135,36 @@ function statistics(
     return formatFld(result);
   }
 
-  // --- Calculate New Statistics (Moved Earlier) ---
-  console.log(`DEBUG: Calculating new stats. Daily returns (r) length: ${r.length}`); // Log input length
+  // Ratio-based stats are only defined on a positive series: any point at or
+  // below zero that a computation divides by (as a return denominator or
+  // drawdown base) yields mathematically impossible output — returns below
+  // -100%, drawdowns below -100%. When the series touches or crosses zero,
+  // stats built from the full return series are left undefined; endpoint
+  // stats (cagr, mtd/ytd/N-year windows) instead guard their own anchor
+  // points, so windows anchored on positive values still come through.
+  const allPositive = dp.every(([, v]) => v > 0);
+  if (!allPositive) {
+    result.non_positive_days = dp.filter(([, v]) => v <= 0).length;
+  }
 
+  result.cagr = utils.calc_cagr(dp);
+  // Add startDate for frontend to decide CAGR display
+  result.startDate = dp[0][0].format('YYYY-MM-DD');
+
+  if (allPositive) {
   // Rolling Volatility (30-day annualized)
   const rolling_vol_data = utils.calculate_rolling_std(r, 30);
-  console.log(`DEBUG: Rolling vol data length: ${rolling_vol_data.length}`); // Log rolling vol length
   if (rolling_vol_data.length > 0) {
-      const latest_rolling_vol = rolling_vol_data[rolling_vol_data.length - 1][1];
-      result.rolling_vol_30d = latest_rolling_vol; // Store latest value
-      console.log(`DEBUG: Assigned rolling_vol_30d: ${latest_rolling_vol}`); // Log assigned value
-      // Optionally, could return the full rolling_vol_data array if needed later
-  } else {
-      console.log(`DEBUG: Not enough data for rolling_vol_30d.`);
+      result.rolling_vol_30d = rolling_vol_data[rolling_vol_data.length - 1][1];
   }
 
   // VaR and CVaR (using historical daily returns 'r')
   const var_95_threshold = utils.calculate_percentile(r, 0.05); // 5th percentile for 95% VaR
-  console.log(`DEBUG: Calculated var_95_threshold: ${var_95_threshold}`); // Log VaR threshold
   if (var_95_threshold !== null) {
       result.var_95 = var_95_threshold;
-      console.log(`DEBUG: Assigned var_95: ${var_95_threshold}`); // Log assigned VaR
       const cvar_val = utils.calculate_average_below_threshold(r, var_95_threshold);
-      console.log(`DEBUG: Calculated cvar_val: ${cvar_val}`); // Log CVaR value
       result.cvar_95 = cvar_val === null ? undefined : cvar_val; // Handle null case
-      console.log(`DEBUG: Assigned cvar_95: ${result.cvar_95}`); // Log assigned CVaR
-  } else {
-      console.log(`DEBUG: Could not calculate var_95_threshold.`);
   }
-  // --- End New Statistics ---
-
 
   result.daily_mean = utils.mean(r) * 252;
   result.daily_vol = utils.std(r, 1) * Math.sqrt(252);
@@ -177,12 +183,9 @@ function statistics(
 
   result.total_return = utils.comp(r);
   result.ytd = result.total_return;
-  result.cagr = utils.calc_cagr(dp);
-  // Add startDate for frontend to decide CAGR display
-  result.startDate = dp[0][0].format('YYYY-MM-DD');
   // Inception return is the total return since inception
   result.incep = result.total_return;
-  
+
   const drawdown = utils.to_drawdown_series(dp);
   result.max_drawdown = utils.findMin(drawdown);
   const drawdown_details = utils.drawdown_details(drawdown);
@@ -195,12 +198,14 @@ function statistics(
       drawdown_details.length;
   }
 
-  result.calmar = result.cagr / Math.abs(result.max_drawdown as number);
+  if (typeof result.cagr === "number" && result.max_drawdown) {
+    result.calmar = result.cagr / Math.abs(result.max_drawdown as number);
+  }
 
   // --- Single-series additions (computed from daily data already in hand) ---
   result.ulcer_index = utils.calc_ulcer_index(dp);
-  if (result.ulcer_index) {
-    result.martin_ratio = (result.cagr as number) / (result.ulcer_index as number);
+  if (result.ulcer_index && typeof result.cagr === "number") {
+    result.martin_ratio = result.cagr / (result.ulcer_index as number);
   }
   result.max_drawdown_days = utils.calc_max_drawdown_days(dp);
   result.gain_to_pain = utils.calc_gain_to_pain(r);
@@ -213,7 +218,7 @@ function statistics(
   }
 
   // --- Benchmark-relative (only when benchmark series is provided) ---
-  if (benchmark && benchmark.length > 1) {
+  if (benchmark && benchmark.length > 1 && benchmark.every(([, v]) => v > 0)) {
     const bReturns = utils.to_returns(benchmark);
     const beta = utils.calc_beta(r, bReturns);
     result.beta = beta;
@@ -224,13 +229,16 @@ function statistics(
     result.up_capture = utils.calc_up_capture(r, bReturns);
     result.down_capture = utils.calc_down_capture(r, bReturns);
   }
+  } // end allPositive
 
   if (r.length < 4) {
     return formatFld(result);
   }
 
-  result.daily_skew = utils.skewness(r);
-  result.daily_kurt = utils.kurt(r);
+  if (allPositive) {
+    result.daily_skew = utils.skewness(r);
+    result.daily_kurt = utils.kurt(r);
+  }
 
   const monthly_returns = utils.to_returns(monthly_prices);
   const mr = monthly_returns;
@@ -239,27 +247,39 @@ function statistics(
     return formatFld(result);
   }
 
-  result.monthly_mean = utils.mean(mr) * 12;
-  result.monthly_vol = utils.std(mr, 1) * Math.sqrt(12);
-  if (typeof rf === "number") {
-    result.monthly_sharpe = utils.calc_sharpe(mr, rf, 12);
-    result.monthly_sortino = utils.calc_sortino_ratio(mr, rf, 12);
+  if (allPositive) {
+    result.monthly_mean = utils.mean(mr) * 12;
+    result.monthly_vol = utils.std(mr, 1) * Math.sqrt(12);
+    if (typeof rf === "number") {
+      result.monthly_sharpe = utils.calc_sharpe(mr, rf, 12);
+      result.monthly_sortino = utils.calc_sortino_ratio(mr, rf, 12);
+    }
+
+    result.best_month = utils.findMax(mr);
+    result.worst_month = utils.findMin(mr);
   }
 
-  result.best_month = utils.findMax(mr);
-  result.worst_month = utils.findMin(mr);
-
-  result.mtd = dp[dp.length - 1][1] / mp[mp.length - 2][1] - 1;
+  const lastPrice = dp[dp.length - 1][1];
+  // Endpoint ratios: both anchor and last value must be positive to be defined
+  if (lastPrice > 0 && mp[mp.length - 2][1] > 0) {
+    result.mtd = lastPrice / mp[mp.length - 2][1] - 1;
+  }
   // Calculate YTD here using yearly prices (yp) if available
   if (yp.length >= 2) { // Ensure we have previous year-end data
-    result.ytd = dp[dp.length - 1][1] / yp[yp.length - 2][1] - 1;
+    if (lastPrice > 0 && yp[yp.length - 2][1] > 0) {
+      result.ytd = lastPrice / yp[yp.length - 2][1] - 1;
+    } else {
+      result.ytd = undefined;
+    }
   } // Otherwise, the initial assignment (YTD = Total Return) remains correct for partial year
 
-  const positive = utils.positive(mr);
-  const negative = utils.negative(mr);
-  result.pos_month_perc = positive.length / mr.length - 1;
-  result.avg_up_month = utils.mean(positive);
-  result.avg_down_month = utils.mean(negative);
+  if (allPositive) {
+    const positive = utils.positive(mr);
+    const negative = utils.negative(mr);
+    result.pos_month_perc = positive.length / mr.length - 1;
+    result.avg_up_month = utils.mean(positive);
+    result.avg_down_month = utils.mean(negative);
+  }
 
   if (mr.length < 3) {
     return formatFld(result);
@@ -273,8 +293,10 @@ function statistics(
 
   result.six_month = utils.getInterval(dp, "months", -6);
 
-  result.monthly_skew = utils.skewness(mr);
-  result.monthly_kurt = utils.kurt(mr);
+  if (allPositive) {
+    result.monthly_skew = utils.skewness(mr);
+    result.monthly_kurt = utils.kurt(mr);
+  }
 
   //result.yearly_returns = utils.to_returns(yearly_prices);
   const yr = utils.to_returns(yearly_prices); //result.yearly_returns;
@@ -288,34 +310,38 @@ function statistics(
   // YTD calculation moved earlier (around line 175)
   result.one_year = utils.getInterval(dp, "years", -1);
 
-  result.yearly_mean = utils.mean(yr);
-  result.yearly_vol = utils.std(yr, 1);
+  if (allPositive) {
+    result.yearly_mean = utils.mean(yr);
+    result.yearly_vol = utils.std(yr, 1);
 
-  if (typeof rf === "number") {
-    result.yearly_sharpe = utils.calc_sharpe(yr, rf, 1);
-    result.yearly_sortino = utils.calc_sortino_ratio(yr, rf, 1);
+    if (typeof rf === "number") {
+      result.yearly_sharpe = utils.calc_sharpe(yr, rf, 1);
+      result.yearly_sortino = utils.calc_sortino_ratio(yr, rf, 1);
+    }
+
+    result.best_year = utils.findMax(yr);
+    result.worst_year = utils.findMin(yr);
+
+    result.yearly_skew = utils.skewness(yr);
+    result.yearly_kurt = utils.kurt(yr);
   }
-
-  result.best_year = utils.findMax(yr);
-  result.worst_year = utils.findMin(yr);
-
-  result.yearly_skew = utils.skewness(yr);
-  result.yearly_kurt = utils.kurt(yr);
 
   result.three_year = utils.calc_cagr(utils.getIntervalFrom(dp, "years", -3));
 
-  result.win_year_perc = utils.positive(yr).length / yr.length;
+  if (allPositive) {
+    result.win_year_perc = utils.positive(yr).length / yr.length;
 
-  if (mr.length > 11) {
-    let tot = 0;
-    let win = 0;
-    for (let i = 11; i < mr.length; i++) {
-      tot += 1;
-      if (mp[i][1] / mp[i - 11][1] > 1) {
-        win++;
+    if (mr.length > 11) {
+      let tot = 0;
+      let win = 0;
+      for (let i = 11; i < mr.length; i++) {
+        tot += 1;
+        if (mp[i][1] / mp[i - 11][1] > 1) {
+          win++;
+        }
       }
+      result.twelve_month_win_perc = win / tot;
     }
-    result.twelve_month_win_perc = win / tot;
   }
 
   if (yr.length < 4) {
@@ -374,10 +400,16 @@ function formatFld(
   result: Record<string, number | string | undefined>,
 ): Record<string, string | number | undefined> { // Revert parameter and return type annotation
   const result2: Record<string, string | number | undefined> = { ...result }; // Revert type
+  // NaN/Infinity (e.g. division by a zero value, sortino with no downside)
+  // must not reach the client — treat as undefined like any unavailable stat
+  Object.keys(result2).forEach((fld) => {
+    if (typeof result2[fld] === 'number' && !Number.isFinite(result2[fld] as number)) {
+      result2[fld] = undefined;
+    }
+  });
   percentFields.forEach((fld) => {
     // Check if the field exists and is a number before formatting
     if (typeof result2[fld] === 'number') {
-      console.log(fld, result2[fld], fmtp(result2[fld] as number)); // Keep console log for debugging if needed
       result2[fld] = fmtp(result2[fld] as number);
     } else if (result2[fld] === null) { // Handle null values explicitly if needed
         result2[fld] = '-'; // Or some other placeholder

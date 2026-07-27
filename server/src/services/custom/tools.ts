@@ -1,7 +1,9 @@
 import { CommandDescription } from "../../types/custom";
-import { DataPoint } from "./statistics/utils";
+import utils, { CashFlow, DataPoint } from "./statistics/utils";
 import moment from "moment";
 import statistics from "./statistics";
+import { TradeModel } from "../../models/trade";
+import { TradeTypes, TradeSide } from "../../types/trade";
 import {
   getPortfolioInstanceByIDorName,
   PutCash,
@@ -131,6 +133,37 @@ export async function statistic(
         (p) => [moment(p.date, formatYMD), Number(p.index)],
       ) as DataPoint[];
       const statistic = statistics.statistics(prices, 0, benchmarkPrices);
+
+      // Money-weighted annual return (IRR): actual funding flows + terminal NAV.
+      // Deposits/withdrawals (Investment + Cash trades) are external investor
+      // flows; dividends and P&L stay internal to the NAV.
+      const lastDay = days[days.length - 1];
+      if (lastDay && Number(lastDay.nav) > 0) {
+        const moneyTrades = await TradeModel.find({
+          portfolioId: realId,
+          tradeType: { $in: [TradeTypes.Investment, TradeTypes.Cash] },
+        }).lean();
+        const flows: CashFlow[] = moneyTrades
+          .filter((t) => t.tradeTime && t.tradeTime.split("T")[0] <= lastDay.date)
+          .map((t) => {
+            const amount = t.price * (t.rate || 1) + (t.fee || 0) * (t.rate || 1);
+            const signed =
+              t.tradeType === TradeTypes.Cash && t.side === TradeSide.WITHDRAW
+                ? -amount
+                : amount; // Investment amounts carry their own sign
+            // investor perspective: money paid in is negative
+            return { date: moment(t.tradeTime.split("T")[0], formatYMD), amount: -signed };
+          });
+        if (flows.length) {
+          flows.push({ date: moment(lastDay.date, formatYMD), amount: Number(lastDay.nav) });
+          flows.sort((a, b) => a.date.valueOf() - b.date.valueOf());
+          const irr = utils.calc_xirr(flows);
+          if (irr !== undefined && isFinite(irr)) {
+            statistic.irr = Math.round(10000 * irr) / 100;
+          }
+        }
+      }
+
       return { statistic, benchmark: instance.baseInstrument };
     }
   } catch (err) {

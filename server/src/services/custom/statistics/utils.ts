@@ -123,9 +123,17 @@ function year_frac(start: moment.Moment, end: moment.Moment): number {
     return delta / 31557600;
 }
 
-function calc_cagr(prices: DataPoint[]): number {
+function calc_cagr(prices: DataPoint[]): number | undefined {
+    if (prices.length < 2) {
+        return undefined;
+    }
     const start = prices[0];
     const end = prices[prices.length - 1];
+    // A growth rate is only defined between two positive values; a start at
+    // or below zero makes the ratio meaningless (and Math.pow returns NaN).
+    if (start[1] <= 0 || end[1] <= 0) {
+        return undefined;
+    }
     return Math.pow(end[1] / start[1], 1 / year_frac(start[0], end[0])) - 1;
 }
 
@@ -222,7 +230,10 @@ function kurt(a: DataPoint[]): number {
 function getInterval(dp: DataPoint[], what: moment.unitOfTime.DurationConstructor, n: number): number | undefined {
     const date = dp[dp.length - 1][0].clone().add(n, what);
     const trg = dp.find(d => d[0] >= date);
-    return trg ? dp[dp.length - 1][1] / trg[1] - 1 : undefined;
+    const last = dp[dp.length - 1][1];
+    // Both endpoints must be positive for the ratio return to be defined —
+    // a zero/negative anchor produces impossible values (e.g. < -100%).
+    return trg && trg[1] > 0 && last > 0 ? last / trg[1] - 1 : undefined;
 }
 
 function getIntervalFrom(dp: DataPoint[], what: moment.unitOfTime.DurationConstructor, n: number): DataPoint[] {
@@ -294,6 +305,32 @@ function calculate_average_below_threshold(data: DataPoint[], threshold: number)
 
 function comp(returns: DataPoint[]): number {
   return returns.reduce((acc, val) => acc * (1 + val[1]), 1) - 1;
+}
+
+export type CashFlow = { date: moment.Moment; amount: number };
+
+// Money-weighted annual return (XIRR): the rate r solving
+// sum(amount_i / (1+r)^years_i) = 0. Flows from the investor's perspective:
+// deposits negative, withdrawals positive, terminal portfolio value positive.
+function calc_xirr(flows: CashFlow[]): number | undefined {
+    if (flows.length < 2) return undefined;
+    if (!flows.some(f => f.amount < 0) || !flows.some(f => f.amount > 0)) return undefined;
+    const t0 = flows[0].date;
+    const yrs = flows.map(f => year_frac(t0, f.date));
+    if (yrs[yrs.length - 1] <= 0) return undefined;
+    const npv = (r: number) => flows.reduce((a, f, i) => a + f.amount / Math.pow(1 + r, yrs[i]), 0);
+    // bisection: robust for the single-sign-change flow patterns portfolios produce
+    let lo = -0.9999, hi = 1000;
+    let flo = npv(lo);
+    const fhi = npv(hi);
+    if (!isFinite(flo) || !isFinite(fhi) || flo * fhi > 0) return undefined;
+    for (let i = 0; i < 200 && hi - lo > 1e-10; i++) {
+        const mid = (lo + hi) / 2;
+        const fm = npv(mid);
+        if (!isFinite(fm)) return undefined;
+        if (flo * fm <= 0) { hi = mid; } else { lo = mid; flo = fm; }
+    }
+    return (lo + hi) / 2;
 }
 
 // --- Benchmark-relative helpers (pReturns and bReturns must be date-aligned) ---
@@ -433,6 +470,7 @@ export default {
     calculate_rolling_std,
     calculate_percentile,
     calculate_average_below_threshold,
+    calc_xirr,
     comp,
     calc_beta,
     calc_alpha,
