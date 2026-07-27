@@ -29,6 +29,7 @@ export type DayType = {
   shares: number;
   navShare: number;
   perfShare: number;
+  holdingValues: Record<string, number>;
 }
 
 // Define Params type locally
@@ -189,6 +190,14 @@ class WorkerPortfolioCalculator {
       let withoutPrices: string[] = [];
 
       const priceCheckStartDate = startDateMoment.clone().subtract(10, 'days').format(formatYMD);
+      // Tracks the last successfully priced value per symbol — used when price/rate is unavailable.
+      // Declared here (not just at the day-loop's state-init below) so it can be seeded from the
+      // most recent prior cached day before fillDateHistoryFromTrades' cruder trade-price fallback
+      // runs, and so that fallback can skip symbols we already have a real seeded value for.
+      const lastKnownHoldingValues: Record<string, number> = {};
+      // Seeded from the prior cached day's `perfomance` (TWR index) below, when running
+      // incrementally, so the day loop can continue compounding instead of resetting to 100%.
+      let previousPerformanceValue = 0;
 
       if (isIncrementalMode) {
         // Just extract the sets — no price fetch via allTrades
@@ -199,9 +208,39 @@ class WorkerPortfolioCalculator {
         }
         // Only fetch prices for the new date window
         try {
-          await checkPrices(uniqueSymbols, priceCheckStartDate, undefined, undefined, false);
+          withoutPrices.push(...(await checkPrices(uniqueSymbols, priceCheckStartDate, undefined, undefined, false)));
           for (const currency of uniqueCurrencies) {
-            await checkPriceCurrency(currency, portfolio.currency, priceCheckStartDate, false);
+            const r = await checkPriceCurrency(currency, portfolio.currency, priceCheckStartDate, false);
+            if (r) {
+              withoutPrices.push(r);
+            }
+          }
+          // Seed last-known per-symbol values from the most recent prior cached day before falling
+          // back to trade-price interpolation below, so a symbol whose feed went dark keeps using
+          // its real last known market value (what a continuous full recalculation would naturally
+          // carry forward) instead of being overwritten by the cruder trade-price estimate.
+          try {
+            const { PortfolioHistoryModel } = require('../../models/portfolioHistory');
+            const priorRecord = await PortfolioHistoryModel.findOne({
+              portfolioId: realId,
+              date: { $lt: startDateString },
+            }).sort({ date: -1 }).limit(1);
+            if (priorRecord?.holdingValues) {
+              Object.assign(lastKnownHoldingValues, priorRecord.holdingValues);
+            }
+            if (priorRecord?.perfomance) {
+              previousPerformanceValue = priorRecord.perfomance;
+            }
+          } catch (err) {
+            console.warn(`Could not seed last-known holding values for ${realId}:`, err);
+          }
+          // Symbols with a feed gap get no price at all (not even on this incremental path's
+          // first day) — interpolate from trade prices so they don't silently drop out of NAV.
+          // Skip any symbol we already have a real seeded last-known value for above; the cruder
+          // trade-price interpolation would otherwise clobber it.
+          const symbolsNeedingInterpolation = withoutPrices.filter((s) => lastKnownHoldingValues[s] == null);
+          if (symbolsNeedingInterpolation.length > 0) {
+            await fillDateHistoryFromTrades(allTrades, symbolsNeedingInterpolation, endDateString);
           }
         } catch (priceError) {
           console.error("Error fetching recent price data:", priceError);
@@ -249,8 +288,6 @@ class WorkerPortfolioCalculator {
       let perfomanceNominal = 0;
       let initialNavForPerf = 0;
       let baseIndexValue = 100000;
-      // Tracks the last successfully priced value per symbol — used when price/rate is unavailable
-      const lastKnownHoldingValues: Record<string, number> = {};
 
       // Process Initial State (Trades Before Start Date)
       // Use trade.rate (the stored FX rate at execution time) so we don't need to load
@@ -310,7 +347,11 @@ class WorkerPortfolioCalculator {
         const price = getDateSymbolPrice(dayBeforeStartStr, symbol);
         const rate = getRate(holding.currency, portfolio.currency, dayBeforeStartStr);
         if (price != null && rate != null) {
-          initialInv += price * rate * holding.volume;
+          const holdingValue = price * rate * holding.volume;
+          initialInv += holdingValue;
+          lastKnownHoldingValues[symbol] = holdingValue;
+        } else if (lastKnownHoldingValues[symbol] != null) {
+          initialInv += lastKnownHoldingValues[symbol];
         } else {
           console.warn(`Could not get initial price/rate for ${symbol} on ${dayBeforeStartStr}`);
         }
@@ -412,7 +453,9 @@ class WorkerPortfolioCalculator {
 
           // Calculate Daily Performance
           if (days.length === 0) {
-            perfomanceNominal = dayNav;
+            // Continue compounding the TWR index from the prior cached day, when available,
+            // instead of resetting it to 100% on the first day of every incremental window.
+            perfomanceNominal = previousPerformanceValue > 0 ? previousPerformanceValue : dayNav;
             initialNavForPerf = dayNav;
           } else if (Object.keys(currentHoldings).length > 0) {
             try {
@@ -459,7 +502,8 @@ class WorkerPortfolioCalculator {
           perfomance: toNumLocal(perfomanceNominal),
           shares: finalShares,
           navShare: toNumLocal(navShare),
-          perfShare: toNumLocal(100 * navShare / (baselineNavShare !== 0 ? baselineNavShare : 1))
+          perfShare: toNumLocal(100 * navShare / (baselineNavShare !== 0 ? baselineNavShare : 1)),
+          holdingValues: { ...lastKnownHoldingValues },
         });
 
         loopMoment.add(1, 'day');

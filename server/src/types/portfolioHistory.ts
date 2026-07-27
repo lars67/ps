@@ -15,6 +15,11 @@ export type PortfolioHistoryDay = {
   perfShare: number; // Performance percentage
   lastUpdated: Date; // When this record was last calculated
   isCalculated: boolean; // Whether fully calculated or estimated
+  // Per-symbol market value (in portfolio currency) as of this day, for every currently-held
+  // symbol that had a resolvable price/rate that day. Lets a later incremental recompute seed its
+  // last-known-value fallback from real prices instead of falling back to the original trade price
+  // when a symbol's feed goes dark right at the incremental boundary.
+  holdingValues?: Record<string, number>;
 };
 
 // Interface for portfolio history metadata

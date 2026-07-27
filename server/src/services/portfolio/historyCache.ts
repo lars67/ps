@@ -316,7 +316,8 @@ export class PortfolioHistoryCache {
         navShare: day.navShare,
         perfShare: day.perfShare,
         lastUpdated: new Date(),
-        isCalculated: true
+        isCalculated: true,
+        holdingValues: day.holdingValues
       }));
 
       // Save all history days

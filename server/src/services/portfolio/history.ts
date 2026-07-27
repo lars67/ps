@@ -32,6 +32,7 @@ function toCacheDay(day: DayType, portfolioId: string) {
     perfShare: day.perfShare,
     lastUpdated: new Date(),
     isCalculated: true,
+    holdingValues: day.holdingValues,
   };
 }
 

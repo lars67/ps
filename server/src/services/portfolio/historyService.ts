@@ -6,6 +6,12 @@ import {
   PortfolioHistoryMetadata
 } from "../../types/portfolioHistory";
 
+// Portfolios exempt from the retention policy's cutoff deletion — e.g. accounts with
+// intentionally backdated trades (pre-2021) whose full history needs to survive the nightly
+// cleanup rather than being pruned back down to the retention window every night.
+// 6a3817e4bafe7bdfb793c387 = Vibeke (backdated RBOT:XLON trades from 2017).
+const RETENTION_EXCLUDED_PORTFOLIO_IDS = ["6a3817e4bafe7bdfb793c387"];
+
 /**
  * Portfolio History Service
  * Provides CRUD operations for portfolio history data
@@ -197,7 +203,7 @@ export class PortfolioHistoryService {
       cutoffDate.setFullYear(cutoffDate.getFullYear() - retentionYears);
       const cutoffDateString = cutoffDate.toISOString().split('T')[0];
 
-      const result = await PortfolioHistoryModel.deleteOldRecords(cutoffDateString);
+      const result = await PortfolioHistoryModel.deleteOldRecords(cutoffDateString, RETENTION_EXCLUDED_PORTFOLIO_IDS);
       return result.deletedCount || 0;
     } catch (error) {
       console.error('Error cleaning up old history records:', error);
@@ -255,12 +261,14 @@ export class PortfolioHistoryService {
 
       // Get count of records that will be deleted
       const recordsToDelete = await PortfolioHistoryModel.countDocuments({
-        date: { $lt: cutoffDateString }
+        date: { $lt: cutoffDateString },
+        portfolioId: { $nin: RETENTION_EXCLUDED_PORTFOLIO_IDS }
       });
 
       // Get unique portfolio IDs affected
       const affectedPortfolios = await PortfolioHistoryModel.distinct('portfolioId', {
-        date: { $lt: cutoffDateString }
+        date: { $lt: cutoffDateString },
+        portfolioId: { $nin: RETENTION_EXCLUDED_PORTFOLIO_IDS }
       });
 
       // Perform cleanup

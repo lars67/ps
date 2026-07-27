@@ -4,7 +4,7 @@ import { Model, Schema, model, models } from "mongoose";
 // Extend the Model interface to include our static methods
 interface IPortfolioHistoryModel extends Model<PortfolioHistoryDay> {
   findByPortfolioAndDateRange(portfolioId: string, from?: string, till?: string): Promise<PortfolioHistoryDay[]>;
-  deleteOldRecords(cutoffDate: string): Promise<any>;
+  deleteOldRecords(cutoffDate: string, excludePortfolioIds?: string[]): Promise<any>;
   getPortfolioDateRange(portfolioId: string): Promise<{ from: string; till: string } | null>;
 }
 
@@ -21,7 +21,8 @@ const PortfolioHistoryDaySchema = new Schema<PortfolioHistoryDay>({
   navShare: { type: Number, required: true, default: 0 },
   perfShare: { type: Number, required: true, default: 0 },
   lastUpdated: { type: Date, required: true, default: Date.now },
-  isCalculated: { type: Boolean, required: true, default: false }
+  isCalculated: { type: Boolean, required: true, default: false },
+  holdingValues: { type: Schema.Types.Mixed, required: false, default: undefined }
 }, {
   timestamps: false, // We handle lastUpdated manually
   collection: 'portfolio_histories'
@@ -116,8 +117,11 @@ PortfolioHistoryDaySchema.statics.findByPortfolioAndDateRange = function(
   return this.find(query).sort({ date: 1 });
 };
 
-PortfolioHistoryDaySchema.statics.deleteOldRecords = function(cutoffDate: string) {
-  return this.deleteMany({ date: { $lt: cutoffDate } });
+PortfolioHistoryDaySchema.statics.deleteOldRecords = function(cutoffDate: string, excludePortfolioIds: string[] = []) {
+  return this.deleteMany({
+    date: { $lt: cutoffDate },
+    ...(excludePortfolioIds.length > 0 && { portfolioId: { $nin: excludePortfolioIds } }),
+  });
 };
 
 PortfolioHistoryDaySchema.statics.getPortfolioDateRange = function(portfolioId: string) {

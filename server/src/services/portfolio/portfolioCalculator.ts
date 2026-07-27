@@ -27,6 +27,7 @@ export type DayType = {
   shares: number;
   navShare: number;
   perfShare: number;
+  holdingValues: Record<string, number>;
 }
 
 // Define Params type locally
@@ -130,7 +131,7 @@ export class PortfolioCalculator {
       let lastExistingRecord: any = null;
       if (incrementalUpdate) {
         try {
-          const PortfolioHistoryModel = require('../../models/portfolioHistory');
+          const { PortfolioHistoryModel } = require('../../models/portfolioHistory');
           lastExistingRecord = await PortfolioHistoryModel.findOne({
             portfolioId: realId
           }).sort({ date: -1 }).limit(1);
@@ -192,6 +193,11 @@ export class PortfolioCalculator {
       let uniqueCurrencies: string[];
       let withoutPrices: string[] = [];
       const priceCheckStartDate = startDateMoment.clone().subtract(10, 'days').format(formatYMD);
+      // Tracks the last successfully priced value per symbol — used when price/rate is unavailable.
+      // Declared here (not just at the day-loop's state-init below) so it can be seeded from the
+      // most recent prior cached day before fillDateHistoryFromTrades' cruder trade-price fallback
+      // runs, and so that fallback can skip symbols we already have a real seeded value for.
+      const lastKnownHoldingValues: Record<string, number> = {};
 
       try {
         if (isIncrementalMode) {
@@ -201,9 +207,12 @@ export class PortfolioCalculator {
           if (portfolio.baseInstrument && !uniqueSymbols.includes(portfolio.baseInstrument)) {
             uniqueSymbols.push(portfolio.baseInstrument);
           }
-          await checkPrices(uniqueSymbols, priceCheckStartDate, undefined, undefined, false);
+          withoutPrices.push(...(await checkPrices(uniqueSymbols, priceCheckStartDate, undefined, undefined, false)));
           for (const currency of uniqueCurrencies) {
-            await checkPriceCurrency(currency, portfolio.currency, priceCheckStartDate, false);
+            const r = await checkPriceCurrency(currency, portfolio.currency, priceCheckStartDate, false);
+            if (r) {
+              withoutPrices.push(r);
+            }
           }
         } else {
           const priceResult = await checkPortfolioPricesCurrencies(
@@ -221,9 +230,32 @@ export class PortfolioCalculator {
           for (const currency of uniqueCurrencies) {
             await checkPriceCurrency(currency, portfolio.currency, priceCheckStartDate, forceRefresh);
           }
-          if (withoutPrices.length > 0) {
-            await fillDateHistoryFromTrades(allTrades, withoutPrices, endDateString);
+        }
+        // Seed last-known per-symbol values from the most recent prior cached day before falling
+        // back to trade-price interpolation below, so a symbol whose feed went dark keeps using
+        // its real last known market value (what a continuous full recalculation would naturally
+        // carry forward) instead of being overwritten by the cruder trade-price estimate.
+        if (isIncrementalMode) {
+          try {
+            const { PortfolioHistoryModel } = require('../../models/portfolioHistory');
+            const priorRecord = await PortfolioHistoryModel.findOne({
+              portfolioId: realId,
+              date: { $lt: startDateString },
+            }).sort({ date: -1 }).limit(1);
+            if (priorRecord?.holdingValues) {
+              Object.assign(lastKnownHoldingValues, priorRecord.holdingValues);
+            }
+          } catch (err) {
+            console.warn(`Could not seed last-known holding values for ${realId}:`, err);
           }
+        }
+        // Symbols with a feed gap get no price at all (not even on the incremental path's first
+        // day) — interpolate from trade prices so they don't silently drop out of NAV. Skip any
+        // symbol we already have a real seeded last-known value for for above; the cruder
+        // trade-price interpolation would otherwise clobber it.
+        const symbolsNeedingInterpolation = withoutPrices.filter((s) => lastKnownHoldingValues[s] == null);
+        if (symbolsNeedingInterpolation.length > 0) {
+          await fillDateHistoryFromTrades(allTrades, symbolsNeedingInterpolation, endDateString);
         }
       } catch (priceError) {
         console.error("Error fetching price data:", priceError);
@@ -242,8 +274,6 @@ export class PortfolioCalculator {
       let perfomanceNominal = 0;
       let initialNavForPerf = 0;
       let baseIndexValue = 100000;
-      // Tracks the last successfully priced value per symbol — used when price/rate is unavailable
-      const lastKnownHoldingValues: Record<string, number> = {};
 
       // For incremental updates, preserve previous performance values and state
       let previousPerformanceValue = 0;
@@ -254,7 +284,7 @@ export class PortfolioCalculator {
           console.log(`Incremental update: Using previous performance ${previousPerformanceValue} from ${lastExistingRecord.date}`);
 
           // Also get the very first historical navShare for perfShare baseline
-          const PortfolioHistoryModel = require('../../models/portfolioHistory');
+          const { PortfolioHistoryModel } = require('../../models/portfolioHistory');
           const firstRecord = await PortfolioHistoryModel.findOne({
             portfolioId: realId
           }).sort({ date: 1 }).limit(1);
@@ -392,7 +422,11 @@ export class PortfolioCalculator {
         const price = getDateSymbolPrice(dayBeforeStartStr, symbol);
         const rate = getRate(holding.currency, portfolio.currency, dayBeforeStartStr);
         if (price != null && rate != null) {
-          initialInv += price * rate * holding.volume;
+          const holdingValue = price * rate * holding.volume;
+          initialInv += holdingValue;
+          lastKnownHoldingValues[symbol] = holdingValue;
+        } else if (lastKnownHoldingValues[symbol] != null) {
+          initialInv += lastKnownHoldingValues[symbol];
         } else {
           console.warn(`Could not get initial price/rate for ${symbol} on ${dayBeforeStartStr}`);
         }
@@ -547,7 +581,8 @@ export class PortfolioCalculator {
           perfomance: toNumLocal(perfomanceNominal),
           shares: finalShares,
           navShare: toNumLocal(navShare),
-          perfShare: toNumLocal(100 * navShare / (baselineNavShare !== 0 ? baselineNavShare : 1))
+          perfShare: toNumLocal(100 * navShare / (baselineNavShare !== 0 ? baselineNavShare : 1)),
+          holdingValues: { ...lastKnownHoldingValues },
         });
 
         loopMoment.add(1, 'day');
