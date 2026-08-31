@@ -38,6 +38,60 @@ async function delay(n: number) {
   });
 }
 
+async function checkPriceForSymbol(
+  symbol: string,
+  startDate: string,
+  nowStr: string,
+  forceRefresh: boolean,
+  withoutPrices: string[],
+) {
+  const endKey = symbol + '_end';
+  const needFullFetch = forceRefresh || !histories[symbol] || histories[symbol] > startDate;
+  // Also do an incremental top-up if the cached data doesn't reach today
+  const needTopUp = !needFullFetch && histories[endKey] && histories[endKey] < nowStr;
+
+  if (needFullFetch) {
+    console.log("fetchHistory", symbol, startDate, forceRefresh ? "(force refresh)" : "");
+    const history = await fetchHistory({ symbol, from: startDate });
+    if (history.length === 0) {
+      // Don't latch histories[symbol] here - an empty result (transient fetch failure,
+      // or a symbol not yet in any local cache) must not be remembered as "already
+      // fetched", or this symbol would never be retried again for the life of the
+      // process (histories[endKey] never gets set below, so needTopUp never fires).
+      withoutPrices.push(symbol);
+      return;
+    }
+    histories[symbol] = startDate;
+    for (const h of history) {
+      const { date, close } = h;
+      if (!dateHistory[date]) {
+        dateHistory[date] = { [symbol]: close };
+      } else {
+        dateHistory[date][symbol] = close;
+      }
+    }
+    if (history.length > 0) {
+      histories[endKey] = history[history.length - 1].date;
+    }
+  } else if (needTopUp) {
+    // Fetch only the missing recent window (from day after last cached date)
+    const topUpFrom = moment(histories[endKey]).add(1, 'day').format(formatYMD);
+    console.log("fetchHistory top-up", symbol, topUpFrom);
+    const history = await fetchHistory({ symbol, from: topUpFrom });
+    for (const h of history) {
+      const { date, close } = h;
+      if (!dateHistory[date]) {
+        dateHistory[date] = { [symbol]: close };
+      } else {
+        dateHistory[date][symbol] = close;
+      }
+    }
+    if (history.length > 0) {
+      histories[endKey] = history[history.length - 1].date;
+    }
+  }
+}
+
 export async function checkPrices(
   portfolioSymbols: string[],
   startDate0: Date | string,
@@ -45,7 +99,6 @@ export async function checkPrices(
   delayBetweenBatches = 500,
   forceRefresh = false,
 ) {
-  let isSended = 0;
   const startDate =
     typeof startDate0 === "string"
       ? startDate0
@@ -53,46 +106,20 @@ export async function checkPrices(
   const withoutPrices = [] as string[];
   const nowStr = moment().format(formatYMD);
   try {
-    for (const symbol of portfolioSymbols) {
-      const endKey = symbol + '_end';
-      const needFullFetch = forceRefresh || !histories[symbol] || histories[symbol] > startDate;
-      // Also do an incremental top-up if the cached data doesn't reach today
-      const needTopUp = !needFullFetch && histories[endKey] && histories[endKey] < nowStr;
-
-      if (needFullFetch) {
-        console.log("fetchHistory", symbol, startDate, forceRefresh ? "(force refresh)" : "");
-        const history = await fetchHistory({ symbol, from: startDate });
-        if (history.length === 0) {
-          withoutPrices.push(symbol);
-        }
-        histories[symbol] = startDate;
-        for (const h of history) {
-          const { date, close } = h;
-          if (!dateHistory[date]) {
-            dateHistory[date] = { [symbol]: close };
-          } else {
-            dateHistory[date][symbol] = close;
-          }
-        }
-        if (history.length > 0) {
-          histories[endKey] = history[history.length - 1].date;
-        }
-      } else if (needTopUp) {
-        // Fetch only the missing recent window (from day after last cached date)
-        const topUpFrom = moment(histories[endKey]).add(1, 'day').format(formatYMD);
-        console.log("fetchHistory top-up", symbol, topUpFrom);
-        const history = await fetchHistory({ symbol, from: topUpFrom });
-        for (const h of history) {
-          const { date, close } = h;
-          if (!dateHistory[date]) {
-            dateHistory[date] = { [symbol]: close };
-          } else {
-            dateHistory[date][symbol] = close;
-          }
-        }
-        if (history.length > 0) {
-          histories[endKey] = history[history.length - 1].date;
-        }
+    // Batched-concurrent, not fully sequential: with 20-30+ holdings, one-at-a-time
+    // fetching routinely blew through callers' time budgets before reaching every
+    // symbol (positions.ts's fallback times out at 2.5s - confirmed in production
+    // 2026-08-31: Vibeke Holst's portfolio left the LAST few symbols in the list
+    // permanently unpriced, every single request, purely because of list order).
+    // maxConcurrentRequests/delayBetweenBatches were already part of this function's
+    // signature but never used - this is what they were for.
+    for (let i = 0; i < portfolioSymbols.length; i += maxConcurrentRequests) {
+      const batch = portfolioSymbols.slice(i, i + maxConcurrentRequests);
+      await Promise.all(
+        batch.map((symbol) => checkPriceForSymbol(symbol, startDate, nowStr, forceRefresh, withoutPrices)),
+      );
+      if (i + maxConcurrentRequests < portfolioSymbols.length) {
+        await delay(delayBetweenBatches);
       }
     }
   } catch (error) {
@@ -254,6 +281,22 @@ export function getDatePrices(date: string, find: boolean = false) {
   }
   return null;
 }
+// Last-resort lookup for a symbol that has no price within getDateSymbolPrice's normal
+// SEARCH_DAY window - a genuinely delisted/acquired stock (e.g. IPG:XNYS, acquired by
+// Omnicom Nov 2025) or one no provider covers well (e.g. a thin Nordic small-cap) can have
+// real cached history that's simply older than that window. Callers MUST treat a hit here
+// as stale and label it accordingly (never blend it in as if it were a live/recent price) -
+// that's the whole point of exposing the date alongside the price.
+export function getLastKnownPrice(symbolInput: string): { price: number; date: string } | null {
+  const symbol = symbolInput.endsWith(':FX') ? symbolInput.split(':').shift() as string : symbolInput;
+  const dates = Object.keys(dateHistory)
+    .filter((d) => dateHistory[d][symbol] != null)
+    .sort();
+  if (dates.length === 0) return null;
+  const lastDate = dates[dates.length - 1];
+  return { price: dateHistory[lastDate][symbol], date: lastDate };
+}
+
 export function getDateSymbolPrice(dateInput: string, symbolInput: string) {
   const date = dateInput.split("T").shift() as string;
   const symbol =symbolInput.endsWith(':FX') ? symbolInput.split(':').shift() as string: symbolInput;

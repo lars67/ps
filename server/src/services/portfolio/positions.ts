@@ -44,7 +44,11 @@ import {
 } from "../../services/portfolio/helper";
 import logger from "../../utils/logger";
 import profiler from "../../utils/profiler";
-import { getDateSymbolPrice, getRate } from "../../services/app/priceCashe";
+import { checkPrices, getDateSymbolPrice, getLastKnownPrice, getRate } from "../../services/app/priceCashe";
+import { buildContractCalcContexts, ContractCalcContext } from "../../services/derivatives/buildContractCalcContexts";
+import { calcTheoPrice } from "../../services/derivatives/calcTheoPrice";
+import { ContractModel } from "../../models/contract";
+import { resolveContractSettings } from "../../services/derivatives/resolveContractSettings";
 const subscribers: Record<string, SubscribeMsgs> = {}; //userModif-> SubscribeMsgs
 
 // Track previous subscription count for debugging
@@ -110,6 +114,11 @@ type QuoteData2 = {
   symbol: string;
   currency: string;
   marketPrice: number;
+  // Theoretical price for option/future positions (see types/trade.ts's contractId), recomputed
+  // whenever the underlying's live quote ticks - see buildContractCalcContexts.ts/calcTheoPrice.ts.
+  // undefined for plain equity positions and for contract positions until the JCalc addon exists
+  // (docs/derivatives/03-migration-notes.md in portfolio-server) - calcTheoPrice.ts is a stub.
+  theoPrice?: number;
   // null when the symbol's FX rate to the portfolio base currency is unknown —
   // we emit null rather than a silently-wrong x1 figure. See processQuoteData.
   marketRate: number | null;
@@ -136,6 +145,13 @@ type PortfolioPosition = {
   symbol: string;
   name: string;
   volume: number;
+  // Set only for option/future positions - see types/trade.ts's contractId.
+  contractId?: string;
+  // Contract/lot size (see resolveContractSettings.ts) - 1 for plain equity/cash positions.
+  // investedFull/investedFullSymbol already have this baked in (see getPositions' priceAdj);
+  // avgPremium/marketValue/result need it applied explicitly to stay in the position's real
+  // per-share/unit price terms rather than inheriting investedFull's scaled terms.
+  multiplier?: number;
   rate: number;
   invested: number;
   currency: string;
@@ -189,6 +205,14 @@ type Params = {
   includeAttribution?: boolean;
   totalsMode?: string;
 };
+
+// "Theoretical" as a marketPrice choice (see getMarketPrice's switch, values "0"-"8" for
+// bid/ask/last/close/etc): contract positions (option/future) value at theoPrice instead of
+// whatever real quote arrives for their own symbol - feeds marketValue/result/TOTAL the same way
+// a real quote would, see the contractCalcContexts handling in processQuoteData. Meaningless for
+// non-contract positions (no theoPrice concept) - handled there directly rather than added to
+// getMarketPrice's switch, since it needs contractCalcContexts/theoPrice, not just the quote `q`.
+const MARKET_PRICE_THEORETICAL = "9";
 
 export type RealizedData = {
   realized: number;
@@ -353,6 +377,7 @@ export async function positions(
     fees: {} as Record<string, { fee: number; feeSym: number }>,
     cashes: {} as Record<string, number>,
     portfolioPositions: {} as Record<string, Partial<PortfolioPositionFull>>,
+    contractCalcContexts: {} as Record<string, ContractCalcContext>,
     currencyInvested: {} as Record<string, any>,
     regionInvested: {} as Record<string, any>,
     subRegionInvested: {} as Record<string, any>,
@@ -370,6 +395,7 @@ export async function positions(
   let fees = portfolioData.fees;
   let cashes = portfolioData.cashes;
   let portfolioPositions = portfolioData.portfolioPositions;
+  let contractCalcContexts = portfolioData.contractCalcContexts;
   let currencyInvested = portfolioData.currencyInvested;
   let regionInvested = portfolioData.regionInvested;
   let subRegionInvested = portfolioData.subRegionInvested;
@@ -411,6 +437,14 @@ export async function positions(
     portfoliosInvested = positions.portfoliosInvested;
     cashes = positions.cashes;
     //    console.log('cashes', cashes)
+    // An Aktia lookup failure here must not take down this trade.change listener (it's shared
+    // across the subscription's lifetime, not a single request) - degrade to "no theoPrice" for
+    // this cycle rather than propagate.
+    try {
+      contractCalcContexts = await buildContractCalcContexts(positions.positions.filter((p) => p.volume !== 0));
+    } catch (err) {
+      logger.error(`[contractCalcContexts] failed to build: ${err}`);
+    }
     const symbols = [
       ...positions.positions.map((p) => p.symbol),
       ...extractUniqueFields(positions.positions, "currency")
@@ -419,6 +453,9 @@ export async function positions(
             fxCurrency(c) !== portfolio.currency && `${fxCurrency(c)}${portfolio.currency}:FX`,
         )
         .filter(Boolean),
+      // Option/future positions need their underlying's live quote too - theoPrice recomputes
+      // off that tick, not the contract's own symbol (see buildContractCalcContexts.ts).
+      ...new Set(Object.values(contractCalcContexts).map((c) => c.priceDriverSymbol)),
     ];
     positions.uniqueCurrencies
       .filter((u) => fxCurrency(u) !== portfolio.currency)
@@ -483,6 +520,14 @@ export async function positions(
   portfoliosInvested = positions.portfoliosInvested;
   cashes = positions.cashes;
 
+  // An Aktia lookup failure here must not fail the whole positions request - degrade to
+  // "no theoPrice this cycle" rather than propagate.
+  try {
+    contractCalcContexts = await buildContractCalcContexts(positions.positions.filter((p) => p.volume !== 0));
+  } catch (err) {
+    logger.error(`[contractCalcContexts] failed to build: ${err}`);
+  }
+
   const symbols = [
     ...positions.positions.map((p) => p.symbol),
     ...extractUniqueFields(
@@ -492,6 +537,9 @@ export async function positions(
     ...extractUniqueFields(positions.positions, "currency")
       .filter((c) => fxCurrency(c) !== portfolio.currency)
       .map((c: string) => `${fxCurrency(c)}${portfolio.currency}:FX`),
+    // Option/future positions need their underlying's live quote too - theoPrice recomputes off
+    // that tick, not the contract's own symbol (see buildContractCalcContexts.ts).
+    ...new Set(Object.values(contractCalcContexts).map((c) => c.priceDriverSymbol)),
   ];
   positions.uniqueCurrencies
     .filter((u) => fxCurrency(u) !== portfolio.currency)
@@ -658,8 +706,11 @@ export async function positions(
             marketRate: rateMissing ? null : (rates[cur] || 1),
             marketValue: rateMissing ? null : (rates[cur] || 1) * marketPrice * volume,
             marketValueSymbol: marketPrice * volume,
-            avgPremium: volume !== 0 ? (investedFull + fees[symbol].fee) / volume : 0,
-            avgPremiumSymbol: volume !== 0 ? (investedFullSymbol + fees[symbol].feeSym) / volume : 0,
+            // investedFull/investedFullSymbol already have multiplier baked in (getPositions'
+            // priceAdj) - divide it back out here so avgPremium stays per-share/unit, matching
+            // the live "Price" column's convention rather than showing a multiplier-inflated cost.
+            avgPremium: volume !== 0 ? (investedFull + fees[symbol].fee) / (volume * (pos.multiplier ?? 1)) : 0,
+            avgPremiumSymbol: volume !== 0 ? (investedFullSymbol + fees[symbol].feeSym) / (volume * (pos.multiplier ?? 1)) : 0,
             marketPrice,
             marketClose: 0, // Default close price when no quote data available
             bprice,
@@ -679,6 +730,78 @@ export async function positions(
       });
     }
 
+    // Compute theoPrice for every contract position up front (needs the underlying's tick from
+    // this batch, in `data` - not the position's own symbol). Always exposed as its own field
+    // below regardless of the marketPrice setting, so a "theoretical" position can still be
+    // visually compared against a real quote if one ever exists. When marketPrice is
+    // MARKET_PRICE_THEORETICAL, additionally splice a synthetic quote (keyed by the position's
+    // own symbol, marketPrice = theoPrice) into q2Symbols *before* the main valuation loop runs,
+    // so theoPrice drives marketValue/result/todayResult/investedPortfolio through the exact
+    // same, already-correct formulas real quotes use below - no duplicated valuation math, and
+    // TOTAL picks it up for free since it's summed from portfolioPositions the same way as
+    // everything else.
+    const contractTheoPrices: Record<string, number> = {};
+    Object.keys(contractCalcContexts).forEach((positionSymbol) => {
+      const ctx = contractCalcContexts[positionSymbol];
+      const underlyingTick = data.find((d) => d.symbol === ctx.priceDriverSymbol);
+      let spotPrice = underlyingTick?.latestPrice ?? underlyingTick?.close;
+      // London-listed underlyings quote in pence (GBX) - every other price path in this file
+      // (prepareQuoteData2, todayResult's cPrice) scales this; the theoPrice spot input needs the
+      // same treatment or a GBX underlying prices ~100x too high (JCalc needs GBP major units).
+      // Pass the underlying's real currency explicitly (see priceDriverCurrency's comment) rather
+      // than relying on isPenceQuoted's symbolCurrencyMap fallback, which only gets populated for
+      // symbols that are themselves a held position.
+      if (spotPrice != null && isPenceQuoted(ctx.priceDriverSymbol, ctx.priceDriverCurrency)) spotPrice /= 100;
+      const position = portfolioPositions[positionSymbol];
+      if (spotPrice == null || !position) return;
+
+      const theoPrice = calcTheoPrice({
+        ...ctx,
+        spotPrice,
+        calcDate: moment().format(formatYMD),
+      });
+      if (theoPrice == null) return;
+      contractTheoPrices[positionSymbol] = theoPrice;
+
+      if (marketPrice === MARKET_PRICE_THEORETICAL) {
+        // Theoretical mode is authoritative for contract positions - replace any real quote for
+        // this same symbol already queued this batch rather than letting both compete.
+        const existingIdx = q2Symbols.findIndex((q) => q && (q as QuoteData2).symbol === positionSymbol);
+        if (existingIdx >= 0) q2Symbols.splice(existingIdx, 1);
+        q2Symbols.push({
+          symbol: positionSymbol,
+          currency: position.currency as string,
+          marketPrice: theoPrice,
+          // Seed the day's baseline from whatever's already stored (so todayResult keeps
+          // comparing against the same reference point tick to tick), falling back to this
+          // theoPrice itself only the very first time this position is priced.
+          bprice: position.bprice ?? theoPrice,
+        } as QuoteData2);
+      } else if (
+        position.marketValue === undefined &&
+        !q2Symbols.some((q) => q && (q as QuoteData2).symbol === positionSymbol)
+      ) {
+        // Market mode, and this contract position has never been enriched at all - which for an
+        // option/future is permanent, not transient, since there's no real options/futures quote
+        // feed to ever supply one. Without this, such a position never goes through the main loop
+        // below (only reached via a real quote in q2Symbols, or the "isFirst && q2Symbols.length
+        // === 0" fallback above, which only fires when *nothing* in the whole portfolio has a
+        // quote yet) - it would stay a near-empty shell forever, missing investedFull/volume/
+        // avgPremium/name/currency, with only the decorative theoPrice field below ever populated.
+        // marketPrice 0 matches that same whole-portfolio-empty fallback's convention - theoPrice
+        // stays visible for reference without driving valuation, same as normal market mode.
+        // Skip entirely if a real quote for this exact symbol already exists in q2Symbols this
+        // batch (rare, but possible) - that real entry already handles enrichment on its own via
+        // the same isFirstForSymbol path below, a synthetic one here would only duplicate the row.
+        q2Symbols.push({
+          symbol: positionSymbol,
+          currency: position.currency as string,
+          marketPrice: 0,
+          bprice: 0,
+        } as QuoteData2);
+      }
+    });
+
     q2Symbols.forEach((p) => {
       const { symbol, marketPrice, marketClose } = p as QuoteData2;
       let change = {} as QuoteChange;
@@ -689,6 +812,8 @@ export async function positions(
       const cur = portfolioPositions[symbol].currency as string;
       const rateMissing = missingRates.has(cur);
       const volume = Number(portfolioPositions[symbol].volume);
+      // Contract/lot size (see resolveContractSettings.ts) - 1 for plain equity/cash positions.
+      const multiplier = Number(portfolioPositions[symbol].multiplier) || 1;
       const invested = Number(portfolioPositions[symbol].invested);
       const investedFull = Number(portfolioPositions[symbol].investedFull);
       const investedFullSymbol = Number(
@@ -710,15 +835,22 @@ export async function positions(
           ...portfolioPositions[symbol],
 
           marketRate: rateMissing ? null : rates[cur],
-          marketValue: rateMissing ? null : rates[cur] * marketPrice * volume,
-          marketValueSymbol: marketPrice * volume,
-          //  avgPremium: volume !== 0 ? (invested + (portfolioPositions[symbol].fee || 0) ) / volume : 0,
+          marketValue: rateMissing ? null : rates[cur] * marketPrice * volume * multiplier,
+          marketValueSymbol: marketPrice * volume * multiplier,
+          // investedFull/investedFullSymbol already have multiplier baked in (getPositions'
+          // priceAdj) - divide it back out so avgPremium stays per-share/unit, matching the live
+          // "Price" column's convention rather than showing a multiplier-inflated cost.
           avgPremium:
-            volume !== 0 ? (investedFull + fees[symbol].fee) / volume : 0,
+            volume !== 0 ? (investedFull + fees[symbol].fee) / (volume * multiplier) : 0,
           avgPremiumSymbol:
             volume !== 0
-              ? (investedFullSymbol + fees[symbol].feeSym) / volume
+              ? (investedFullSymbol + fees[symbol].feeSym) / (volume * multiplier)
               : 0,
+          // Mirrors marketPrice for non-contract rows, so the Theo.Price column shows something
+          // for every symbol, not just options/futures - whatever quote field marketPrice is
+          // configured to resolve (Last/Close/Middle/...) shows up here too. Contract positions
+          // get overwritten below with the real JCalc-computed value once that block runs.
+          theoPrice: marketPrice,
           ...p,
           fee: fees[symbol].fee,
           feeSymbol: fees[symbol].feeSym,
@@ -744,7 +876,7 @@ export async function positions(
         let cPrice = Number(
           p?.bprice || portfolioPositions[symbol].bprice,
         );
-        if (isPenceQuoted(symbol, cur)) cPrice /= 100;
+        if (isPenceQuoted(symbol)) cPrice /= 100;
         change.todayResult = (mPrice - cPrice) * volume * rates[cur];
         change.todayResultPercent =
           Math.round((10000 * (mPrice - cPrice)) / cPrice) / 100;
@@ -772,7 +904,8 @@ export async function positions(
             (change.marketRate || rates[cur]) *
             (change.marketPrice ||
               Number(portfolioPositions[symbol].marketPrice)) *
-            Number(portfolioPositions[symbol].volume);
+            Number(portfolioPositions[symbol].volume) *
+            multiplier;
           console.log(
             "change.marketValue=",
             change.marketValue,
@@ -792,7 +925,7 @@ export async function positions(
           let cPrice = Number(
             p?.bprice || portfolioPositions[symbol].bprice,
           );
-          if (isPenceQuoted(symbol, cur)) cPrice /= 100;
+          if (isPenceQuoted(symbol)) cPrice /= 100;
           change.todayResult = (mPrice - cPrice) * volume * rates[cur];
           change.todayResultPercent =
             Math.round((10000 * (mPrice - cPrice)) / cPrice) / 100;
@@ -802,6 +935,10 @@ export async function positions(
           portfolioPositions[symbol].todayResultPercent =
             change.todayResultPercent;
           portfolioPositions[symbol].result = change.result;
+          // See the isFirstForSymbol branch's comment above - same mirror, non-contract rows only
+          // (contract positions get overwritten with the real computed value further below).
+          change.theoPrice = Number(portfolioPositions[symbol].marketPrice);
+          portfolioPositions[symbol].theoPrice = change.theoPrice;
         }
       }
       if (Object.keys(change).length > 0) {
@@ -809,6 +946,25 @@ export async function positions(
         changes.push({ symbol, ...change });
       }
     });
+
+    // Always expose theoPrice as its own field, independent of whether valuationMode used it to
+    // drive marketValue/result above - lets a "theoretical" position still be compared against a
+    // real quote if one ever exists, and gives "market" mode a preview of the theoretical value.
+    Object.entries(contractTheoPrices).forEach(([positionSymbol, theoPrice]) => {
+      if (portfolioPositions[positionSymbol].theoPrice === theoPrice) return;
+      portfolioPositions[positionSymbol].theoPrice = theoPrice;
+      // A contract can in principle also receive its own live quote in this same tick batch (the
+      // loop above would have already pushed a change for positionSymbol in that case) - merge
+      // into that entry rather than pushing a second, competing partial object for the same
+      // symbol into this batch.
+      const existingChange = changes.find((c) => (c as QuoteChange).symbol === positionSymbol);
+      if (existingChange) {
+        (existingChange as QuoteChange).theoPrice = theoPrice;
+      } else {
+        changes.push({ symbol: positionSymbol, theoPrice } as QuoteChange);
+      }
+    });
+
     if (isFirst) {
       Object.keys(cashes).forEach((key) => {
         const c: CommonPortfolioPosition = {
@@ -1108,7 +1264,7 @@ export async function positions(
   const haveAllRequiredQuotes = () =>
     requiredSymbols.every((s) => quoteHasPrice(accumulatedQuotes[s]));
 
-  const emitInitialSnapshot = (timedOut: boolean = false) => {
+  const emitInitialSnapshot = async (timedOut: boolean = false) => {
     if (!subscriptionState.isInitial) {
       return;
     }
@@ -1126,6 +1282,24 @@ export async function positions(
       // Fall back to the last-known cached close for any holding the stream never
       // priced, so it still carries marketPrice/marketValue rather than an empty shell.
       const today = moment().format(formatYMD);
+      const unpriced = requiredSymbols.filter((s) => !quoteHasPrice(accumulatedQuotes[s]));
+      if (unpriced.length > 0) {
+        // The close-price cache is only ever populated on demand - nothing else in this
+        // request path calls checkPrices for these symbols, so without this call
+        // getDateSymbolPrice below has nothing to return and the row stays blank forever.
+        // Bounded so a slow/dead data proxy can't extend the warmup indefinitely.
+        try {
+          // 10 days back, matching getDateSymbolPrice's own backward-search window below -
+          // "today" alone can come back empty on a non-trading day and leave nothing to find.
+          const fetchFrom = moment().subtract(10, "days").format(formatYMD);
+          await Promise.race([
+            checkPrices(unpriced, fetchFrom),
+            new Promise((resolve) => setTimeout(resolve, 2500)),
+          ]);
+        } catch (err) {
+          logger.warn(`[positions] checkPrices fallback failed ${userModif}|${msgId}: ${err}`);
+        }
+      }
       requiredSymbols.forEach((s) => {
         if (!quoteHasPrice(accumulatedQuotes[s])) {
           const cachedPrice = getDateSymbolPrice(today, s);
@@ -1140,10 +1314,49 @@ export async function positions(
           }
         }
       });
+
+      // Last resort for whatever's still unpriced: a symbol that's delisted/acquired (IPG:XNYS,
+      // acquired by Omnicom Nov 2025) or barely covered by any provider can have real cached
+      // history that's simply older than the 10-day window above - the narrow "from" used for
+      // the checkPrices call above actively filters that older data OUT (readLocalCSVData drops
+      // any row before "from"), so it's never even considered otherwise. A second, wider-window
+      // fetch (bounded, same as above) gives checkPrices a real chance to find and cache it, then
+      // getLastKnownPrice picks up whatever's there however old. Marked priceStale below - this
+      // must never be presented identically to a live/recent price.
+      const staleSymbols: Record<string, string> = {}; // symbol -> price date
+      const stillMissing = requiredSymbols.filter((s) => !quoteHasPrice(accumulatedQuotes[s]));
+      if (stillMissing.length > 0) {
+        try {
+          const wideFrom = moment().subtract(2, "years").format(formatYMD);
+          await Promise.race([
+            checkPrices(stillMissing, wideFrom),
+            new Promise((resolve) => setTimeout(resolve, 2500)),
+          ]);
+        } catch (err) {
+          logger.warn(`[positions] wide last-known-price fallback failed ${userModif}|${msgId}: ${err}`);
+        }
+        stillMissing.forEach((s) => {
+          if (quoteHasPrice(accumulatedQuotes[s])) return;
+          const last = getLastKnownPrice(s);
+          if (last != null) {
+            accumulatedQuotes[s] = {
+              ...(accumulatedQuotes[s] || ({ symbol: s } as QuoteData)),
+              symbol: s,
+              currency: portfolioPositions[s].currency as string,
+              close: last.price,
+              latestPrice: last.price,
+            } as QuoteData;
+            staleSymbols[s] = last.date;
+          }
+        });
+      }
+
       const priced = requiredSymbols.filter((s) => quoteHasPrice(accumulatedQuotes[s])).length;
       logger.warn(
-        `[positions] initial snapshot timeout ${userModif}|${msgId}: ${priced}/${requiredSymbols.length} holdings priced`,
+        `[positions] initial snapshot timeout ${userModif}|${msgId}: ${priced}/${requiredSymbols.length} holdings priced` +
+          (Object.keys(staleSymbols).length > 0 ? `, ${Object.keys(staleSymbols).length} stale (${Object.keys(staleSymbols).join(",")})` : ""),
       );
+      (subscriptionState as { staleSymbols?: Record<string, string> }).staleSymbols = staleSymbols;
     }
 
     // Holdings can reach "all priced" (or time out) before the FX pair quotes arrive.
@@ -1188,6 +1401,21 @@ export async function positions(
       totalsMode,
       true,
     );
+
+    // Tag positions priced from getLastKnownPrice's wide, stale-tolerant lookup above -
+    // done here on the final output rather than threaded through calcChanges/QuoteData,
+    // since that pipeline builds its result objects field-by-field and won't otherwise
+    // pass an unrecognized property through. Must never look identical to a live price.
+    const staleMap = (subscriptionState as { staleSymbols?: Record<string, string> }).staleSymbols;
+    if (staleMap && Object.keys(staleMap).length > 0 && Array.isArray(snapshot)) {
+      snapshot.forEach((row) => {
+        const r = row as PortfolioPositionFull & { priceStale?: boolean; priceDate?: string };
+        if (r.symbol && staleMap[r.symbol]) {
+          r.priceStale = true;
+          r.priceDate = staleMap[r.symbol];
+        }
+      });
+    }
 
     // One-shot snapshot (requestType "0"): return it to the caller and tear the
     // subscription down — there is no ongoing stream for "0".
@@ -1516,15 +1744,36 @@ async function getPositions(
 
   let oldPortfolio: Record<
     string,
-    Partial<Trade & { sector?: string; industry?: string; country?: string }>
+    Partial<Trade & { sector?: string; industry?: string; country?: string; multiplier?: number }>
   > = {};
   
+  // Contract/lot size per contractId (see resolveContractSettings.ts) - batched once for every
+  // distinct contract these trades reference, not per trade. Plain equity/cash/dividend trades
+  // have no contractId and are unaffected (multiplierByContractId.get() misses -> defaults to 1
+  // at each use site below). Needed so a booked option trade's invested/cash impact reflects its
+  // real economics (e.g. 100 shares/contract), not just price*volume as if multiplier were 1.
+  const contractIds = Array.from(new Set(allTrades.map((t) => t.contractId).filter((id): id is string => !!id)));
+  const multiplierByContractId = new Map<string, number>();
+  if (contractIds.length > 0) {
+    const contractsForMultiplier = await ContractModel.find({ _id: { $in: contractIds } }).lean();
+    await Promise.all(
+      contractsForMultiplier.map(async (c) => {
+        const settings = await resolveContractSettings({
+          underlyingSymbolMic: c.underlyingSymbolMic,
+          expirationDate: c.expirationDate,
+          multiplier: c.multiplier,
+        });
+        multiplierByContractId.set(String(c._id), settings.multiplier);
+      }),
+    );
+  }
+
   profiler.startTimer("getPositions.tradeLoop", "system", "getPositions");
   profiler.logPoint("getPositions.tradeLoop", "system", "getPositions", "start_loop", { tradesCount: allTrades.length });
-  
+
   let gicsCallCount = 0;
   let tradeProcessCount = 0;
-  
+
   for (const trade of allTrades) {
     tradeProcessCount++;
 
@@ -1586,7 +1835,14 @@ async function getPositions(
         const dir = trade.side === "B" ? 1 : -1; //calculate invested
         // Trades entered in pence (GBX) are converted to GBP; GBP-labelled trades are
         // already in pounds. The currency label — not the exchange — carries the scale.
-        const priceAdj = trade.currency === 'GBX' ? trade.price / 100 : trade.price;
+        const gbxAdjustedPrice = trade.currency === 'GBX' ? trade.price / 100 : trade.price;
+        // Option/future trades: price is quoted per share/unit (matching the live "Price" column's
+        // convention), but the position's actual dollar exposure is multiplier times bigger (e.g.
+        // 100 shares/contract) - scale it in here, right where cash/invested/realized are computed
+        // from priceAdj below, rather than touching trade.price itself (which stays per-share/unit
+        // for display - see oldPortfolio[symbol].price a few lines down, deliberately unscaled).
+        const contractMultiplier = trade.contractId ? multiplierByContractId.get(trade.contractId) ?? 1 : 1;
+        const priceAdj = gbxAdjustedPrice * contractMultiplier;
         const priceN = toNum({ n: priceAdj });
         const fs = trade.fee;
         const f = fs * trade.rate;
@@ -1620,6 +1876,13 @@ async function getPositions(
           sector,
           industry,
           country,
+          // Fall back to the prior trade's contractId: a later trade on the same symbol that
+          // doesn't resupply a contract spec (e.g. a plain close-out) must not silently drop the
+          // position's contract linkage - see types/trade.ts's contractId.
+          contractId: trade.contractId ?? o.contractId,
+          // Same fallback as contractId above - a later trade without its own contractId (e.g. a
+          // close-out) must not reset an already-established position back to multiplier 1.
+          multiplier: trade.contractId ? contractMultiplier : (o.multiplier ?? 1),
         };
         const vs = /*-*/ priceAdj * trade.volume * dir;
         const v = vs * trade.rate;
