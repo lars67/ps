@@ -2,6 +2,13 @@ import { User, UserWithID } from "../types/user";
 import { UserModel } from "../models/user";
 import { FilterQuery } from "mongoose";
 
+// `password` is deliberately kept out of the generated users.add/users.update templates: the
+// only place a password is ever hashed is services/auth.ts (bcrypt, on signup), and neither the
+// functions below nor models/user.ts do any hashing. A password set through this path would be
+// stored in clear and could never be used to log in, since auth.ts compares with bcrypt.compare.
+// Accounts must be created through signup.
+export const hiddenFields = ["password"];
+
 export async function list(
   filter: FilterQuery<User> = {},
 ): Promise<User[] | null> {

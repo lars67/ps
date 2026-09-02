@@ -38,6 +38,11 @@ export async function list(
 
 
 
+// Written by add() itself, so they must not appear in the generated collection templates:
+// contractId is derived from the `contract` spec (see below) and state is forced to "1".
+// Setting either by hand produces a trade whose contract link or lifecycle state is a fiction.
+export const hiddenFields = ["contractId", "state"];
+
 export const validationsAddRequired= ["portfolioId", "side", "tradeType", "currency"]
 export async function add(
   trade: TradeInput,

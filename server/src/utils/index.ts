@@ -60,8 +60,12 @@ export const collectionNameToComPar = (mongoose: typeof import("mongoose")) => {
       //console.log( Model.modelName, service?.validationsAddRequired );
 
       const list = { filter: {} };
+      // Fields a service sets itself (or refuses to accept) must not be advertised in the
+      // generated templates: offering them invites someone to fill one in by hand and get a
+      // silently inconsistent document. A service opts out by exporting `hiddenFields`.
+      const hidden: string[] = service?.hiddenFields ?? [];
       const add = Object.keys(Model.schema.paths)
-        .filter((k) => k !== "__v" && k !== "_id")
+        .filter((k) => k !== "__v" && k !== "_id" && !hidden.includes(k))
         .reduce((o, fld, i) => {
           const sym =
             service?.validationsAddRequired &&
@@ -73,7 +77,7 @@ export const collectionNameToComPar = (mongoose: typeof import("mongoose")) => {
         }, {});
       //  console.log('add>', add,service?.validationsAddRequired );
       const update = Object.keys(Model.schema.paths)
-        .filter((k) => k !== "__v" && k !== "_id")
+        .filter((k) => k !== "__v" && k !== "_id" && !hidden.includes(k))
         .reduce(
           (o, fld, i) => {
             // @ts-ignore
