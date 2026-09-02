@@ -20,6 +20,17 @@ interface JCalcAddon {
     dividendYield: number;
     volatility: number;
   }): number;
+  calcBinomialDeltaGamma(params: {
+    isCall: boolean;
+    isAmerican: boolean;
+    futureBased: boolean;
+    spot: number;
+    strike: number;
+    timeToExpiry: number;
+    riskFreeRate: number;
+    dividendYield: number;
+    volatility: number;
+  }): { delta: number; gamma: number };
 }
 
 // Native addon wrapping the ported subset of JCalc (server/native/jcalc - eurobs.c/black76.c/
@@ -88,6 +99,39 @@ export function calcOptionTheoPrice(inputs: OptionTheoPriceInputs): number | und
     riskFreeRate: riskFreeRate / 100,
     dividendYield: dividendRate / 100,
     volatility: volatility / 100,
+  });
+}
+
+// Delta/gamma read straight off the binomial tree (the addon's port of binom.c's DeltaBinom/
+// GammaBinom). Only the binomial models use this - see calcGreeks.ts, which uses closed-form
+// expressions for Black-Scholes/Black-76 and bumps the price for everything else, mirroring
+// rdelta.c/rgamma.c's model switch.
+export function calcBinomialDeltaGamma(inputs: {
+  isCall: boolean;
+  isAmerican: boolean;
+  futureBased: boolean;
+  spotPrice: number;
+  strike: number;
+  timeToExpiry: number;
+  riskFreeRate: number; // percentage points
+  dividendRate: number; // percentage points
+  volatility: number; // percentage points
+}): { delta: number; gamma: number } | undefined {
+  if (inputs.timeToExpiry <= 0) return undefined;
+
+  const jcalc = loadAddon();
+  if (!jcalc) return undefined;
+
+  return jcalc.calcBinomialDeltaGamma({
+    isCall: inputs.isCall,
+    isAmerican: inputs.isAmerican,
+    futureBased: inputs.futureBased,
+    spot: inputs.spotPrice,
+    strike: inputs.strike,
+    timeToExpiry: inputs.timeToExpiry,
+    riskFreeRate: inputs.riskFreeRate / 100,
+    dividendYield: inputs.dividendRate / 100,
+    volatility: inputs.volatility / 100,
   });
 }
 

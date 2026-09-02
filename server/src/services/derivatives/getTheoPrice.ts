@@ -18,6 +18,7 @@ import { resolveContractSettings } from "./resolveContractSettings";
 import { selectTheoModel } from "./selectTheoModel";
 import { calcYearFraction } from "./dayCount";
 import { calcFutureTheoPrice, calcOptionTheoPrice } from "./calcTheoPrice";
+import { Greeks, calcGreeks } from "./calcGreeks";
 
 export type GetTheoPriceParams = {
   underlyingSymbolMic: string;
@@ -49,6 +50,9 @@ export type GetTheoPriceParams = {
 
 export type GetTheoPriceResult = {
   theoPrice?: number;
+  // Options only - a future/forward priced by cost of carry has no option greeks. See
+  // calcGreeks.ts for what each one means and how it is computed.
+  greeks?: Greeks;
   resolved?: {
     spotPrice: number;
     priceDriverSymbol: string;
@@ -179,7 +183,7 @@ export async function getTheoPrice(params: GetTheoPriceParams): Promise<GetTheoP
     const theoModel =
       theoModelOverride ?? selectTheoModel(contractType, settings.executionStyle, futureBased);
 
-    const theoPrice = calcOptionTheoPrice({
+    const optionInputs = {
       theoModel,
       isCall: contractType === ContractType.Call,
       european: settings.executionStyle === ExecutionStyle.European,
@@ -190,10 +194,20 @@ export async function getTheoPrice(params: GetTheoPriceParams): Promise<GetTheoP
       riskFreeRate: interestRate,
       dividendRate,
       volatility,
-    });
+    };
+
+    const theoPrice = calcOptionTheoPrice(optionInputs);
+
+    // Greeks are only meaningful once there is a price to differentiate - an unported model or
+    // an expired contract yields neither.
+    const greeks =
+      theoPrice === undefined
+        ? undefined
+        : calcGreeks({ ...optionInputs, calcDate, executionStyle: settings.executionStyle });
 
     return {
       theoPrice,
+      greeks,
       error:
         theoPrice === undefined
           ? timeToExpiry <= 0

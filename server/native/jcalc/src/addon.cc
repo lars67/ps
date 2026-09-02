@@ -7,6 +7,7 @@ extern "C" {
   double EuroBlackCall(double, double, double, double);
   double EuroBlackPut(double, double, double, double);
   double binomial_price(double, double, double, double, double, double, int, int, int);
+  void binomial_delta_gamma(double, double, double, double, double, double, int, int, int, double*, double*);
 }
 
 static double GetNum(const Napi::Object& p, const char* key)
@@ -84,9 +85,52 @@ Napi::Value CalcTheoPrice(const Napi::CallbackInfo& info)
   return Napi::Number::New(env, result);
 }
 
+// calcBinomialDeltaGamma(params) -> { delta, gamma }
+//
+// Same params as calcTheoPrice (minus `european`, which is passed as isAmerican here). Only the
+// binomial models need this: rdelta.c/rgamma.c read delta/gamma off the tree for
+// MODEL_AMBINOMIAL/MODEL_EUROBINOMIAL, and bump the price for every other model - bumping a tree
+// price gives noisy greeks. The closed-form Black-Scholes/Black-76 delta/gamma the original uses
+// for those two models live in services/derivatives/calcGreeks.ts, which needs no addon call.
+Napi::Value CalcBinomialDeltaGamma(const Napi::CallbackInfo& info)
+{
+  Napi::Env env = info.Env();
+
+  if (info.Length() < 1 || !info[0].IsObject()) {
+    Napi::TypeError::New(env, "calcBinomialDeltaGamma expects a params object").ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  Napi::Object p = info[0].As<Napi::Object>();
+
+  bool isCall = GetBool(p, "isCall");
+  bool isAmerican = GetBool(p, "isAmerican");
+  bool futureBased = GetBool(p, "futureBased");
+  double spot = GetNum(p, "spot");
+  double strike = GetNum(p, "strike");
+  double T = GetNum(p, "timeToExpiry");
+  double r = GetNum(p, "riskFreeRate");
+  double q = GetNum(p, "dividendYield");
+  double sigma = GetNum(p, "volatility");
+
+  // Cost-of-carry b = 0 for future-based options, matching calcTheoPrice above.
+  double carryYield = futureBased ? r : q;
+
+  double delta = 0.0;
+  double gamma = 0.0;
+  binomial_delta_gamma(spot, strike, T, r, carryYield, sigma,
+                       isCall ? 1 : 0, isAmerican ? 1 : 0, /*steps=*/60, &delta, &gamma);
+
+  Napi::Object out = Napi::Object::New(env);
+  out.Set("delta", Napi::Number::New(env, delta));
+  out.Set("gamma", Napi::Number::New(env, gamma));
+  return out;
+}
+
 Napi::Object Init(Napi::Env env, Napi::Object exports)
 {
   exports.Set("calcTheoPrice", Napi::Function::New(env, CalcTheoPrice));
+  exports.Set("calcBinomialDeltaGamma", Napi::Function::New(env, CalcBinomialDeltaGamma));
   return exports;
 }
 

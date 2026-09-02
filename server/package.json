@@ -9,6 +9,7 @@
     "build": "tsc",
     "build:jcalc": "cd native/jcalc && node-gyp rebuild",
     "test:theoprice": "ts-node test/getTheoPrice.test.ts",
+    "test:greeks": "ts-node test/greeks.test.ts",
     "run-convert": "ts-node ./src/tools/tradeConvert.ts",
     "run-file": "ts-node $1",
     "ls": "ls",

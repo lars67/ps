@@ -134,6 +134,76 @@ double binomial_price(double spot, double strike, double timeToExpiry,
    return res;
 }
 
+/* Ported from binom.c's DeltaBinom / GammaBinom. Both originals build the identical tree and
+   differ only in which derivative they take from it, so they are merged here into one call that
+   returns both - halving the work when (as in ps2) delta and gamma are always wanted together.
+
+   The technique, unchanged from the original: extend the tree by 2 steps and prolong time by
+   (n+2)/n so the extra levels sit "before" today, leaving today's spot as the middle node of
+   level 2. Fitting a parabola through that level's three (stock, option) pairs and taking its
+   first/second derivative gives delta/gamma directly from the tree, which is far steadier than
+   bumping a piecewise-linear tree price. The algebraic expressions below are the original's
+   verbatim. */
+void binomial_delta_gamma(double spot, double strike, double timeToExpiry,
+                           double financingRate, double yield, double sigma,
+                           int isCall, int isAmerican, int steps,
+                           double *outDelta, double *outGamma)
+{
+   double prob_up, delta_t, denom;
+   double **stock_tree;
+   double **option_tree;
+   double x1, x2, x3, y1, y2, y3;
+   double timeProlongation;
+   double prolongedTime;
+   int n;
+
+   /* At expiry the option has no time value - the original returns the step function directly
+      (DeltaBinom) and a spike at the strike (GammaBinom). */
+   if (timeToExpiry <= ONEDAY)
+   {
+      if (isCall) *outDelta = (spot > strike) ? 1.0 : 0.0;
+      else        *outDelta = (spot > strike) ? 0.0 : -1.0;
+      *outGamma = (fabs(spot - strike) > LEASTCURRENCYUNIT) ? 0.0 : 1.0;
+      return;
+   }
+
+   timeProlongation = (steps + 2) / (double)steps;
+   n = steps + 2;
+   prolongedTime = timeToExpiry * timeProlongation;
+
+   stock_tree = alloc_matrix(n);
+   option_tree = alloc_matrix(n);
+
+   construct_binomial_tree(spot, financingRate, yield, sigma, stock_tree, &prob_up, &delta_t, prolongedTime, n);
+   construct_option_tree(financingRate, stock_tree, option_tree, prob_up, delta_t, n, strike, isCall, isAmerican);
+
+   x1 = stock_tree[2][0];
+   x2 = stock_tree[2][1];
+   x3 = stock_tree[2][2];
+   y1 = option_tree[2][0];
+   y2 = option_tree[2][1];
+   y3 = option_tree[2][2];
+
+   denom = (-x1 + x2) * (-x1 + x3) * (-x2 + x3);
+
+   if (denom == 0.0)
+   {
+      /* Degenerate tree (zero vol collapses the nodes onto each other) - the original would
+         divide by zero here; ps2 reports "no value" rather than an inf/NaN. */
+      *outDelta = 0.0;
+      *outGamma = 0.0;
+   }
+   else
+   {
+      *outDelta = (-x2*x2*y1 + 2*x2*x3*y1 - x3*x3*y1 - x1*x1*y2 + 2*x1*x2*y2
+                   - 2*x2*x3*y2 + x3*x3*y2 + x1*x1*y3 - 2*x1*x2*y3 + x2*x2*y3) / denom;
+      *outGamma = 2 * (-x2*y1 + x3*y1 + x1*y2 - x3*y2 - x1*y3 + x2*y3) / denom;
+   }
+
+   free_matrix(stock_tree, n);
+   free_matrix(option_tree, n);
+}
+
 #ifdef __cplusplus
 }
 #endif

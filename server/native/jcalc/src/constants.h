@@ -9,6 +9,7 @@
 #define MINSTRIKE .001
 #define MINRATE 0.
 #define MINVOL .01
+#define LEASTCURRENCYUNIT 0.01
 
 #define DBIGEXPE 460
 #define DSMALLEXPE -460

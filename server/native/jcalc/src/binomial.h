@@ -14,6 +14,17 @@ double binomial_price(double spot, double strike, double timeToExpiry,
                        double financingRate, double yield, double sigma,
                        int isCall, int isAmerican, int steps);
 
+/* Delta and gamma read off the tree rather than bumped, ported from binom.c's DeltaBinom /
+   GammaBinom: the tree is built two steps longer (and time prolonged to match) so that today's
+   spot sits at level 2, then a parabola is fitted through that level's three nodes and
+   differentiated analytically. Bumping a binomial price instead gives noisy greeks, which is
+   why the original reads the tree - see rdelta.c/rgamma.c, which use these for
+   MODEL_AMBINOMIAL/MODEL_EUROBINOMIAL and DeltaValue/GammaValue for everything else. */
+void binomial_delta_gamma(double spot, double strike, double timeToExpiry,
+                           double financingRate, double yield, double sigma,
+                           int isCall, int isAmerican, int steps,
+                           double *outDelta, double *outGamma);
+
 #ifdef __cplusplus
 }
 #endif
