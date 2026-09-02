@@ -1,0 +1,33 @@
+Fri Jul 17 05:00:01 AM CEST 2026: Starting daily portfolio positions collection
+Certificate file not found, trying alternative path...
+Starting daily portfolio positions collection...
+Connecting to login WebSocket...
+Connected to MongoDB
+Connected to login server
+Sending login request...
+✅ Portfolio indexes ensured
+Login response: { error: 'Invalid user login or password' }
+Error in daily positions collection: Error: Login failed: Invalid user login or password
+    at WebSocket.<anonymous> (/home/lars/projects/ps2/server/scripts/daily-portfolio-positions.ts:111:18)
+    at WebSocket.emit (node:events:517:28)
+    at WebSocket.emit (node:domain:489:12)
+    at Receiver.receiverOnMessage (/home/lars/projects/ps2/server/node_modules/ws/lib/websocket.js:1209:20)
+    at Receiver.emit (node:events:517:28)
+    at Receiver.emit (node:domain:489:12)
+    at /home/lars/projects/ps2/server/node_modules/ws/lib/receiver.js:608:16
+    at node:internal/process/task_queues:140:7
+    at AsyncResource.runInAsyncScope (node:async_hooks:203:9)
+    at AsyncResource.runMicrotask (node:internal/process/task_queues:137:8)
+Script execution failed: Error: Login failed: Invalid user login or password
+    at WebSocket.<anonymous> (/home/lars/projects/ps2/server/scripts/daily-portfolio-positions.ts:111:18)
+    at WebSocket.emit (node:events:517:28)
+    at WebSocket.emit (node:domain:489:12)
+    at Receiver.receiverOnMessage (/home/lars/projects/ps2/server/node_modules/ws/lib/websocket.js:1209:20)
+    at Receiver.emit (node:events:517:28)
+    at Receiver.emit (node:domain:489:12)
+    at /home/lars/projects/ps2/server/node_modules/ws/lib/receiver.js:608:16
+    at node:internal/process/task_queues:140:7
+    at AsyncResource.runInAsyncScope (node:async_hooks:203:9)
+    at AsyncResource.runMicrotask (node:internal/process/task_queues:137:8)
+Fri Jul 17 05:00:03 AM CEST 2026: Daily portfolio positions collection failed with exit code 1
+Fri Jul 17 05:00:03 AM CEST 2026: Script execution finished
