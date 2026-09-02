@@ -263,7 +263,16 @@ class WorkerPortfolioCalculator {
           uniqueSymbols.push(portfolio.baseInstrument);
         }
         try {
-          await checkPrices(uniqueSymbols, priceCheckStartDate, undefined, undefined, forceRefresh);
+          // checkPortfolioPricesCurrencies just above already fetched these exact symbols
+          // (from the trades' own earliest date, with the same forceRefresh). This second
+          // call only exists to extend the window 10 days earlier (priceCheckStartDate) for
+          // "day before start" baseline lookups - it must NOT also force, or it redoes 100%
+          // of the network fetching the line above just did. checkPrices' own staleness
+          // check (histories[symbol] > startDate) already detects the earlier date is needed
+          // and fetches accordingly, without redundantly refetching what's already cached.
+          // Same fix as portfolioCalculator.ts - this is the parallel worker-thread copy of
+          // that same code path and had the identical bug.
+          await checkPrices(uniqueSymbols, priceCheckStartDate, undefined, undefined, false);
           for (const currency of uniqueCurrencies) {
             await checkPriceCurrency(currency, portfolio.currency, priceCheckStartDate, forceRefresh);
           }

@@ -226,7 +226,17 @@ export class PortfolioCalculator {
           if (portfolio.baseInstrument && !uniqueSymbols.includes(portfolio.baseInstrument)) {
             uniqueSymbols.push(portfolio.baseInstrument);
           }
-          await checkPrices(uniqueSymbols, priceCheckStartDate, undefined, undefined, forceRefresh);
+          // checkPortfolioPricesCurrencies just above already fetched these exact symbols
+          // (from the trades' own earliest date, with the same forceRefresh). This second
+          // call only exists to extend the window 10 days earlier (priceCheckStartDate) for
+          // "day before start" baseline lookups - it must NOT also force, or it redoes 100%
+          // of the network fetching the line above just did. checkPrices' own staleness
+          // check (histories[symbol] > startDate) already detects the earlier date is needed
+          // and fetches accordingly, without redundantly refetching what's already cached.
+          // Confirmed in production (2026-09-01): once DATA_PROXY was fixed to actually reach
+          // the data proxy instead of dead-ending instantly, this doubled every real fetch and
+          // made even a trivial 10-symbol, 4-day-old portfolio (Irina Kotlova) time out.
+          await checkPrices(uniqueSymbols, priceCheckStartDate, undefined, undefined, false);
           for (const currency of uniqueCurrencies) {
             await checkPriceCurrency(currency, portfolio.currency, priceCheckStartDate, forceRefresh);
           }
