@@ -58,7 +58,12 @@ this is just the headline summary:
   form for Black-Scholes/Black-76, read off the tree for binomial (`binomial_delta_gamma()` in
   the addon, a merged port of `DeltaBinom`/`GammaBinom`). `npm run test:greeks` checks them
   against analytic Black-Scholes. Wired into the calculator only — **not** yet into live
-  positions (see `docs/derivatives-todo.md` item 1).
+  positions (see `docs/derivatives-todo.md` item 1). Theta steps over weekends but not public
+  holidays, since ps2 has no trading calendar (item 9).
+- Console samples for all of the above live in `services/custom/tools.ts`'s `description` export
+  (six for `tools.theoPrice`, including two for the greeks), surfaced by `commands.list` in the
+  react console's dropdown. Note that block is cached per server process, so a sample change
+  needs a rebuild **and** a restart to show up.
 - Trade-entry wiring is live: `trades.add` accepts a `contract` spec (`TradeContractInput`) instead
   of/alongside a bare `symbol` for option/future trades (arriving as OTC trades); the contract is
   upserted by identity at trade-save time via `services/derivatives/upsertContractForTrade.ts`, and

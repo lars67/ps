@@ -276,6 +276,52 @@ const Tools = () => {
         </tr>
       </tbody>
       </table>
+      <p>
+        Delta and gamma are exact for european contracts (closed form) and come from the binomial
+        tree for american ones. The rest are finite-difference bumps of the price. One caveat
+        worth knowing: <b>theta</b> steps over weekends but not public holidays - ps2 has no
+        trading calendar - so decay is under-stated the day before a market holiday.
+      </p>
+      <h4>Ready-made samples in the console</h4>
+      <p>
+        The console&apos;s command dropdown ships six worked examples for this command, so you can
+        run one and edit it rather than writing the JSON from scratch:
+      </p>
+      <table>
+      <tbody>
+        <tr>
+          <th>Sample</th>
+          <th>Shows</th>
+        </tr>
+        <tr>
+          <td>Theo Price - option, auto-resolve everything</td>
+          <td>The minimal call: only the contract identity, everything else resolved for you</td>
+        </tr>
+        <tr>
+          <td>Theo Price - option, manual what-if scenario</td>
+          <td>Every input overridden, so no live market data is involved</td>
+        </tr>
+        <tr>
+          <td>Theo Price - greeks explained</td>
+          <td>What each of the ten greeks means and in which units</td>
+        </tr>
+        <tr>
+          <td>Theo Price - greeks, compare strikes and exercise styles</td>
+          <td>
+            Six calculations in one send - ITM/ATM/OTM and european vs american - so the results
+            pane shows the greeks side by side
+          </td>
+        </tr>
+        <tr>
+          <td>Theo Price - plain future (cost of carry)</td>
+          <td>A future/forward, priced without an option model</td>
+        </tr>
+        <tr>
+          <td>Theo Price - option on a future (Black-76)</td>
+          <td>Pricing off a future&apos;s own price via <b>baseContractId</b></td>
+        </tr>
+      </tbody>
+      </table>
     </div>
   );
 };

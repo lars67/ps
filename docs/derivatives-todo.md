@@ -27,6 +27,11 @@ check items off with a note on how/when, don't just delete them.
 - **Unit fix worth remembering**: `rvega.c` scales vega by `VOL_FACTOR` (0.01) because JCalc's
   sigma is a decimal. ps2 carries volatility in percentage points, so applying VOL_FACTOR again
   made vega 100x too small - caught by the analytic comparison.
+- Console samples: "Theo Price - greeks explained" (what each greek means, and in which units)
+  and "Theo Price - greeks, compare strikes and exercise styles" (six calculations in one send,
+  ITM/ATM/OTM and european vs american side by side). Both verified against the running engine -
+  the relationships their comments claim (delta ordering, gamma/vega peaking ATM, american put
+  delta more negative, put-call parity of delta) all hold.
 - **Still open: greeks on held positions.** This is wired into the calculator only.
   `portfolios.positions`/`processQuoteData` do not yet compute per-position greeks on each tick,
   which was the original plan recorded here (same pass as `theoPrice`, same resolved inputs, with

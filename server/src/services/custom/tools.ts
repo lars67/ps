@@ -200,9 +200,12 @@ export const description: CommandDescription = {
   },
   // ── tools.theoPrice samples ────────────────────────────────────────────────────────────────
   //
-  // Four console samples for one command, covering the shapes the calculator actually supports:
-  // auto-resolve, manual what-if, plain future, and option-on-future. Only the first key
-  // (`theoPrice`) is the real handler name - the other three are **sample-only aliases**: what
+  // Six console samples for one command, covering the shapes the calculator actually supports:
+  // auto-resolve, manual what-if, plain future, option-on-future, and two for the greeks (one
+  // explaining what each greek means and in which units, one firing several calculations at
+  // once so the results pane shows the greeks side by side across strikes and exercise styles).
+  // Only the first key (`theoPrice`) is the real handler name - the rest are **sample-only
+  // aliases**: what
   // gets sent is their `value`'s own `"command": "tools.theoPrice"`, not the key. This is a
   // deliberate deviation from this file's usual 1:1 key-to-handler convention, because there's no
   // other way to offer more than one preset per command today (`extended` exists on the type but
@@ -315,6 +318,34 @@ export const description: CommandDescription = {
         dividendRate: 1.2,
         executionStyle: "european",
       }),
+    ].join("\n"),
+  },
+  theoPriceGreeksCompare: {
+    label: "Theo Price - greeks, compare strikes and exercise styles",
+    access: "public",
+    value: [
+      "# Sends several calculations in one go - the console runs every {...} in the buffer, so",
+      "# the results pane gives you the greeks side by side. Same underlying, same 182 days,",
+      "# same 22 vol throughout; only the strike and the exercise style change.",
+      "#",
+      "# 1-3: ITM / ATM / OTM european calls. What to look for:",
+      "#      delta falls as the strike rises (0.94 -> 0.57 -> 0.16),",
+      "#      gamma and vega both peak at the money and fall off either side,",
+      "#      theta is most negative at the money - the ATM option has the most time value to lose.",
+      '{"command":"tools.theoPrice","underlyingSymbolMic":"MSFT:XNAS","contractType":"call","strike":80,"daysToExpiration":182,"spotPrice":100,"volatility":22,"interestRate":4.5,"dividendRate":1.2,"executionStyle":"european"}',
+      '{"command":"tools.theoPrice","underlyingSymbolMic":"MSFT:XNAS","contractType":"call","strike":100,"daysToExpiration":182,"spotPrice":100,"volatility":22,"interestRate":4.5,"dividendRate":1.2,"executionStyle":"european"}',
+      '{"command":"tools.theoPrice","underlyingSymbolMic":"MSFT:XNAS","contractType":"call","strike":120,"daysToExpiration":182,"spotPrice":100,"volatility":22,"interestRate":4.5,"dividendRate":1.2,"executionStyle":"european"}',
+      "",
+      "# 4-5: the same ATM put european vs american. The american is worth more (early exercise",
+      "#      has value), its delta is more negative, and its greeks come from the binomial tree",
+      "#      rather than a closed-form expression - a good check that the tree path is sane.",
+      '{"command":"tools.theoPrice","underlyingSymbolMic":"MSFT:XNAS","contractType":"put","strike":100,"daysToExpiration":182,"spotPrice":100,"volatility":22,"interestRate":4.5,"dividendRate":1.2,"executionStyle":"european"}',
+      '{"command":"tools.theoPrice","underlyingSymbolMic":"MSFT:XNAS","contractType":"put","strike":100,"daysToExpiration":182,"spotPrice":100,"volatility":22,"interestRate":4.5,"dividendRate":1.2,"executionStyle":"american"}',
+      "",
+      "# 6: a call and put on the same strike - gamma and vega should come back identical, and",
+      "#    delta(call) - delta(put) should equal exp(-dividendRate*T). Put-call parity is the",
+      "#    easiest way to sanity-check greeks by eye.",
+      '{"command":"tools.theoPrice","underlyingSymbolMic":"MSFT:XNAS","contractType":"call","strike":100,"daysToExpiration":182,"spotPrice":100,"volatility":22,"interestRate":4.5,"dividendRate":1.2,"executionStyle":"european"}',
     ].join("\n"),
   },
   theoPriceOnFuture: {
