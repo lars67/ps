@@ -52,8 +52,29 @@ function extractAndParseJSONObjects0(str: string) {
   return jsonObjects;
 }
 
-function extractAndParseJSONObjects(input: string): any[] {
-  const fragments: any[] = [];
+// What a top-level {...} in the script turned out to be:
+//   "command"    - valid JSON carrying a `command` key; this is what actually gets sent
+//   "invalid"    - balanced braces that do NOT parse as JSON (a typo: missing quote, trailing
+//                  comma, ...). It looks like a command but is silently skipped when sending.
+//   "notCommand" - valid JSON with no `command` key; also skipped.
+export type ScriptSpanStatus = 'command' | 'invalid' | 'notCommand';
+
+export type ScriptSpan = {
+  from: number; // character offset of the opening brace
+  to: number; // character offset just past the closing brace
+  status: ScriptSpanStatus;
+  text: string;
+};
+
+// Single source of truth for how a console script is read: a brace-depth walk isolating every
+// balanced top-level {...}. Everything outside those spans (prose, blank lines, # comments) is
+// not part of any command and is ignored when sending.
+//
+// getCommands() below keeps its old behaviour of returning only the sendable commands, but it is
+// built on this so the editor's comment highlighting, the "N commands were skipped" warning and
+// the sender can never disagree about what counts as a command.
+export const scanScript = (input: string): ScriptSpan[] => {
+  const spans: ScriptSpan[] = [];
   let start = 0;
   let depth = 0;
 
@@ -64,22 +85,33 @@ function extractAndParseJSONObjects(input: string): any[] {
       }
       depth++;
     } else if (input[i] === '}') {
+      // A stray '}' with no opener would drive depth negative and corrupt every later span -
+      // treat it as ordinary text instead.
+      if (depth === 0) continue;
       depth--;
       if (depth === 0) {
-        const fragment = input.slice(start, i + 1);
+        const text = input.slice(start, i + 1);
+        let status: ScriptSpanStatus = 'invalid';
         try {
-          const parsedFragment = JSON.parse(fragment);
-          if (parsedFragment.hasOwnProperty('command')) {
-            fragments.push(fragment);
-          }
+          const parsed = JSON.parse(text);
+          status = parsed && Object.prototype.hasOwnProperty.call(parsed, 'command')
+            ? 'command'
+            : 'notCommand';
         } catch (e) {
-          // Ignore any errors, as the input may not be valid JSON
+          status = 'invalid';
         }
+        spans.push({ from: start, to: i + 1, status, text });
       }
     }
   }
 
-  return fragments;
+  return spans;
+};
+
+function extractAndParseJSONObjects(input: string): any[] {
+  return scanScript(input)
+    .filter((s) => s.status === 'command')
+    .map((s) => s.text);
 }
 
 function calculateExpression(expression: string, variables:Record<string, object>) {
