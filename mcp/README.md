@@ -18,12 +18,13 @@ Exposes all PS2 commands as MCP tools so any MCP-compatible AI client (Claude De
 | `portfolios_trades` | Trade history for a portfolio |
 | `portfolios_put_cash` | Deposit / withdraw cash |
 | `portfolios_put_dividends` | Record dividend payments |
-| `trades_add` | Add a buy/sell trade (equities and FX) |
+| `trades_add` | Add a buy/sell trade (equities, FX, and options/futures via `contract`) |
 | `trades_update` | Correct a trade |
 | `trades_remove` | Delete a single trade |
 | `trades_remove_all` | Wipe all trades in a portfolio |
 | `prices_historical` | Historical closing prices for symbols |
 | `tools_statistic` | Performance statistics for a portfolio or price series |
+| `tools_theo_price` | Theoretical price for an option or future/forward - standalone calculator, no position/Contract required |
 
 ---
 
@@ -319,6 +320,38 @@ Adds `current_symbol_volume × amount` to cash.
 }
 ```
 
+**Option trade — buy an MSFT call, booked as an OTC trade:**
+
+Omit `symbol` and pass `contract` instead — the contract is created/upserted by identity
+(`underlyingSymbolMic` + `contractType` + `strike` + `expirationDate`) and `trade.symbol`/
+`contractId` are set from it automatically. See
+`portfolio-server/docs/derivatives/03-migration-notes.md` for the full data model.
+
+```json
+{
+  "portfolioId": "Growth Portfolio",
+  "side": "B",
+  "contract": {
+    "underlyingSymbolMic": "MSFT:XNAS",
+    "contractType": "call",
+    "strike": 400,
+    "expirationDate": "2026-09-18",
+    "symbol": "MSFT260918C00400000"
+  },
+  "volume": 10,
+  "price": 12.5,
+  "currency": "USD",
+  "fee": 6.5,
+  "tradeTime": "2026-07-06T14:00:00"
+}
+```
+
+`contract.contractType`: `future` | `forward` | `call` | `put` — direction/kind only; exercise
+style is a separate, optional `executionStyle` (`european` | `american`) that cascades from
+`underlyingOptionSettings` → `contractExpirations` → the contract itself if not set here.
+An option-on-future sets `baseContractId` to the future contract's `_id` instead of pricing off
+the cash underlying.
+
 ### `trades_update`
 
 ```json
@@ -364,6 +397,79 @@ Response: `[{ "date": "2024-01-08", "AAPL": 185.56, "SPY": 474.19 }, ...]`
 ```json
 { "history": "SPY", "from": "2020-01-02", "till": "2023-12-29" }
 ```
+
+### `tools_theo_price`
+
+Standalone theoretical-price calculator - not tied to any held position or existing `Contract`.
+Every field beyond `underlyingSymbolMic`/`contractType`/expiration/strike is optional and
+auto-resolved (live spot, historical realized volatility, risk-free rate, dividend yield,
+execution style, day-count convention, pricing model); pass any of them to override, e.g. for a
+what-if scenario. Use `daysToExpiration` instead of `expirationDate` for anything that should stay
+valid over time rather than hardcoding a date.
+
+**Auto-resolve everything (live data):**
+```json
+{
+  "underlyingSymbolMic": "MSFT:XNAS",
+  "contractType": "call",
+  "strike": 400,
+  "daysToExpiration": 90
+}
+```
+Response:
+```json
+{
+  "theoPrice": 121.94,
+  "resolved": {
+    "spotPrice": 507.29,
+    "priceDriverSymbol": "MSFT:XNAS",
+    "volatility": 48.74,
+    "interestRate": 4.25,
+    "dividendRate": 0.95,
+    "dayCountConvention": "act365",
+    "executionStyle": "american",
+    "futureBased": false,
+    "theoModel": "americanBinomial",
+    "timeToExpiry": 0.293,
+    "calcDate": "2026-09-02"
+  }
+}
+```
+
+**Full manual override (what-if scenario, no live data touched):**
+```json
+{
+  "underlyingSymbolMic": "MSFT:XNAS",
+  "contractType": "put",
+  "strike": 400,
+  "daysToExpiration": 90,
+  "spotPrice": 400,
+  "volatility": 25,
+  "interestRate": 4.5,
+  "dividendRate": 1,
+  "executionStyle": "european"
+}
+```
+
+**Option-on-future** (priced via Black-76 off an existing future `Contract`'s own price, not the
+cash underlying) - set `baseContractId` to that future's `_id`:
+```json
+{
+  "underlyingSymbolMic": "SPY:ARCX",
+  "contractType": "call",
+  "strike": 6300,
+  "daysToExpiration": 90,
+  "baseContractId": "..."
+}
+```
+
+**Plain future/forward** (cost-of-carry, `F = S * e^((r-q)*T)` - no `theoModel`/`executionStyle` applies):
+```json
+{ "underlyingSymbolMic": "SPY:ARCX", "contractType": "future", "daysToExpiration": 30 }
+```
+
+An expired contract (`calcDate` past `expirationDate`) returns `{ "error": "Contract has already
+expired as of calcDate", "resolved": {...} }` rather than a stale price.
 
 ---
 

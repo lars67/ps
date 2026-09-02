@@ -275,6 +275,8 @@ export const tools: ToolDef[] = [
       'Add a buy or sell trade. ' +
       'For equity: use side=B (buy) or S (sell) with a regular symbol like AAPL or DANSKE:XCSE. ' +
       'For FX: use symbol format EURDKK:FX — side=B moves DKK→EUR, side=S moves EUR→DKK. ' +
+      'For an option or future: omit symbol and pass `contract` instead — the contract is ' +
+      'created/upserted by identity and its own tradable symbol is used automatically. ' +
       'Fee is in the trade currency and is applied as -fee*rate to portfolio cash.',
     inputSchema: {
       type: 'object',
@@ -287,9 +289,57 @@ export const tools: ToolDef[] = [
         symbol: {
           type: 'string',
           description:
-            'Symbol, e.g. AAPL, INTC, DANSKE:XCSE, SPY, EURDKK:FX',
+            'Symbol, e.g. AAPL, INTC, DANSKE:XCSE, SPY, EURDKK:FX. Omit when `contract` is given.',
         },
-        volume: { type: 'number', description: 'Number of shares/units' },
+        contract: {
+          type: 'object',
+          description:
+            'Option/future spec — provide this instead of `symbol` for a derivative trade. ' +
+            'The contract is upserted by identity (underlyingSymbolMic + contractType + ' +
+            'strike + expirationDate) and trade.symbol/contractId are set from it automatically.',
+          properties: {
+            underlyingSymbolMic: {
+              type: 'string',
+              description: 'Underlying reference, "Symbol-Mic" form, e.g. MSFT:XNAS',
+            },
+            contractType: {
+              type: 'string',
+              enum: ['future', 'forward', 'call', 'put'],
+              description: 'Direction/kind only — exercise style is set separately via executionStyle.',
+            },
+            strike: { type: 'number', description: 'Required for call/put, omit for future/forward' },
+            expirationDate: { type: 'string', description: 'YYYY-MM-DD' },
+            baseContractId: {
+              type: 'string',
+              description: 'Contract _id to price off of (e.g. an option-on-future\'s underlying future), if not the cash underlying',
+            },
+            symbol: { type: 'string', description: 'The contract\'s own tradable symbol (e.g. an OCC-style option symbol)' },
+            multiplier: { type: 'number', description: 'Contract/lot size. Falls back to the underlying/expiration cascade default if omitted.' },
+            market: { type: 'string' },
+            feedCode: { type: 'string' },
+            provider: { type: 'string' },
+            executionStyle: {
+              type: 'string',
+              enum: ['european', 'american'],
+              description: 'Overrides the underlying/expiration default if set.',
+            },
+            dayCountConvention: {
+              type: 'string',
+              enum: ['actAct', 'act365', '30/365'],
+              description: 'Overrides the underlying/expiration default if set.',
+            },
+            volatilityOffset: {
+              type: 'number',
+              description: 'Additive, percentage points, stacked on top of the underlying base vol and any expiration-level offset.',
+            },
+            rateOffset: {
+              type: 'number',
+              description: 'Additive, percentage points, stacked on top of the base risk-free rate and any expiration-level offset.',
+            },
+          },
+          required: ['underlyingSymbolMic', 'contractType', 'expirationDate', 'symbol'],
+        },
+        volume: { type: 'number', description: 'Number of shares/units/contracts' },
         price: { type: 'number', description: 'Price per unit in trade currency' },
         currency: { type: 'string', description: 'Trade currency, e.g. USD, DKK, EUR' },
         rate: {
@@ -312,7 +362,7 @@ export const tools: ToolDef[] = [
         accountId: { type: 'string' },
         aml: { type: 'string' },
       },
-      required: ['portfolioId', 'side', 'symbol', 'volume', 'price', 'currency'],
+      required: ['portfolioId', 'side', 'volume', 'price', 'currency'],
     },
     handler: async (client, args) =>
       client.send('trades.add', { tradeType: '1', ...args }),
@@ -439,5 +489,89 @@ export const tools: ToolDef[] = [
       },
     },
     handler: async (client, args) => client.send('tools.statistic', args),
+  },
+
+  {
+    name: 'tools_theo_price',
+    description:
+      'Compute a theoretical price for an option or future/forward - not tied to any held ' +
+      'position or existing Contract, a standalone "what would this be worth" calculator. ' +
+      'Every input beyond underlyingSymbolMic/contractType/expiration/strike is optional and ' +
+      'auto-resolved (live spot price, historical realized volatility, risk-free rate, dividend ' +
+      'yield, execution style, day-count convention, pricing model) - pass any of them explicitly ' +
+      'to override, e.g. for a what-if scenario at a hypothetical spot/vol. Options price via ' +
+      'Black-Scholes (European, spot-based), Black-76 (European, future-based - set ' +
+      'baseContractId), or a binomial tree (American, either basis). Plain futures/forwards price ' +
+      'via cost-of-carry (F = S * e^((r-q)*T)) - no model selection applies to them. The response ' +
+      'includes a `resolved` object showing every input actually used, so you can see what was ' +
+      'auto-derived.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        underlyingSymbolMic: {
+          type: 'string',
+          description: 'Underlying reference, "Symbol-Mic" form, e.g. MSFT:XNAS. Always drives volatility/dividend/currency resolution, even for a future-based option (see baseContractId).',
+        },
+        contractType: {
+          type: 'string',
+          enum: ['future', 'forward', 'call', 'put'],
+          description: 'Direction/kind only - exercise style is set separately via executionStyle.',
+        },
+        expirationDate: {
+          type: 'string',
+          description: 'YYYY-MM-DD. Provide this OR daysToExpiration, not both.',
+        },
+        daysToExpiration: {
+          type: 'number',
+          description: 'Alternative to expirationDate: resolves to calcDate + this many days. Use this for anything that should stay valid over time instead of hardcoding a date.',
+        },
+        strike: { type: 'number', description: 'Required for call/put, omit for future/forward' },
+        baseContractId: {
+          type: 'string',
+          description: 'Existing future/forward Contract _id to price this option off of (an option-on-future) instead of the cash underlying - triggers Black-76/Black-76-American and uses that contract\'s own tradable symbol as the live price driver.',
+        },
+        executionStyle: {
+          type: 'string',
+          enum: ['european', 'american'],
+          description: 'Overrides the underlying/expiration cascade default (american) if set.',
+        },
+        dayCountConvention: {
+          type: 'string',
+          enum: ['actAct', 'act365', '30/365'],
+          description: 'Overrides the cascade default (act365) if set. Governs time-to-expiry, not rate compounding (ps2 always discounts continuously).',
+        },
+        spotPrice: {
+          type: 'number',
+          description: 'Overrides the auto-fetched last known price of the price-driver symbol (the underlying, or the base future if baseContractId is set).',
+        },
+        volatility: {
+          type: 'number',
+          description: 'Percentage points, e.g. 25 for 25%. Full override - if omitted, computed from real historical realized volatility (see volatilityDays), falling back to the underlying\'s vendor-supplied field only if there isn\'t enough price history.',
+        },
+        volatilityDays: {
+          type: 'number',
+          description: 'Lookback window in days for the historical-volatility calc when volatility is omitted (default 30).',
+        },
+        interestRate: {
+          type: 'number',
+          description: 'Percentage points. Full override - if omitted, resolved from the underlying currency\'s yield curve (defaults to 0 if none seeded).',
+        },
+        dividendRate: {
+          type: 'number',
+          description: 'Percentage points, continuous yield. Full override - if omitted, resolved from the underlying\'s Aktia.Symbols document.',
+        },
+        theoModel: {
+          type: 'string',
+          enum: ['blackScholes', 'black76', 'black76American', 'bjerksund', 'baroneAdesi', 'geske', 'macMillan', 'americanBinomial', 'euroBinomial'],
+          description: 'Overrides automatic model selection (call/put only). Only blackScholes/black76/black76American/americanBinomial/euroBinomial are actually computable today - the rest are reserved for models not yet ported into the native pricing addon.',
+        },
+        calcDate: {
+          type: 'string',
+          description: 'YYYY-MM-DD as-of date for the calculation. Defaults to today.',
+        },
+      },
+      required: ['underlyingSymbolMic', 'contractType'],
+    },
+    handler: async (client, args) => client.send('tools.theoPrice', args),
   },
 ];

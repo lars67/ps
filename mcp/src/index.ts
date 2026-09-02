@@ -9,7 +9,7 @@ import { PS2Client, configFromEnv } from './client.js';
 import { tools } from './tools.js';
 
 const server = new Server(
-  { name: 'ps2-mcp', version: '1.0.0' },
+  { name: 'ps2-mcp', version: '1.2.0' },
   { capabilities: { tools: {} } },
 );
 
