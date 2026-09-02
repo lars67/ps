@@ -274,7 +274,7 @@ export const description: CommandDescription = {
   // the console - the rest are either here or generated as collection commands by
   // services/command.ts's list(). Restored.
   subscribe: {
-    label: "Subscribe to trade changes",
+    label: "Trades - subscribe to changes",
     access: "member",
     value: [
       "# Opens a live subscription: returns the trades matching the filter right away, and then",
@@ -293,7 +293,7 @@ export const description: CommandDescription = {
     ].join("\n"),
   },
   unsubscribe: {
-    label: "Unsubscribe from trade changes",
+    label: "Trades - unsubscribe from changes",
     access: "member",
     value: [
       "# Closes a subscription opened by trades.subscribe.",
@@ -307,7 +307,7 @@ export const description: CommandDescription = {
   },
 
   removeAll: {
-    label: "removeAll  Trades for portfolio",
+    label: "Trades - remove all in portfolio",
     value: JSON.stringify({
       command: "trades.removeAll",
       portfolioId: "?",
@@ -317,7 +317,7 @@ export const description: CommandDescription = {
   },
 
   add: {
-    label: "Add trade (equity)",
+    label: "Trades - add (equity)",
     access: "member",
     value: [
       "# Plain equity trade. side B = buy, S = sell.",
@@ -344,7 +344,7 @@ export const description: CommandDescription = {
   // `value` ("command": "trades.add"). Same convention (and same harmless allowlist side effect)
   // as the tools.theoPrice samples - see the comment block in services/custom/tools.ts.
   addOption: {
-    label: "Add trade (option / future contract)",
+    label: "Trades - add (option / future)",
     access: "member",
     value: [
       "# Booking an option or a future: leave out `symbol` and send a `contract` spec instead.",

@@ -353,7 +353,7 @@ export async function jobStatus(
 
 export const description: CommandDescription = {
   jobStatus: {
-    label: "Check Portfolio History Job Status",
+    label: "Portfolio - history job status",
     value: JSON.stringify({
       command: "portfolios.jobStatus",
       jobId: "?",
@@ -361,7 +361,7 @@ export const description: CommandDescription = {
     access: "member",
   },
   history: {
-    label: "Portfolio History (Optimized with Caching)",
+    label: "Portfolio - history",
     value: `${JSON.stringify({
       command: "portfolios.history",
       _id: "?",
@@ -379,7 +379,7 @@ export const description: CommandDescription = {
   // Removed description for historyV2
   // Removed extra closing brace from previous diff
   positions: {
-    label: "Portfolio Positions",
+    label: "Portfolio - positions",
     value: `${JSON.stringify({
       command: "portfolios.positions",
       _id: "?",
@@ -393,7 +393,7 @@ export const description: CommandDescription = {
   },
 
   putCash: {
-    label: "Portfolio Put Cash",
+    label: "Portfolio - put cash",
     value: JSON.stringify({
       command: "portfolios.putCash",
       portfolioId: "?",
@@ -408,7 +408,7 @@ export const description: CommandDescription = {
   },
 
   putInvestment: {
-    label: "Portfolio Put Cash",
+    label: "Portfolio - put investment",
     value: JSON.stringify({
       command: "portfolios.putInvestment",
       portfolioId: "?",
@@ -424,7 +424,7 @@ export const description: CommandDescription = {
   },
 
   putDividends: {
-    label: "Portfolio Put Dividends",
+    label: "Portfolio - put dividends",
     value: JSON.stringify({
       command: "portfolios.putDividends",
       portfolioId: "?",
@@ -439,7 +439,7 @@ export const description: CommandDescription = {
   },
 
   trades: {
-    label: "Get Portfolio Trades",
+    label: "Portfolio - trades",
     value: JSON.stringify({
       command: "portfolios.trades",
       _id: "?",
@@ -449,7 +449,7 @@ export const description: CommandDescription = {
   },
 
   access: {
-    label: "Change access",
+    label: "Portfolio - change access",
     access: "admin",
     value: JSON.stringify({
       command: "portfolios.access",
@@ -459,7 +459,7 @@ export const description: CommandDescription = {
   },
 
   detailList: {
-    label: "Portfolio detail list",
+    label: "Portfolio - detail list",
     value: JSON.stringify({
       command: "portfolios.detailList",
       filter: {},
@@ -467,7 +467,7 @@ export const description: CommandDescription = {
     access: "member",
   },
   debug: {
-    label: "Portfolio debug report",
+    label: "Portfolio - debug report",
     value: JSON.stringify({
       command: "portfolios.debug",
       portfolioId: "?",
@@ -477,7 +477,7 @@ export const description: CommandDescription = {
     access: "member", // Assuming this will be a member-access command
   },
   list: {
-    label: "List Portfolios",
+    label: "Portfolio - list",
     value: JSON.stringify({
       command: "portfolios.list",
       filter: {},

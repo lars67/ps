@@ -29,6 +29,22 @@ import { consoleScriptHighlight } from "./scriptHighlight";
 import { WSMsg } from "../../types/other";
 import SocketConnectionIndicator from "../../SocketConnectionIndicator";
 
+// The server returns commands grouped by how it builds them (saved commands, then the built-in
+// samples in module registration order, then the generated collection commands), which is not an
+// order anyone reading the dropdown cares about. Built-in labels are prefixed with a category -
+// Portfolio, Trades, Calc, Data, Admin, Collection, Test - so sorting by label groups them.
+//
+// Commands you saved yourself stay on top rather than being scattered alphabetically among the
+// built-ins: they are the ones you came looking for.
+const orderCommands = (commands: Command[]): Command[] => {
+  const rank = (c: Command) => (c.commandType === "custom" || c.commandType === "collection" || c.commandType === "tests" ? 1 : 0);
+  return [...commands].sort(
+    (a, b) =>
+      rank(a) - rank(b) ||
+      String(a.label ?? "").localeCompare(String(b.label ?? ""), undefined, { sensitivity: "base" }),
+  );
+};
+
 const Console = ({
   tabIndex,
   currentRole,
@@ -111,10 +127,12 @@ const Console = ({
         if (msgId === "ws_commands") {
           const commands = JSON.parse(assembledMessage).data;
           if (isCurrentRoleGuest) {
-            setCommands([...commands.filter((c:Command) => c.access === "public")]);
+            setCommands(
+              orderCommands(commands.filter((c: Command) => c.access === "public")),
+            );
             console.log("ws_commads", actualRole);
           } else {
-            setCommands([...commands, ...testCommands]);
+            setCommands(orderCommands([...commands, ...testCommands]));
             console.log("ws_commads", actualRole);
           }
           return;

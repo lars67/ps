@@ -188,7 +188,7 @@ export async function theoPrice(
 
 export const description: CommandDescription = {
   statistic: {
-    label: "Statistic",
+    label: "Calc - statistic",
     access: "public",
     value: JSON.stringify({
       command: "tools.statistic",
@@ -222,7 +222,7 @@ export const description: CommandDescription = {
   // (react/src/utils/command.ts) only extracts balanced {...} objects that carry a "command" key,
   // so any prose outside the braces is ignored and travels with the sample into the editor.
   theoPrice: {
-    label: "Theo Price - option, auto-resolve everything",
+    label: "Calc - theo price, auto-resolve everything",
     access: "public",
     value: [
       "# What is a 400-strike MSFT call worth, 90 days out?",
@@ -241,7 +241,7 @@ export const description: CommandDescription = {
     ].join("\n"),
   },
   theoPriceWhatIf: {
-    label: "Theo Price - option, manual what-if scenario",
+    label: "Calc - theo price, manual what-if scenario",
     access: "public",
     value: [
       "# Same command, but every pricing input is given by hand, so nothing is read from",
@@ -266,7 +266,7 @@ export const description: CommandDescription = {
     ].join("\n"),
   },
   theoPriceFuture: {
-    label: "Theo Price - plain future (cost of carry)",
+    label: "Calc - theo price, plain future (cost of carry)",
     access: "public",
     value: [
       "# A plain future or forward is priced by cost of carry, F = S * e^((r-q)*T), not by",
@@ -285,7 +285,7 @@ export const description: CommandDescription = {
     ].join("\n"),
   },
   theoPriceGreeks: {
-    label: "Theo Price - greeks explained",
+    label: "Calc - theo price, greeks explained",
     access: "public",
     value: [
       "# Every option reply carries a `greeks` block alongside theoPrice - no extra flag needed.",
@@ -321,7 +321,7 @@ export const description: CommandDescription = {
     ].join("\n"),
   },
   theoPriceGreeksCompare: {
-    label: "Theo Price - greeks, compare strikes and exercise styles",
+    label: "Calc - theo price, greeks compared",
     access: "public",
     value: [
       "# Sends several calculations in one go - the console runs every {...} in the buffer, so",
@@ -349,7 +349,7 @@ export const description: CommandDescription = {
     ].join("\n"),
   },
   theoPriceOnFuture: {
-    label: "Theo Price - option on a future (Black-76)",
+    label: "Calc - theo price, option on a future (Black-76)",
     access: "public",
     value: [
       "# An option on a future. baseContractId points at an existing future/forward Contract,",

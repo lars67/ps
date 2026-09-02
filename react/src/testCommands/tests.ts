@@ -199,11 +199,11 @@ export async function text(
 }
 export const description: CommandDescription = {
   delay: {
-    label: "Delay",
+    label: "Test - delay",
     value: JSON.stringify({ command: "tests.delay", delay: "1000" }),
   },
   check: {
-    label: "Check condition",
+    label: "Test - check condition",
     value: JSON.stringify({
       command: "tests.check",
       path: "?",
@@ -211,38 +211,38 @@ export const description: CommandDescription = {
     }),
   },
   setVar: {
-    label: "Set variable",
+    label: "Test - set variable",
     value: JSON.stringify({ command: "tests.setVar", v: "?" }),
   },
   getVar: {
-    label: "Get variable",
+    label: "Test - get variable",
     value: JSON.stringify({ command: "tests.getVar", path: "?" }),
   },
   getVarNames: {
-    label: "Get variable names",
+    label: "Test - get variable names",
     value: JSON.stringify({ command: "tests.getVarNames" }),
   },
 
   setMode: {
-    label: "Set test mode",
+    label: "Test - set test mode",
     value: JSON.stringify({ command: "tests.setMode", "hide":true }),
   },
 
   breakTests: {
-    label: "Break tests",
+    label: "Test - break",
     value: JSON.stringify({ command: "tests.breakTests" }),
   },
   waitMsg: {
-    label: "Wait msg by msgIdDelay",
+    label: "Test - wait for message by msgId",
     value: JSON.stringify({ command: "tests.waitMsg", "msgId":"{?}", "to":"{?}","delay": "1000" }),
   },
   min: {
-    label: "Find object in arrya with minimal field value",
+    label: "Test - find object with minimal field value",
     value: JSON.stringify({ command: "tests.min", "path":"{?}","field":"?" }),
 
   },
   text: {
-    label: "Text output in results",
+    label: "Test - text output in results",
     value: JSON.stringify({ command: "tests.text", "text":"?" }),
 
   }

@@ -33,11 +33,11 @@ export async function file({ fileName }: { fileName: string }) {
 
 export const description: CommandDescription = {
   files: {
-    label: "Logs",
+    label: "Admin - log files",
     value: JSON.stringify({ command: "logs.files" }),
   },
   file: {
-    label: "Log file",
+    label: "Admin - log file contents",
     value: JSON.stringify({ command: "logs.file", fileName: "?" }),
   },
 };

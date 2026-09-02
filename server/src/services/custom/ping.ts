@@ -8,7 +8,7 @@ import { TradeModel } from "../../models/trade";
 
 const description = {
   ping: {
-    label: "Ping (Health Check)",
+    label: "Admin - ping (health check)",
     value: '{"command": "ping"}',
     access: "public",
   },

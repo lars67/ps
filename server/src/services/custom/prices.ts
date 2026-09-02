@@ -215,12 +215,12 @@ export const quotes = async (
 
 export const description: CommandDescription = {
     historical: {
-        label: "Get historical prices",
+        label: "Data - historical prices",
         value: JSON.stringify({ command: "prices.historical", symbols: "?", "date":"?", "from": "", "till":"", "precision":4 }),
         access: 'member', // Allow members to access this command
     },
     quotes: {
-        label: "Get quotes prices",
+        label: "Data - quotes",
         value: JSON.stringify({ command: "prices.quotes", symbols: "?", "requestType":"0", "subscribeId":"","precision":4 }),
     },
 };

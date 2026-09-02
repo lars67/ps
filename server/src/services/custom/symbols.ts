@@ -71,11 +71,11 @@ export const unsubscribe = async (
 
 export const description: CommandDescription = {
   subscribe: {
-    label: "Subscribe to symbol",
+    label: "Data - subscribe to symbol",
     value: JSON.stringify({ command: "symbols.subscribe", symbols: "A,B,C" }),
   },
   unsubscribe: {
-    label: "UnSubscribe to symbol",
+    label: "Data - unsubscribe from symbol",
     value: JSON.stringify({
       command: "symbols.unsubscribe",
       subscribeMsgId: "?",

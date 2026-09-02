@@ -53,7 +53,7 @@ export async function list(
           ...[
             ...(role === 'member' ? memberCollections : collections).map((c) => [
               {
-                label: `List ${c}`,
+                label: `Collection - ${c}: list`,
                 value: JSON.stringify({
                   command: `${c}.list`,
                   ...maps[c].list,
@@ -61,12 +61,12 @@ export async function list(
                 commandType: "collection",
               },
               {
-                label: `Add ${c}`,
+                label: `Collection - ${c}: add`,
                 value: JSON.stringify({ command: `${c}.add`, ...maps[c].add }),
                 commandType: "collection",
               },
               {
-                label: `Update ${c}`,
+                label: `Collection - ${c}: update`,
                 value: JSON.stringify({
                   command: `${c}.update`,
                   ...maps[c].update,
@@ -74,7 +74,7 @@ export async function list(
                 commandType: "collection",
               },
               {
-                label: `Remove ${c}`,
+                label: `Collection - ${c}: remove`,
                 value: JSON.stringify({
                   command: `${c}.remove`,
                   ...maps[c].remove,
