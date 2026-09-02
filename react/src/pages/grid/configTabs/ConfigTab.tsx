@@ -20,6 +20,11 @@ const closedItems = [
   { label: "With", value: "all" },
   { label: "Only", value: "only" },
 ];
+
+// Only offered for Market Price, not Base Price - Market Price is what actually drives
+// marketValue/result/TOTAL (see server's positions.ts getMarketPrice/getBasePrice); Base Price
+// only feeds todayResult's baseline, where "theoretical" wouldn't mean anything.
+const marketPriceItems = [...items, { label: "Theoretical", value: "9" }];
 type Props = {
   config: BaseConfigParams;
   disabled: boolean;
@@ -86,7 +91,7 @@ const ConfigTab = ({ config, onSave }: Props) => {
           id={"marketPrice"}
           value={params.marketPrice}
           onChange={handleChange("marketPrice")}
-          options={items}
+          options={marketPriceItems}
           size={"small"}
           style={{ width: "100px" }}
         ></Select>

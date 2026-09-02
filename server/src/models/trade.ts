@@ -28,7 +28,8 @@ const TradeSchema = new Schema<Trade>({
   closed: {type: Boolean},
   shares: {type:Number},
   description: { type: String },
-  aml: {type: Boolean}
+  aml: {type: Boolean},
+  contractId: { type: String },
 
 });
 

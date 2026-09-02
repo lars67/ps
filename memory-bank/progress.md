@@ -7,6 +7,13 @@ This file tracks the project's progress using a task list format.
 
 ## Completed Tasks
 
+*   ✅ **DERIVATIVES DATA MODEL (2026-07-06)**: New `Contract` type/model (`server/src/types/contract.ts`,
+    `server/src/models/contract.ts`) - new `contracts` collection, referencing the existing
+    `Aktia.Symbols` collection as the underlying (no new `underlyings` collection). Partial unique
+    indexes enforce contract identity; upsert-by-identity verified. Automatic `dividendRate`/`theoModel`
+    resolution (`server/src/services/derivatives/`) from the underlying's `Aktia.Symbols` document. 4
+    real test contracts seeded and verified live in MongoDB. See `decisionLog.md` and
+    `portfolio-server/docs/derivatives/03-migration-notes.md` (sibling repo) for full detail.
 *   ✅ **CRITICAL FIX**: Modified PS2 to prioritize local high-precision CSV data from CustomYahooDownload.py over EODHD API. Fixed filename format bug (DANSKE_XCSE.csv → DANSKE:XCSE.csv) ensuring PS2 reads Yahoo Finance data with full precision instead of rounded EODHD values.
 *   ✅ **COMPLETED**: Real-time portfolio positions streaming test script with comprehensive documentation
 *   ✅ **IMPLEMENTED**: Enhanced `portfolios.positions` command with `requestType: "1"` (subscribe) returning initial positions data and establishing streaming connections
@@ -19,10 +26,21 @@ This file tracks the project's progress using a task list format.
 
 ## Current Tasks
 
-*
+*   Derivatives migration from `portfolio-server` (see Current Focus in `activeContext.md`) - data
+    model and model-selection logic done, pricing engine and trade-form wiring not started.
 
 ## Next Steps
 
+*   **Derivatives**: wire contract creation into the actual trade-entry form/controller (OTC option
+    trades should upsert a `Contract` document by identity, not just via the one-off seed script).
+*   **Derivatives**: prototype the JCalc native addon against a single model (e.g. Black-Scholes) to
+    de-risk native compilation before porting all ~12 models - see
+    `portfolio-server/docs/derivatives/02-pricing-engine.md`.
+*   **Derivatives**: resolve the futures/index underlying reference gap - `Aktia.Symbols` has no real
+    futures/index data; `SPY:ARCX` is currently a stand-in for ES-style test contracts.
+*   **Derivatives**: design a discrete dividend-schedule collection so `theoModel` selection can branch
+    the way the old system's `GENERIC_AMERICAN` model did (Geske for 1-3 dividends, binomial for more)
+    instead of defaulting every spot-based American option to `bjerksund`.
 *   Investigate and resolve WebSocket connection stability issues.
 *   Address potential SSE (Server-Sent Events) connection instability issues.
 *   Verify portfolio calculation accuracy against external NAV reports.
@@ -42,3 +60,4 @@ This file tracks the project's progress using a task list format.
 2025-06-23 15:49:06 - Applied fixes to `portfolios.debug` calculation logic (fees, dividends). Awaiting simpler test portfolio from user for verification.
 2025-11-20 08:51:48 - `portfolios.debug` command implementation completed and verified as per user confirmation; memory bank updated to reflect completion.
 2025-11-20 08:58:31 - Added `source` field to signup command for tracking user signup origins across different entry points; updated frontend form, backend types, and database schema.
+2026-07-06 - Derivatives migration started: Contract data model, automatic theoModel/dividendRate resolution, 4 seeded test contracts. See decisionLog.md.

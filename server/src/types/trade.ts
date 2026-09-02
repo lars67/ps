@@ -28,9 +28,39 @@ export type Trade = {
   shares?: number;
   description?: string;
   aml?: boolean;
+  // Set only for option/future trades - references the Contract this trade was booked against
+  // (see types/contract.ts). Plain equity/cash/dividend trades leave this undefined, matching
+  // how ps2 dropped the old system's "spot" contract type - a Contract document only exists for
+  // actual derivatives. Populated by services/trade.ts's add() via upsertContractForTrade().
+  contractId?: string;
 };
 
 export type TradeWithID = Trade & { _id: string | ObjectId };
+
+// Input shape a client submits on trades.add when the trade is an option/future - not persisted
+// on the Trade document itself, only used to upsert-by-identity into the contracts collection
+// (see services/derivatives/upsertContractForTrade.ts) and derive contractId/symbol above.
+export type TradeContractInput = {
+  underlyingSymbolMic: string;
+  contractType: string; // ContractType enum value, kept as string here to avoid a types/contract.ts import cycle
+  strike?: number;
+  expirationDate: string;
+  baseContractId?: string;
+  symbol: string;
+  multiplier?: number;
+  market?: string;
+  feedCode?: string;
+  provider?: string;
+  // Strike-level overrides of the Underlying -> Expiration -> Strike cascade (see
+  // services/derivatives/resolveContractSettings.ts) - ExecutionStyle/DayCountConvention enum
+  // values, kept as strings for the same reason contractType is.
+  executionStyle?: string;
+  dayCountConvention?: string;
+  volatilityOffset?: number;
+  rateOffset?: number;
+};
+
+export type TradeInput = Trade & { contract?: TradeContractInput };
 
 export type TradeOp = Trade & {_op: string, _id:string}
 export enum TradeSide {

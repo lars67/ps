@@ -39,6 +39,7 @@ export type QuoteData = {
     bprice: number;
     marketClose: number;
     marketPrice: number;
+    theoPrice?: number;
     feeSymbol: number;
     change: number;
     blink: boolean;

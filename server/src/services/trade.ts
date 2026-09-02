@@ -1,4 +1,5 @@
-import {isTradeSide, Trade, TradeOp, TradeSide, TradeWithID} from "../types/trade";
+import {isTradeSide, Trade, TradeInput, TradeOp, TradeSide, TradeWithID} from "../types/trade";
+import { upsertContractForTrade } from "./derivatives/upsertContractForTrade";
 import { TradeModel } from "../models/trade";
 import { FilterQuery } from "mongoose";
 
@@ -39,7 +40,7 @@ export async function list(
 
 export const validationsAddRequired= ["portfolioId", "side", "tradeType", "currency"]
 export async function add(
-  trade: Trade,
+  trade: TradeInput,
   sendResponse: (data: object) => void,
   msgId: string,
   userModif: string,
@@ -54,6 +55,24 @@ export async function add(
   if (error) {
     return error as ErrorType;
   }
+
+  // Option/future trades submit a `contract` spec instead of (or alongside) a bare symbol - the
+  // contract is created/upserted by identity here, at trade-save time, rather than pre-populated
+  // from a feed (see docs/derivatives/03-migration-notes.md in portfolio-server). Resolved first,
+  // before anything below dereferences trade.symbol, since a pure derivatives submission may not
+  // carry a top-level symbol at all - trade.symbol is set to the contract's own tradable symbol so
+  // positions.ts's existing symbol-based grouping keeps working unmodified; contractId is purely
+  // an additional join key onto contract metadata.
+  if (trade.contract) {
+    try {
+      const contract = await upsertContractForTrade(trade.contract);
+      trade.contractId = contract._id.toString();
+      trade.symbol = contract.symbol;
+    } catch (err) {
+      return { error: `Failed to resolve contract: ${err}` } as ErrorType;
+    }
+  }
+
   const isFX = isCurrency(trade.symbol);
   if (isFX && !trade.currency){
     trade.currency= trade.symbol.substring(3,6);

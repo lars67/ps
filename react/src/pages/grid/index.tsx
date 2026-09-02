@@ -411,6 +411,13 @@ const QuoteTable = () => {
         render: numberFormattedRender("marketPrice"),
       },
       {
+        title: "Theo.Price",
+        dataIndex: "theoPrice",
+        key: "theoPrice",
+        align: "right" as const,
+        render: numberFormattedRender("theoPrice"),
+      },
+      {
         title: "Invested Full",
         dataIndex: "investedFull",
         key: "invested",
