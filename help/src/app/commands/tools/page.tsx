@@ -229,8 +229,7 @@ const Tools = () => {
         Returned automatically with every option price - no extra flag. A plain future/forward has
         none, since it is priced by cost of carry rather than an option model. Delta and gamma are
         closed-form for european contracts and read off the binomial tree for american ones; the
-        rest are finite-difference bumps of the price, matching how the original pricing engine
-        computed them.
+        rest are finite-difference bumps of the price.
       </p>
       <table>
       <tbody>

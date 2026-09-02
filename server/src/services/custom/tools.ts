@@ -304,7 +304,7 @@ export const description: CommandDescription = {
       "#   color  gamma change over one trading day.",
       "#",
       "# Delta and gamma are closed form for european contracts and read off the tree for",
-      "# american ones; the rest are finite-difference bumps, exactly as the old system did it.",
+      "# american ones; the rest are finite-difference bumps of the price.",
       "# Change executionStyle to american below to see the tree values instead.",
       JSON.stringify({
         command: "tools.theoPrice",

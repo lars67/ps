@@ -269,19 +269,42 @@ export async function removeAll({
 
 export const description: CommandDescription = {
 
-  /*subscribe: {
-    label: "Subscribe Portfolio Trades",
-    value: JSON.stringify({
-      command: "trades.subscribe",
-      portfolioId: "?",
-      from: "",
-    //  till: "",
-    }),
+  // trades.subscribe/unsubscribe are live handlers (see the functions above) but their samples
+  // had been commented out, so they were the only trade commands with no way to reach them from
+  // the console - the rest are either here or generated as collection commands by
+  // services/command.ts's list(). Restored.
+  subscribe: {
+    label: "Subscribe to trade changes",
+    access: "member",
+    value: [
+      "# Opens a live subscription: returns the trades matching the filter right away, and then",
+      "# keeps pushing an update whenever a trade is added, changed or removed.",
+      "# Each update carries an _op field: 0 = added, 1 = updated, 2 = removed.",
+      "# Set portfolioId - leaving it out matches every trade you can see, which on this database",
+      "# is ~12k rows in the first response. from is an optional YYYY-MM-DD cutoff.",
+      "# Note the msgId you send with this - that is what identifies the subscription, and it is",
+      "# what trades.unsubscribe expects back as subscribeId.",
+      JSON.stringify({
+        command: "trades.subscribe",
+        portfolioId: "?",
+        from: "",
+        msgId: "my-trade-feed",
+      }),
+    ].join("\n"),
   },
   unsubscribe: {
-    label: "UnSubscribe Portfolio Trades",
-    value: JSON.stringify({ command: "trades.unsubscribe", subscribeId: "?" }),
-  },*/
+    label: "Unsubscribe from trade changes",
+    access: "member",
+    value: [
+      "# Closes a subscription opened by trades.subscribe.",
+      "# subscribeId is the msgId that the original trades.subscribe was sent with - not a new",
+      "# id, and not the _id of a trade.",
+      JSON.stringify({
+        command: "trades.unsubscribe",
+        subscribeId: "my-trade-feed",
+      }),
+    ].join("\n"),
+  },
 
   removeAll: {
     label: "removeAll  Trades for portfolio",

@@ -324,8 +324,7 @@ Adds `current_symbol_volume × amount` to cash.
 
 Omit `symbol` and pass `contract` instead — the contract is created/upserted by identity
 (`underlyingSymbolMic` + `contractType` + `strike` + `expirationDate`) and `trade.symbol`/
-`contractId` are set from it automatically. See
-`portfolio-server/docs/derivatives/03-migration-notes.md` for the full data model.
+`contractId` are set from it automatically.
 
 ```json
 {
@@ -489,8 +488,7 @@ A plain future/forward has none, since it is priced by cost of carry rather than
 | `color` | gamma change over one trading day |
 
 Delta and gamma are closed-form for European contracts and read off the binomial tree for
-American ones; the rest are finite-difference bumps of the price, matching how the original
-JCalc engine computed them.
+American ones; the rest are finite-difference bumps of the price.
 
 An expired contract (`calcDate` past `expirationDate`) returns `{ "error": "Contract has already
 expired as of calcDate", "resolved": {...} }` rather than a stale price.
