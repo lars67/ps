@@ -51,6 +51,14 @@ this is just the headline summary:
   (`npm run test:theoprice`) against independently-coded reference formulas (Black-Scholes,
   Black-76, a from-scratch CRR binomial tree, cost-of-carry) — also exposed as `mcp`'s
   `tools_theo_price` tool.
+- **Greeks** (`services/derivatives/calcGreeks.ts`) — all ten (delta, gamma, vega, theta, rho +
+  10bp/1bp variants, speed, charm, color), returned in a `greeks` block with every option price.
+  Ported from JCalc's `greeks.c`/`rdelta.c`/`rgamma.c`: almost every greek there is a
+  finite-difference bump of the price function, and only delta/gamma have fast paths — closed
+  form for Black-Scholes/Black-76, read off the tree for binomial (`binomial_delta_gamma()` in
+  the addon, a merged port of `DeltaBinom`/`GammaBinom`). `npm run test:greeks` checks them
+  against analytic Black-Scholes. Wired into the calculator only — **not** yet into live
+  positions (see `docs/derivatives-todo.md` item 1).
 - Trade-entry wiring is live: `trades.add` accepts a `contract` spec (`TradeContractInput`) instead
   of/alongside a bare `symbol` for option/future trades (arriving as OTC trades); the contract is
   upserted by identity at trade-save time via `services/derivatives/upsertContractForTrade.ts`, and
@@ -60,7 +68,8 @@ this is just the headline summary:
   call/put on real `MSFT:XNAS`; an ES future + option-on-future standing in on `SPY:ARCX` since
   `Aktia.Symbols` has no real futures/index data).
 
-Not built yet (see `docs/derivatives-todo.md` for the full, current list): Greeks; a real
+Not built yet (see `docs/derivatives-todo.md` for the full, current list): greeks and
+cost-of-carry on *live positions* (both exist in the calculator only); a real
 futures/index underlying reference source (`SPY:ARCX` still stands in for `ES`); the remaining
 unported theo models (Bjerksund, Barone-Adesi, Geske, MacMillan); a discrete dividend-schedule
 collection (needed before `theoModel` selection can branch on dividend count the way the old

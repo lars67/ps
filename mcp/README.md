@@ -420,6 +420,11 @@ Response:
 ```json
 {
   "theoPrice": 121.94,
+  "greeks": {
+    "delta": 0.8534, "gamma": 0.0041, "vega": 0.7218, "theta": -0.0489,
+    "rho": 0.6142, "rhoTenBasis": 0.0615, "rhoOneBasis": 0.0061,
+    "speed": -0.0002, "charm": -0.0003, "color": 0.00001
+  },
   "resolved": {
     "spotPrice": 507.29,
     "priceDriverSymbol": "MSFT:XNAS",
@@ -467,6 +472,25 @@ cash underlying) - set `baseContractId` to that future's `_id`:
 ```json
 { "underlyingSymbolMic": "SPY:ARCX", "contractType": "future", "daysToExpiration": 30 }
 ```
+
+**Greeks.** Every option reply carries a `greeks` block alongside `theoPrice` - no extra flag.
+A plain future/forward has none, since it is priced by cost of carry rather than an option model.
+
+| Greek | Meaning |
+|---|---|
+| `delta` | price change per 1.00 move in the underlying (call 0..1, put -1..0) |
+| `gamma` | delta change per 1.00 move in the underlying |
+| `vega` | price change per **1 percentage point** of volatility (22 -> 23) |
+| `theta` | price given up over **one trading day** (Friday's covers the weekend) |
+| `rho` | price change per 1 percentage point of interest rate |
+| `rhoTenBasis` / `rhoOneBasis` | the same for a 10bp / 1bp move |
+| `speed` | gamma change per 1.00 move in the underlying |
+| `charm` | delta change over one trading day |
+| `color` | gamma change over one trading day |
+
+Delta and gamma are closed-form for European contracts and read off the binomial tree for
+American ones; the rest are finite-difference bumps of the price, matching how the original
+JCalc engine computed them.
 
 An expired contract (`calcDate` past `expirationDate`) returns `{ "error": "Contract has already
 expired as of calcDate", "resolved": {...} }` rather than a stale price.

@@ -4,29 +4,37 @@ Living TODO list for the options/futures migration (see `CLAUDE.md`'s "Active wo
 `portfolio-server/docs/derivatives/` for background/design). Add to this as new gaps surface;
 check items off with a note on how/when, don't just delete them.
 
-## 1. Greeks (Delta/Gamma/Theta/Vega/Rho, real-time)
+## 1. Greeks
 
-- Port into `server/native/jcalc`: source is `PS_calculator/JCalc/rdelta.c`, `rgamma.c`, `rvega.c`,
-  `rtheta.c` (portfolio-server, plain-C, same shape as `eurobs.c`/`black76.c`/`binomial.c` already
-  ported).
-- For **Black-Scholes/Black-76**, Delta/Gamma are closed-form (`EuroBSDiv(...)`,
-  `DeltaEuroBlackCall/Put`) - cheap.
-- For **binomial** (the model every American contract in ps2 actually uses today, since
-  Bjerksund isn't ported - see item 4) - Gamma is already a finite-difference bump of the price,
-  not closed-form. Delta is read off the tree (`DeltaBinom`) - cheap; Gamma is not.
-- Decision made: extend `portfolios.positions`/`processQuoteData` with per-position Greeks fields,
-  computed in the same contract-position pass as `theoPrice` (same tick, same resolved
-  vol/rate/dividend inputs) - not a separate `portfolios.greeks` command. Revisit only if a real
-  book's per-tick Greek recompute cost becomes measurable.
-- Portfolio-level aggregate Greeks (net delta/vega across the book) should fit into the existing
-  `TOTAL_*` row pattern, not a new response shape.
-- **Speed/Charm/Color are a second tier, not the same cost class**: Charm = Delta(today) -
-  Delta(tomorrow), Color = Gamma(today) - Gamma(tomorrow) (2x the cost of Delta/Gamma), Speed is
-  always a finite-difference (bump Gamma for binomial, 4-point bump of price otherwise) - no
-  closed-form path for any model. For binomial contracts this means Color/Speed bump an
-  already-bumped Gamma. Treat as opt-in / lower cadence, not part of the default real-time set.
-- Source: `rspeed.c/h`, `rcharm.c/h`, `rcolor.c/h`, shared helpers in `greeks.c`
-  (`SpeedValue`/`CharmValue`/`ColorValue`), all in `portfolio-server/PS_calculator/JCalc/`.
+- **Built 2026-09-02 for the calculator** (`services/derivatives/calcGreeks.ts`): delta, gamma,
+  vega, theta, rho (+ `rhoTenBasis`/`rhoOneBasis`), speed, charm, color - all ten, returned by
+  `tools.theoPrice` in a `greeks` block alongside `theoPrice`. Plain futures/forwards get none
+  (cost of carry, not an option model).
+- The port follows the original's structure: JCalc computes almost every greek as a
+  finite-difference bump of `CalcTheorPrice` (`greeks.c`'s DeltaValue/GammaValue/ThetaValue/
+  VegaValue/RhoValue/SpeedValue/CharmValue/ColorValue take the price function as a pointer), and
+  only delta/gamma have fast paths - closed form for Black-Scholes/Black-76, read off the tree
+  for the binomial models. ps2 does the same: same epsilons (`F_EPSILON` 1e-2, `EPSILON` 1e-3),
+  same difference expressions, closed-form delta/gamma for european, and
+  `binomial_delta_gamma()` in the addon (a merged port of `DeltaBinom`/`GammaBinom`, extending
+  the tree by 2 steps and fitting a parabola through level 2) for american.
+- Verified: `npm run test:greeks` (51 assertions) checks the european greeks against
+  independently-coded analytic Black-Scholes, plus model-independent identities (put-call parity
+  of delta, gamma/vega equal for call and put) and the American-vs-European relationships.
+  Delta/gamma match analytically to 1e-9; vega/theta to bump precision.
+- **Deviation to be aware of**: theta advances one *trading* day using a weekend-only rule.
+  The original uses `dateAfterGivenWorkingDays(..., currency)`, a per-currency holiday calendar
+  that ps2 does not have - so ps2 under-states decay across public holidays. Fixing this needs a
+  trading calendar, which is a separate piece of work.
+- **Unit fix worth remembering**: `rvega.c` scales vega by `VOL_FACTOR` (0.01) because JCalc's
+  sigma is a decimal. ps2 carries volatility in percentage points, so applying VOL_FACTOR again
+  made vega 100x too small - caught by the analytic comparison.
+- **Still open: greeks on held positions.** This is wired into the calculator only.
+  `portfolios.positions`/`processQuoteData` do not yet compute per-position greeks on each tick,
+  which was the original plan recorded here (same pass as `theoPrice`, same resolved inputs, with
+  portfolio-level aggregates fitting the existing `TOTAL_*` row pattern). Cost note that still
+  applies: for binomial contracts charm/color need a second full tree evaluation each, so treat
+  the second tier as opt-in or lower-cadence rather than per-tick.
 
 ## 2. Expiration-tier handling
 

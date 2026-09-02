@@ -221,9 +221,61 @@ const Tools = () => {
       </table>
       <p>
         Command returns <b>theoPrice</b> plus a <b>resolved</b> object showing every input actually
-        used (including anything auto-derived). An already-expired contract returns an{" "}
-        <b>error</b> instead of a stale price.
+        used (including anything auto-derived), and for options a <b>greeks</b> object. An
+        already-expired contract returns an <b>error</b> instead of a stale price.
       </p>
+      <h4>Greeks</h4>
+      <p>
+        Returned automatically with every option price - no extra flag. A plain future/forward has
+        none, since it is priced by cost of carry rather than an option model. Delta and gamma are
+        closed-form for european contracts and read off the binomial tree for american ones; the
+        rest are finite-difference bumps of the price, matching how the original pricing engine
+        computed them.
+      </p>
+      <table>
+      <tbody>
+        <tr>
+          <th>Greek</th>
+          <th>Meaning</th>
+        </tr>
+        <tr>
+          <td>delta</td>
+          <td>Price change per 1.00 move in the underlying. Call 0..1, put -1..0.</td>
+        </tr>
+        <tr>
+          <td>gamma</td>
+          <td>Delta change per 1.00 move in the underlying - how fast delta shifts.</td>
+        </tr>
+        <tr>
+          <td>vega</td>
+          <td>Price change per <b>1 percentage point</b> of volatility (22 &rarr; 23).</td>
+        </tr>
+        <tr>
+          <td>theta</td>
+          <td>Price given up over <b>one trading day</b>. Friday&apos;s value covers the weekend.</td>
+        </tr>
+        <tr>
+          <td>rho</td>
+          <td>Price change per 1 percentage point of interest rate.</td>
+        </tr>
+        <tr>
+          <td>rhoTenBasis / rhoOneBasis</td>
+          <td>The same for a 10 basis point / 1 basis point move.</td>
+        </tr>
+        <tr>
+          <td>speed</td>
+          <td>Gamma change per 1.00 move in the underlying (third order).</td>
+        </tr>
+        <tr>
+          <td>charm</td>
+          <td>Delta change over one trading day.</td>
+        </tr>
+        <tr>
+          <td>color</td>
+          <td>Gamma change over one trading day.</td>
+        </tr>
+      </tbody>
+      </table>
     </div>
   );
 };

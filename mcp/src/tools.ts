@@ -504,7 +504,10 @@ export const tools: ToolDef[] = [
       'baseContractId), or a binomial tree (American, either basis). Plain futures/forwards price ' +
       'via cost-of-carry (F = S * e^((r-q)*T)) - no model selection applies to them. The response ' +
       'includes a `resolved` object showing every input actually used, so you can see what was ' +
-      'auto-derived.',
+      'auto-derived, and for options a `greeks` object: delta, gamma, vega (per 1 volatility ' +
+      'point), theta (per trading day), rho (per 1 percentage point, plus rhoTenBasis/' +
+      'rhoOneBasis for 10bp/1bp), and the second-tier speed, charm and color. Futures/forwards ' +
+      'carry no greeks.',
     inputSchema: {
       type: 'object',
       properties: {
