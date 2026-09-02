@@ -22,10 +22,8 @@ check items off with a note on how/when, don't just delete them.
   independently-coded analytic Black-Scholes, plus model-independent identities (put-call parity
   of delta, gamma/vega equal for call and put) and the American-vs-European relationships.
   Delta/gamma match analytically to 1e-9; vega/theta to bump precision.
-- **Deviation to be aware of**: theta advances one *trading* day using a weekend-only rule.
-  The original uses `dateAfterGivenWorkingDays(..., currency)`, a per-currency holiday calendar
-  that ps2 does not have - so ps2 under-states decay across public holidays. Fixing this needs a
-  trading calendar, which is a separate piece of work.
+- **Deviation to be aware of**: theta advances one *trading* day using a weekend-only rule,
+  because ps2 has no trading calendar - see item 9, which tracks that gap on its own.
 - **Unit fix worth remembering**: `rvega.c` scales vega by `VOL_FACTOR` (0.01) because JCalc's
   sigma is a decimal. ps2 carries volatility in percentage points, so applying VOL_FACTOR again
   made vega 100x too small - caught by the analytic comparison.
@@ -149,3 +147,30 @@ numerically from Bjerksund - worth reassessing once there's a real book to check
 - Is there an actual trade-entry **UI form** for option/future trades, or does contract creation
   only happen via the `trades.add` `contract` payload today (which works, verified end-to-end, but
   has only ever been exercised by test/seed scripts, never a real form submission)?
+
+## 9. Trading-day / holiday calendar
+
+ps2 has no notion of a non-trading day beyond weekends, anywhere. Theta is where this first bites,
+but it is a shared gap rather than a greeks problem.
+
+- **Where it bites today**: `calcGreeks.ts`'s `tradingDaysToYears()` advances one trading day by
+  stepping over weekends only (Fri -> Mon = 3 calendar days, otherwise 1). The original does this
+  with `dateAfterGivenWorkingDays(&d2, d1, 1, p->currency)` - a **per-currency** exchange holiday
+  calendar. Consequence: on the day before a public holiday ps2 under-states theta (and charm and
+  color, which are also one-trading-day differences), because it books one day of decay where the
+  market will actually pass two or more before it trades again.
+- **Where it would also matter, once it exists**: any "business days between" question -
+  a proper ACT/252-style day count, expiry-day handling (item 2), and the `sqrt(252)`
+  trading-day annualization `calcHistoricalVolatility.ts` already assumes without being able to
+  check which days actually traded.
+- **Not just weekends, and not one global calendar**: holidays differ per exchange (XNAS vs XLON
+  vs XCSE), and the old system keys them by currency, which is a rough proxy for the same thing.
+  Whatever ps2 does should be keyed by something already on the contract - the underlying's MIC
+  is the natural candidate, since `Aktia.Symbols` carries `Exchange`/`Symbol-Mic` - rather than
+  inventing a new identifier.
+- **Open questions before any code**: where do the holiday dates come from (a seeded collection
+  like `currencyYields`, a vendor feed, or `iexproxy`)? Who keeps them current - they change
+  annually and half-days exist? And is per-MIC granularity worth it, or is the old system's
+  per-currency approximation good enough for ps2's book?
+- Until then the weekend-only rule stands and is documented at the call site, so nothing silently
+  pretends to know about holidays.
