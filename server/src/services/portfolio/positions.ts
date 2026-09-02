@@ -44,7 +44,7 @@ import {
 } from "../../services/portfolio/helper";
 import logger from "../../utils/logger";
 import profiler from "../../utils/profiler";
-import { checkPrices, getDateSymbolPrice, getLastKnownPrice, getRate } from "../../services/app/priceCashe";
+import { checkPriceCurrency, checkPrices, getDateSymbolPrice, getLastKnownPrice, getRate } from "../../services/app/priceCashe";
 import { buildContractCalcContexts, ContractCalcContext } from "../../services/derivatives/buildContractCalcContexts";
 import { calcTheoPrice } from "../../services/derivatives/calcTheoPrice";
 import { ContractModel } from "../../models/contract";
@@ -584,6 +584,27 @@ export async function positions(
   //console.log("portfolioPositions", portfolioPositions);
   isFirst = true;
 
+  // Actively fetch every FX rate this portfolio needs before any quote processing runs -
+  // getRate()/getDateSymbolPrice() below only ever read dateHistory passively, they never
+  // fetch. Previously the only thing that ever populated FX data was a live SSE tick for
+  // that exact pair (unreliable outside its market hours) or an incidental side effect of
+  // the separate tools.statistic call racing this one. Confirmed in production: on a
+  // freshly-restarted server (empty cache) a USD-denominated holding (Vibeke Holst,
+  // HEAL:XLON) showed a real marketPrice with marketValue=null, purely because nothing
+  // had actively fetched USD/DKK yet. Bounded so a slow/dead proxy can't stall setup.
+  const neededCurrencies = positions.uniqueCurrencies.filter((c) => fxCurrency(c) !== portfolio.currency);
+  if (neededCurrencies.length > 0) {
+    try {
+      const fxStartFrom = moment().subtract(10, "days").format(formatYMD);
+      await Promise.race([
+        Promise.all(neededCurrencies.map((c) => checkPriceCurrency(c, portfolio.currency, fxStartFrom))),
+        new Promise((resolve) => setTimeout(resolve, 2500)),
+      ]);
+    } catch (err) {
+      logger.warn(`[positions] FX rate warm-up failed ${userModif}|${msgId}: ${err}`);
+    }
+  }
+
   const processQuoteData = (data: QuoteData[]) => {
     const [currencyData, symbolData] = divideArray(
       data,
@@ -624,12 +645,24 @@ export async function positions(
           rates[cur] = inv ? 1.0 / fxPrice : fxPrice;
           missingRates.delete(cur);
         } else if (!(cur in rates)) {
-          // Never resolved in an earlier batch either — genuinely missing. Keep a
-          // neutral 1 so any legacy arithmetic stays finite, but flag the currency
-          // so base-currency results are nulled rather than faked.
-          rates[cur] = 1;
-          missingRates.add(cur);
-          logger.error(`[FX_RATE] Missing FX data for ${cur} (fx ${fxCur}) vs ${portfolio.currency}`);
+          // No live FX tick this batch. The initial snapshot (emitInitialSnapshot) has its
+          // own one-time cache fallback for this, but every later live-driven update runs
+          // through here too - without also trying the cache, any position whose OWN price
+          // ticks before its FX pair ever does gets marketValue nulled despite a real,
+          // current marketPrice. Confirmed in production: Vibeke Holst's HEAL:XLON
+          // (USD/DKK) showed a live marketPrice with marketValue=null on exactly this path.
+          const cachedRate = getRate(fxCur, portfolio.currency, moment().format(formatYMD));
+          if (cachedRate != null) {
+            rates[cur] = cachedRate;
+            missingRates.delete(cur);
+          } else {
+            // Genuinely missing, cache included. Keep a neutral 1 so any legacy arithmetic
+            // stays finite, but flag the currency so base-currency results are nulled
+            // rather than faked.
+            rates[cur] = 1;
+            missingRates.add(cur);
+            logger.error(`[FX_RATE] Missing FX data for ${cur} (fx ${fxCur}) vs ${portfolio.currency}`);
+          }
         }
         // else: this batch is a delta that simply didn't repeat the FX quote —
         // keep the rate resolved in a previous batch instead of clobbering it.
