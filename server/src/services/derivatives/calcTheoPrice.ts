@@ -52,6 +52,65 @@ const SUPPORTED_MODELS = new Set<TheoModel>([
   TheoModel.EuroBinomial,
 ]);
 
+export type OptionTheoPriceInputs = {
+  theoModel: TheoModel | undefined;
+  isCall: boolean;
+  european: boolean;
+  futureBased: boolean;
+  spotPrice: number;
+  strike: number;
+  timeToExpiry: number; // year fraction, already computed via calcYearFraction
+  riskFreeRate: number; // percentage points, e.g. 4.5 for 4.5%
+  dividendRate: number; // percentage points, continuous yield
+  volatility: number; // percentage points
+};
+
+// The primitive core both calcTheoPrice() (below, for real held positions) and
+// getTheoPrice.ts (the ad-hoc GetTheoPrice command, which has no persisted Contract document to
+// read from) dispatch through - takes already-resolved values only, no DB/cascade lookups here.
+export function calcOptionTheoPrice(inputs: OptionTheoPriceInputs): number | undefined {
+  const { theoModel, isCall, european, futureBased, spotPrice, strike, timeToExpiry, riskFreeRate, dividendRate, volatility } =
+    inputs;
+
+  if (!theoModel || !SUPPORTED_MODELS.has(theoModel)) return undefined;
+  if (timeToExpiry <= 0) return undefined;
+
+  const jcalc = loadAddon();
+  if (!jcalc) return undefined;
+
+  return jcalc.calcTheoPrice({
+    isCall,
+    european,
+    futureBased,
+    spot: spotPrice,
+    strike,
+    timeToExpiry,
+    riskFreeRate: riskFreeRate / 100,
+    dividendYield: dividendRate / 100,
+    volatility: volatility / 100,
+  });
+}
+
+// Cost-of-carry theoretical price for a plain future/forward (not an option-on-future - those go
+// through calcOptionTheoPrice's Black-76/Black76American path instead). Mirrors
+// portfolio-server/PS_calculator/JCalc/maked.c:229's `theorFuturePrice = (theorSpotPrice - PVDiv) *
+// exp((financingRate - yield) * rateTime)`, but with continuous dividend yield in place of PVDiv
+// (the present value of discrete dividends) - ps2 has no discrete dividend-schedule collection
+// (see docs/derivatives-todo.md item 6), and every other model in this file already applies
+// dividends the same continuous-yield way (see eurobs.c's addon-side exp(-q*T) spot scaling). With
+// a continuous yield q this reduces to the standard F = S * e^((r-q)*T) cost-of-carry formula -
+// numerically simple enough to not need the native addon for parity, unlike the option models.
+export function calcFutureTheoPrice(inputs: {
+  spotPrice: number;
+  timeToExpiry: number;
+  riskFreeRate: number; // percentage points
+  dividendRate: number; // percentage points, continuous yield
+}): number | undefined {
+  const { spotPrice, timeToExpiry, riskFreeRate, dividendRate } = inputs;
+  if (timeToExpiry <= 0) return undefined;
+  return spotPrice * Math.exp(((riskFreeRate - dividendRate) / 100) * timeToExpiry);
+}
+
 // Dispatch mirrors portfolio-server/PS_calculator/JCalc/rtheor.c's CalcTheorPrice_Call/_Put:
 // European contracts price via the closed-form Black-Scholes (spot-based) or Black-76
 // (future-based) formula; American contracts (either asset class) price via the binomial tree,
@@ -65,24 +124,20 @@ export function calcTheoPrice(inputs: TheoPriceInputs): number | undefined {
   const { contract, spotPrice, calcDate, volatility, riskFreeRate, futureBased, executionStyle, dayCountConvention } =
     inputs;
 
-  if (!contract.theoModel || !SUPPORTED_MODELS.has(contract.theoModel)) return undefined;
   if (contract.strike == null) return undefined;
 
-  const jcalc = loadAddon();
-  if (!jcalc) return undefined;
-
   const timeToExpiry = calcYearFraction(calcDate, contract.expirationDate, dayCountConvention);
-  if (timeToExpiry <= 0) return undefined;
 
-  return jcalc.calcTheoPrice({
+  return calcOptionTheoPrice({
+    theoModel: contract.theoModel,
     isCall: isCallContractType(contract.contractType),
     european: executionStyle === ExecutionStyle.European,
     futureBased,
-    spot: spotPrice,
+    spotPrice,
     strike: contract.strike,
     timeToExpiry,
-    riskFreeRate: riskFreeRate / 100,
-    dividendYield: (contract.dividendRate ?? 0) / 100,
-    volatility: volatility / 100,
+    riskFreeRate,
+    dividendRate: contract.dividendRate ?? 0,
+    volatility,
   });
 }

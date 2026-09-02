@@ -20,6 +20,7 @@ import {
 import {
   history as historyService,
 } from "../../services/portfolio/history";
+import { getTheoPrice, GetTheoPriceParams } from "../../services/derivatives/getTheoPrice";
 
 const data = `3/10/2004,13.84,25.37,492.1
 3/11/2004,13.575,25.09,486.2
@@ -171,6 +172,20 @@ export async function statistic(
   }
 }
 
+export async function theoPrice(
+  params: GetTheoPriceParams,
+  sendResponse: (data: any) => void,
+  msgId: string,
+  userModif: string,
+  userData: UserData,
+) {
+  try {
+    return await getTheoPrice(params);
+  } catch (err) {
+    return errorMsgs.failed("tools.theoPrice");
+  }
+}
+
 export const description: CommandDescription = {
   statistic: {
     label: "Statistic",
@@ -182,5 +197,112 @@ export const description: CommandDescription = {
       from: "",
       till: "",
     }),
+  },
+  // ── tools.theoPrice samples ────────────────────────────────────────────────────────────────
+  //
+  // Four console samples for one command, covering the shapes the calculator actually supports:
+  // auto-resolve, manual what-if, plain future, and option-on-future. Only the first key
+  // (`theoPrice`) is the real handler name - the other three are **sample-only aliases**: what
+  // gets sent is their `value`'s own `"command": "tools.theoPrice"`, not the key. This is a
+  // deliberate deviation from this file's usual 1:1 key-to-handler convention, because there's no
+  // other way to offer more than one preset per command today (`extended` exists on the type but
+  // react/src/components/CommandBar renders a dead button and ignores its contents).
+  // Side effect, checked and harmless: services/command.ts's getMemberAccessAlowedCommands()
+  // derives its allowlist from these keys, so `tools.theopricewhatif` & co. become "allowed"
+  // names. Nothing is reachable through them - controllers/websocket.ts finds no matching handler
+  // and returns "Command unknown" - and the real command is public anyway.
+  //
+  // Every sample uses `daysToExpiration` rather than an absolute `expirationDate` so these presets
+  // don't quietly expire (a hardcoded date would start returning "already expired" once it passed).
+  //
+  // The explanatory lines are part of the sample text itself: getCommands()
+  // (react/src/utils/command.ts) only extracts balanced {...} objects that carry a "command" key,
+  // so any prose outside the braces is ignored and travels with the sample into the editor.
+  theoPrice: {
+    label: "Theo Price - option, auto-resolve everything",
+    access: "public",
+    value: [
+      "# What is a 400-strike MSFT call worth, 90 days out?",
+      "# Minimal form - only the contract identity is given. Spot price, volatility (real",
+      "# realized vol from price history), interest rate, dividend yield, execution style,",
+      "# day-count convention and the pricing model are all resolved automatically.",
+      "# The reply carries a `resolved` block showing every input that was actually used.",
+      "# daysToExpiration is relative to today, so this sample never goes stale.",
+      JSON.stringify({
+        command: "tools.theoPrice",
+        underlyingSymbolMic: "MSFT:XNAS",
+        contractType: "call",
+        strike: 400,
+        daysToExpiration: 90,
+      }),
+    ].join("\n"),
+  },
+  theoPriceWhatIf: {
+    label: "Theo Price - option, manual what-if scenario",
+    access: "public",
+    value: [
+      "# Same command, but every pricing input is given by hand, so nothing is read from",
+      "# live market data - this is how you ask 'what would it be worth at this spot and",
+      "# this volatility'. Override only the fields you care about; the rest still resolve.",
+      "# volatility / interestRate / dividendRate are percentage points (25 = 25%).",
+      "# executionStyle european -> Black-Scholes. Change it to american (or leave it out,",
+      "# american is the default) to price on the binomial tree instead.",
+      JSON.stringify({
+        command: "tools.theoPrice",
+        underlyingSymbolMic: "MSFT:XNAS",
+        contractType: "put",
+        strike: 400,
+        daysToExpiration: 90,
+        spotPrice: 400,
+        volatility: 25,
+        interestRate: 4.5,
+        dividendRate: 1,
+        executionStyle: "european",
+        dayCountConvention: "act365",
+      }),
+    ].join("\n"),
+  },
+  theoPriceFuture: {
+    label: "Theo Price - plain future (cost of carry)",
+    access: "public",
+    value: [
+      "# A plain future or forward is priced by cost of carry, F = S * e^((r-q)*T), not by",
+      "# any of the option models - so there is no strike, no executionStyle and no",
+      "# theoModel in the reply. Set contractType to forward for the same calculation.",
+      "# Drop spotPrice / interestRate / dividendRate to have them resolved from live data.",
+      JSON.stringify({
+        command: "tools.theoPrice",
+        underlyingSymbolMic: "SPY:ARCX",
+        contractType: "future",
+        daysToExpiration: 30,
+        spotPrice: 4500,
+        interestRate: 4.25,
+        dividendRate: 1.3,
+      }),
+    ].join("\n"),
+  },
+  theoPriceOnFuture: {
+    label: "Theo Price - option on a future (Black-76)",
+    access: "public",
+    value: [
+      "# An option on a future. baseContractId points at an existing future/forward Contract,",
+      "# and the option is then priced off THAT future's own price (Black-76 for european,",
+      "# Black-76-American for american) instead of the cash underlying.",
+      "# So spotPrice here is the FUTURE's price, not the share price. underlyingSymbolMic",
+      "# is still what drives volatility / dividend / currency resolution.",
+      "# Replace the \"?\" with a real future contract _id before sending.",
+      JSON.stringify({
+        command: "tools.theoPrice",
+        underlyingSymbolMic: "SPY:ARCX",
+        contractType: "call",
+        strike: 6300,
+        daysToExpiration: 90,
+        baseContractId: "?",
+        spotPrice: 6250,
+        volatility: 18,
+        interestRate: 4,
+        executionStyle: "european",
+      }),
+    ].join("\n"),
   },
 };
