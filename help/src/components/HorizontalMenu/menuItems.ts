@@ -1,5 +1,9 @@
 export const items = [
   {
+    label: "Console",
+    href: "/console",
+  },
+  {
     label: "Access",
     href: "/access",
   },
