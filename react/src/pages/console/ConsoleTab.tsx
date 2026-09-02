@@ -24,7 +24,8 @@ import themeCodeMirror from "./themeCodeMirror";
 import UpDownBtn from "../../components/UpDownBtn";
 import { processTestCommand, testCommands } from "../../testCommands";
 import TestResults, { TestItem } from "../../components/TestResults";
-import { getCommands, preprocessCommand } from "../../utils/command";
+import { getCommands, preprocessCommand, scanScript } from "../../utils/command";
+import { consoleScriptHighlight } from "./scriptHighlight";
 import { WSMsg } from "../../types/other";
 import SocketConnectionIndicator from "../../SocketConnectionIndicator";
 
@@ -162,6 +163,24 @@ const Console = ({
     try {
       const commands = getCommands(value, false);
       // console.log("VVV", value);
+
+      // A {...} with balanced braces that doesn't parse used to be dropped without a word: you
+      // would think you ran five commands when four ran. Refuse to send until it's fixed, and
+      // say which line - in a console that books real trades a half-executed script is worse
+      // than no execution at all.
+      const broken = scanScript(value).filter((s) => s.status === "invalid");
+      if (broken.length > 0) {
+        const lineOf = (offset: number) => value.slice(0, offset).split("\n").length;
+        message.open({
+          type: "error",
+          content: `Not sent - invalid JSON on line ${broken
+            .map((s) => lineOf(s.from))
+            .join(", ")}. ${broken.length} of ${commands.length + broken.length} commands would be skipped.`,
+          duration: 8,
+        });
+        return;
+      }
+
       if (commands.length <= 0) {
         message.open({
           type: "error",
@@ -689,7 +708,10 @@ const Console = ({
             <CodeMirror
               className="cm-outer-container"
               value={value}
-              extensions={[json()]}
+              // lineWrapping: commands are long single-line JSON, and without this they run off
+              // the right edge behind a horizontal scrollbar. consoleScriptHighlight greys out
+              // everything the sender ignores (prose/# comments) and flags unparseable braces.
+              extensions={[json(), EditorView.lineWrapping, consoleScriptHighlight]}
               onChange={onChange}
               theme={themeCodeMirror}
               ref={(instance) => {
@@ -758,7 +780,7 @@ const Console = ({
                       )
                     : result
                 }
-                extensions={[json()]}
+                extensions={[json(), EditorView.lineWrapping]}
                 theme={themeCodeMirror}
               />
             )}

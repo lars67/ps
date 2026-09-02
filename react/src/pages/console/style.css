@@ -114,3 +114,17 @@ li:hover {
 .button-margin {
     margin: 0 5px;
 }
+
+/* Console script highlighting (see scriptHighlight.ts). Comment styling is applied to
+   everything OUTSIDE a balanced top-level {...}, i.e. exactly what the sender ignores. */
+.cm-console-comment {
+    color: #7a869a;
+    font-style: italic;
+}
+
+/* Balanced braces that do not parse as JSON - looks like a command but would be skipped
+   silently at send time, so make it visible while typing. */
+.cm-console-invalid {
+    text-decoration: underline wavy #d4380d;
+    text-underline-offset: 3px;
+}
