@@ -292,4 +292,65 @@ export const description: CommandDescription = {
     }),
     access:'member'
   },
+
+  add: {
+    label: "Add trade (equity)",
+    access: "member",
+    value: [
+      "# Plain equity trade. side B = buy, S = sell.",
+      "# Leave rate empty to have the FX rate to the portfolio currency resolved",
+      "# automatically - only fill it in when you really mean to pin a specific rate.",
+      "# Leave tradeTime empty to book it as of now.",
+      JSON.stringify({
+        command: "trades.add",
+        portfolioId: "?",
+        tradeType: "1",
+        side: "B",
+        symbol: "MSFT:XNAS",
+        volume: "?",
+        price: "?",
+        currency: "USD",
+        rate: "",
+        fee: "",
+        tradeTime: "",
+      }),
+    ].join("\n"),
+  },
+
+  // Sample-only alias: there is no `addOption` handler - what gets sent is this entry's own
+  // `value` ("command": "trades.add"). Same convention (and same harmless allowlist side effect)
+  // as the tools.theoPrice samples - see the comment block in services/custom/tools.ts.
+  addOption: {
+    label: "Add trade (option / future contract)",
+    access: "member",
+    value: [
+      "# Booking an option or a future: leave out `symbol` and send a `contract` spec instead.",
+      "# The contract is upserted by identity - the same underlying + contractType + strike +",
+      "# expirationDate always resolves to the same contract document, so re-entering a trade",
+      "# never creates a duplicate. trade.symbol and trade.contractId are filled in from it.",
+      "# price and volume are the OPTION's own (per contract), not the underlying's.",
+      "# multiplier is the contract size - 100 is the standard for US single-stock options.",
+      "# Tip: run tools.theoPrice first to see what the contract is theoretically worth.",
+      JSON.stringify({
+        command: "trades.add",
+        portfolioId: "?",
+        tradeType: "1",
+        side: "B",
+        volume: "?",
+        price: "?",
+        currency: "USD",
+        fee: "",
+        tradeTime: "",
+        contract: {
+          underlyingSymbolMic: "MSFT:XNAS",
+          contractType: "call",
+          strike: 400,
+          expirationDate: "?",
+          symbol: "?",
+          multiplier: 100,
+          market: "OPRA",
+        },
+      }),
+    ].join("\n"),
+  },
 };
