@@ -26,6 +26,7 @@ import { processTestCommand, testCommands } from "../../testCommands";
 import TestResults, { TestItem } from "../../components/TestResults";
 import { getCommands, preprocessCommand, scanScript } from "../../utils/command";
 import { consoleScriptHighlight } from "./scriptHighlight";
+import { helpUrlForCommand } from "../../utils/helpLinks";
 import { WSMsg } from "../../types/other";
 import SocketConnectionIndicator from "../../SocketConnectionIndicator";
 
@@ -172,6 +173,13 @@ const Console = ({
     sendJsonMessage({ command: "commands.list", msgId: "ws_commands" });
     msgId.current = 0;
   }, []);
+
+  // Opens the manual at the section for whatever command is currently in the editor, falling
+  // back to the page explaining the console itself when the buffer holds nothing recognisable.
+  const openHelp = useCallback(() => {
+    const first = getCommands(value)[0] as { command?: string } | undefined;
+    window.open(helpUrlForCommand(first?.command), "_blank", "noopener,noreferrer");
+  }, [value]);
 
   const handleSend = useCallback(async () => {
     let parsedValue: any = {};
@@ -694,6 +702,11 @@ const Console = ({
             >
               Send
             </Button>
+            <Tooltip title="Open the manual for this command">
+              <Button size="middle" onClick={openHelp}>
+                Help
+              </Button>
+            </Tooltip>
             <Button
               size="middle"
               disabled={!canWork || notOwnerCommand}
