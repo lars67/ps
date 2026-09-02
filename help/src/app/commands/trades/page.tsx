@@ -67,7 +67,7 @@ const Page = () => {
             <tr>
                 <td>symbol</td>
                 <td>Some symbol like <b>INTC</b></td>
-                <td>Yes</td>
+                <td>Yes, unless <b>contract</b> is given (see below) - then it is set automatically from the contract&apos;s own tradable symbol</td>
             </tr>
             <tr>
                 <td>volume</td>
@@ -174,8 +174,87 @@ const Page = () => {
                 <td></td>
                 <td></td>
             </tr>
+            <tr>
+                <td>contract</td>
+                <td>For an option or future trade only - see &quot;Booking an option/future trade&quot; below</td>
+                <td>No</td>
+            </tr>
             </tbody>
         </table>
+
+        <h3 id="to-add-contract">Booking an option/future trade</h3>
+        <p>
+            For an option or future, omit <b>symbol</b> and pass a <b>contract</b> object instead -
+            the contract is created/upserted by identity (same underlying + contractType + strike +
+            expirationDate always resolves to the same contract) and <b>trade.symbol</b>/
+            <b>trade.contractId</b> are set from it automatically.
+        </p>
+        <CmdLine cmd={`<div className="cm-activeLine cm-line">{<span className="ͼ1m">"command"</span>:<span class="ͼ19">"trades.add"</span>,<span class="ͼ1m">"portfolioId"</span>:<span class="ͼ19">"65f52f98ab7128acd188b300"</span>, <span class="ͼ1m">"tradeType"</span>:<span class="ͼ19">"1"</span>,<span class="ͼ1m">"side"</span>:<span class="ͼ19">"B"</span>,<span class="ͼ1m">"price"</span>:<span class="ͼ19">"12.50"</span>,<span class="ͼ1m">"currency"</span>:<span class="ͼ19">"USD"</span>,<span class="ͼ1m">"volume"</span>:<span class="ͼ19">"10"</span>,<span class="ͼ1m">"fee"</span>:<span class="ͼ19">"6.50"</span>,<span class="ͼ1m">"contract"</span>:{<span class="ͼ1m">"underlyingSymbolMic"</span>:<span class="ͼ19">"MSFT:XNAS"</span>,<span class="ͼ1m">"contractType"</span>:<span class="ͼ19">"call"</span>,<span class="ͼ1m">"strike"</span>:400,<span class="ͼ1m">"expirationDate"</span>:<span class="ͼ19">"2026-09-18"</span>,<span class="ͼ1m">"symbol"</span>:<span class="ͼ19">"MSFT260918C00400000"</span>}}</div>`} />
+        <table>
+            <tbody>
+            <tr>
+                <th>Parameter</th>
+                <th>Value</th>
+                <th>Required</th>
+            </tr>
+            <tr>
+                <td>contract.underlyingSymbolMic</td>
+                <td>Underlying reference, <b>Symbol-Mic</b> form, e.g. <b>MSFT:XNAS</b></td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td>contract.contractType</td>
+                <td>One of <b>future</b>, <b>forward</b>, <b>call</b>, <b>put</b> - direction/kind only, exercise style is a separate cascading setting</td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td>contract.expirationDate</td>
+                <td>YYYY-MM-DD</td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td>contract.symbol</td>
+                <td>The contract&apos;s own tradable symbol (e.g. an OCC-style option symbol)</td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td>contract.strike</td>
+                <td>Strike price</td>
+                <td>Required for call/put, omit for future/forward</td>
+            </tr>
+            <tr>
+                <td>contract.baseContractId</td>
+                <td>Contract <b>_id</b> to price off of instead of the cash underlying (e.g. an option-on-future&apos;s underlying future)</td>
+                <td>No</td>
+            </tr>
+            <tr>
+                <td>contract.multiplier</td>
+                <td>Contract/lot size. Falls back to the underlying/expiration cascade default if omitted</td>
+                <td>No</td>
+            </tr>
+            <tr>
+                <td>contract.market / contract.feedCode / contract.provider</td>
+                <td>Market/feed metadata</td>
+                <td>No</td>
+            </tr>
+            <tr>
+                <td>contract.executionStyle</td>
+                <td><b>european</b> or <b>american</b> - overrides the underlying/expiration cascade default if set</td>
+                <td>No</td>
+            </tr>
+            <tr>
+                <td>contract.dayCountConvention</td>
+                <td><b>actAct</b>, <b>act365</b>, or <b>30/365</b> - overrides the cascade default if set</td>
+                <td>No</td>
+            </tr>
+            <tr>
+                <td>contract.volatilityOffset / contract.rateOffset</td>
+                <td>Additive, percentage points, stacked on top of the underlying&apos;s base volatility/rate and any expiration-level offset</td>
+                <td>No</td>
+            </tr>
+            </tbody>
+        </table>
+        <p>See also <Link href={`../tools/#to-theoprice`}>tools.theoPrice</Link> to price an option/future before booking a trade for it.</p>
 
         <h3 id="to-removeAll">Remove all portfolio trades. Portfolio will be fully empty</h3>
 <table>

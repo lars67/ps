@@ -26,26 +26,46 @@ Status and design docs live in the sibling repo:
 - `portfolio-server/docs/derivatives/03-migration-notes.md` — **read this first** — ps2 design,
   implementation status, and open questions
 
-Built so far:
-- `server/src/types/contract.ts`, `server/src/models/contract.ts` — new `contracts` Mongoose
+Built so far — see `docs/derivatives-todo.md` for the detailed, actively-maintained open-work list;
+this is just the headline summary:
+- `server/src/types/contract.ts`, `server/src/models/contract.ts` — the `contracts` Mongoose
   collection. Underlying is referenced via `Aktia.Symbols["Symbol-Mic"]` — there's no separate
   `underlyings` collection. Two partial unique indexes enforce contract identity (upsert-by-identity).
-- `server/src/services/derivatives/resolveDividendYield.ts`, `selectTheoModel.ts` — automatic
-  `dividendRate`/`theoModel` resolution from the underlying's `Aktia.Symbols` document at contract
-  creation time. Note: dividend-yield field name differs by `Aktia.Symbols` document `Type`
-  (`"Dividend yield % (indicated)"` for `Common Stock`, `"Annual Dividend Yield %"` for `ETF`).
+  An `underlyingOptionSettings` → `contractExpiration` → `Contract` cascade
+  (`services/derivatives/resolveContractSettings.ts`) resolves execution style/day-count
+  convention/volatility+rate offsets, since a single flat contract document has nowhere to hang
+  term-structure/skew data.
+- `server/native/jcalc/` — a native N-API addon porting three model families verbatim from
+  `portfolio-server/PS_calculator/JCalc` (Black-Scholes, Black-76, a CRR binomial tree), reused
+  rather than reimplemented to preserve numerical parity. `services/derivatives/calcTheoPrice.ts`
+  dispatches to it (`selectTheoModel.ts` auto-selects the model from contract shape); a separate
+  `calcFutureTheoPrice()` in the same file implements plain future/forward cost-of-carry
+  (`F = S·e^((r-q)T)`) directly in TypeScript — simple enough not to need the addon.
+  `services/derivatives/calcHistoricalVolatility.ts` computes realized volatility from real price
+  history rather than trusting `Aktia.Symbols`' unreliable vendor field.
+- **`tools.theoPrice`** (`services/derivatives/getTheoPrice.ts`) — a standalone "what would this
+  option/future be worth" calculator, not tied to any held position or persisted `Contract`. Every
+  input beyond underlying/type/expiration/strike is optional and auto-resolved, with full manual
+  override support for what-if scenarios; supports `daysToExpiration` as an evergreen alternative
+  to an absolute `expirationDate`. Tested end-to-end in `server/test/getTheoPrice.test.ts`
+  (`npm run test:theoprice`) against independently-coded reference formulas (Black-Scholes,
+  Black-76, a from-scratch CRR binomial tree, cost-of-carry) — also exposed as `mcp`'s
+  `tools_theo_price` tool.
+- Trade-entry wiring is live: `trades.add` accepts a `contract` spec (`TradeContractInput`) instead
+  of/alongside a bare `symbol` for option/future trades (arriving as OTC trades); the contract is
+  upserted by identity at trade-save time via `services/derivatives/upsertContractForTrade.ts`, and
+  `trade.contractId`/`positions.ts`'s live `theoPrice` field flow from there. Also exposed via
+  `mcp`'s `trades_add` tool's `contract` param.
 - `server/src/seed-test-contracts.ts` — 4 real test contracts live in the `ps2` database (MSFT
   call/put on real `MSFT:XNAS`; an ES future + option-on-future standing in on `SPY:ARCX` since
   `Aktia.Symbols` has no real futures/index data).
 
-Not built yet: wiring contract creation into the actual trade-entry form/controller (options arrive
-as OTC trades — the contract should be created there, upserted by identity, not just via the seed
-script); the JCalc native addon itself (the actual pricing engine — planned as a native Node addon
-wrapping `portfolio-server/PS_calculator/JCalc`, SoftCapital's own C code, reused rather than
-reimplemented, to preserve numerical parity); a real futures/index underlying reference source;
-a discrete dividend-schedule collection (needed before `theoModel` selection can branch the way the
-old system's `GENERIC_AMERICAN` model did, instead of defaulting every spot-based American option to
-`bjerksund`).
+Not built yet (see `docs/derivatives-todo.md` for the full, current list): Greeks; a real
+futures/index underlying reference source (`SPY:ARCX` still stands in for `ES`); the remaining
+unported theo models (Bjerksund, Barone-Adesi, Geske, MacMillan); a discrete dividend-schedule
+collection (needed before `theoModel` selection can branch on dividend count the way the old
+system's `GENERIC_AMERICAN` model did, instead of defaulting every spot-based American option to
+binomial); `currencyYields` is seeded with static placeholder data only, not live-updated.
 
 ## Legacy context (Cline-era, not auto-loaded)
 

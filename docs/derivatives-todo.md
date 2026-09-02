@@ -77,26 +77,31 @@ check items off with a note on how/when, don't just delete them.
 
 ## 4. Futures cost-of-carry pricing (plain futures/forwards, not options-on-future)
 
-- `selectTheoModel.ts` never assigns a `theoModel` to a plain future/forward -
-  `calcTheoPrice` returns `undefined` for every future position today. This means the
-  "empty shell" enrichment fix (positions.ts, contractCalcContexts pass) **does not cover
-  futures** either - it's gated on `theoPrice` being computable, so a bare future position
-  reverts to the same blank-row bug that was fixed for options.
-- The formula is not a from-scratch task - it's already implemented in the old system and is
-  simpler than any of the option models (closed-form, no distribution functions):
+- **Formula built (2026-09-02): `calcFutureTheoPrice()` in `calcTheoPrice.ts`** - a direct
+  TypeScript port (per the "doesn't strictly need the native addon" note below - decided: TS, not
+  the addon), continuous-dividend-yield version of the old system's formula:
   ```c
   // portfolio-server/PS_calculator/JCalc/maked.c:229
   theorFuturePrice = (theorSpotPrice - PVDiv) * exp((financingRate - yield) * rateTime)
   ```
-  i.e. `F = (S - PV(dividends)) * e^((r-q)*T)`. Dispatch logic in `rtheor.c`'s
-  `CalcTheorPrice_Future`/`_Forward`.
-- All required inputs are already resolved by `buildContractCalcContexts.ts` for every contract,
-  options and futures alike (spot, riskFreeRate, dividendRate/yield, timeToExpiry) - futures just
-  never get a model assigned so none of it is used yet.
-- Given the formula's simplicity, doesn't strictly need the native addon for numerical-parity
-  reasons the way binomial/Bjerksund do - could be a direct TypeScript port instead. Decide which.
-- Blocked on item 3 for real underlying data, but the formula/wiring itself isn't blocked - could
-  be built and tested against the `SPY:ARCX` stand-in the same way options were.
+  i.e. `F = S * e^((r-q)*T)` (continuous yield `q` in place of `PVDiv`, ps2's existing convention -
+  see the function's own comment for why). Dispatch logic in `rtheor.c`'s
+  `CalcTheorPrice_Future`/`_Forward` was the reference for the old system's version.
+- **Reachable today only via the new ad-hoc `tools.theoPrice` command** (`getTheoPrice.ts`) - it
+  correctly returns a future's cost-of-carry price when asked. **Still NOT wired into the real
+  held-position pricing pass**: `selectTheoModel.ts` still never assigns a `theoModel` to a plain
+  future/forward, and `positions.ts`/`buildContractCalcContexts.ts`'s `calcTheoPrice()` (the
+  `ContractCalcContext`-based path used for actual positions) doesn't call
+  `calcFutureTheoPrice()` at all yet. So a bare future **position** still reverts to the same
+  blank-`theoPrice` row the "empty shell" enrichment fix addressed for options - only the
+  standalone calculator benefits from this so far. Wiring it into real positions is a small,
+  well-scoped follow-up: `buildContractCalcContexts.ts` already resolves every input
+  `calcFutureTheoPrice()` needs (spot, riskFreeRate, dividendRate, timeToExpiry) for every
+  contract, options and futures alike.
+- Verified end-to-end (test: `server/test/getTheoPrice.test.ts`) against an independently-coded
+  reference implementation of the same formula, for both `future` and `forward` contract types.
+- Blocked on item 3 for real underlying data for anything beyond the `SPY:ARCX` stand-in, same as
+  before - the formula/wiring itself is not blocked by that.
 
 ## 5. Unported option-pricing models
 
