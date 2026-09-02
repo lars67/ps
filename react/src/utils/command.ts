@@ -98,7 +98,13 @@ export const scanScript = (input: string): ScriptSpan[] => {
             ? 'command'
             : 'notCommand';
         } catch (e) {
-          status = 'invalid';
+          // Unparseable braces are only worth complaining about if they were *meant* to be a
+          // command. Prose in a script legitimately contains braces - "pass {} for all", or a
+          // comment that mentions the {...} syntax itself - and flagging those would underline
+          // ordinary text in red and, worse, refuse to send a script that is perfectly fine.
+          // Requiring the word `command` keeps the check aimed at a mistyped command, which is
+          // the case that actually costs you a half-executed script.
+          status = /command/i.test(text) ? 'invalid' : 'notCommand';
         }
         spans.push({ from: start, to: i + 1, status, text });
       }

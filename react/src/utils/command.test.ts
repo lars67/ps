@@ -50,6 +50,25 @@ describe("scanScript", () => {
     expect(getCommands(script)).toHaveLength(1);
   });
 
+  it("does not flag braces that appear in prose", () => {
+    // Regression: a comment mentioning the {...} syntax, or telling you to "pass {} for all",
+    // used to be classified invalid - which blocked sending an otherwise valid script.
+    const script = [
+      "# the console runs every {...} in the buffer",
+      "# pass {} to match everything",
+      '{"command":"portfolios.list","filter":{}}',
+    ].join("\n");
+
+    const spans = scanScript(script);
+    expect(spans.filter((s) => s.status === "invalid")).toHaveLength(0);
+    expect(getCommands(script).map((c: any) => c.command)).toEqual(["portfolios.list"]);
+  });
+
+  it("still flags a mistyped command, which is what the check is for", () => {
+    const spans = scanScript('{"command":portfolios.remove"}');
+    expect(spans.map((s) => s.status)).toEqual(["invalid"]);
+  });
+
   it("classifies valid JSON without a command key as notCommand, not as an error", () => {
     const spans = scanScript('{"just":"data"}');
     expect(spans.map((s) => s.status)).toEqual(["notCommand"]);
