@@ -29,3 +29,9 @@ sample-react-app/
 .env.local
 .env.*.local
 !.env.template
+
+# Operational artifacts generated on the machine, not source. Deliberately narrow patterns:
+# Data/mic2.csv is reference data and the daily position logs in logs/ are tracked on purpose -
+# only the archive dumps and crontab backups are excluded.
+/Data/portfolioHistory-archive-*.gz
+/logs/crontab-backup-*.txt
